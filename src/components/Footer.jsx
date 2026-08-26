@@ -31,7 +31,7 @@ const Footer = () => {
                     <h4 className="text-white font-semibold mb-4">Get in touch</h4>
                     <ul className="space-y-2.5 text-sm text-slate-400">
                         <li><i className="fa-regular fa-envelope mr-2 text-violet-400"></i>hello@avahire.ai</li>
-                        <li><i className="fa-solid fa-phone mr-2 text-violet-400"></i>+91 98765 43210</li>
+                        <li><i className="fa-solid fa-phone mr-2 text-violet-400"></i>+91 </li>
                         <li className="flex gap-3 pt-2">
                             <a href="#" className="w-9 h-9 rounded-full bg-slate-800 hover:bg-violet-600 flex items-center justify-center transition"><i className="fa-brands fa-linkedin-in"></i></a>
                             <a href="#" className="w-9 h-9 rounded-full bg-slate-800 hover:bg-violet-600 flex items-center justify-center transition"><i className="fa-brands fa-x-twitter"></i></a>
