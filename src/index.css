@@ -160,3 +160,204 @@ body {
 [data-debug-wrapper="true"] {
   display: contents !important;
 }
+
+/* Floating Avatar Card Container */
+.avatar-card {
+  position: absolute;
+  bottom: -2.5rem;
+  left: -2.5rem;
+  width: 240px;
+  background: #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 15px 20px -5px rgba(0, 0, 0, 0.08), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 40;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 640px) {
+  .avatar-card {
+    position: relative;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    margin-top: 1.5rem;
+  }
+}
+
+/* Card Header */
+.avatar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.avatar-badge-ai {
+  background-color: rgba(99, 102, 241, 0.08);
+  color: #4f46e5;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.avatar-badge-live {
+  background-color: rgba(239, 68, 68, 0.08);
+  color: #ef4444;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.avatar-badge-live .live-dot {
+  width: 6px;
+  height: 6px;
+  background-color: #ef4444;
+  border-radius: 50%;
+  animation: pulse-dot 1.5s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.5;
+  }
+}
+
+/* Image Wrapper */
+.avatar-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Gradient Subtitle Overlay */
+.avatar-subtitle-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.6) 50%, rgba(15, 23, 42, 0) 100%);
+  padding: 1.5rem 1rem 0.75rem 1rem;
+  text-align: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* Footer / Controls */
+.avatar-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-top: 0.25rem;
+}
+
+.control-btn-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.ctrl-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background-color: #f1f5f9;
+  color: #475569;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.ctrl-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.ctrl-btn.ctrl-decline {
+  width: 52px;
+  height: 52px;
+  background-color: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+}
+
+.ctrl-btn.ctrl-decline:hover {
+  background-color: #4338ca;
+  box-shadow: 0 6px 14px rgba(79, 70, 229, 0.4);
+}
+
+.ctrl-btn.ctrl-decline svg {
+  transform: rotate(135deg);
+  /* Hang up angle */
+}
+
+/* Interview Panel Console styling inside the card */
+.interview-panel {
+  display: none;
+  /* Initially hidden */
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.interview-panel.active {
+  display: block;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.close-panel-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.close-panel-btn:hover {
+  color: #0f172a;
+}

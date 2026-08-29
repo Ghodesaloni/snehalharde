@@ -5,6 +5,8 @@ import Footer from "@/components/Footer";
 import {
     PieChart, Pie, Cell, ResponsiveContainer,
 } from "recharts";
+import aiAvatar from "@/assets/ai_avatar.png";
+import { Mic, Video, Phone } from "lucide-react";
 
 const stageData = [
     { name: "Applied", value: 520, color: "#7c3aed" },
@@ -111,10 +113,28 @@ const DashboardPreview = () => (
 
         {/* floating live interview card */}
         <div className="avatar-card" id="avatar-card">
-            <div className="interview-subtitles" id="interview-subtitles">
-                <span>Click avatar to start simulated interview!</span>
+            {/* Header badges */}
+            <div className="avatar-header">
+                <span className="avatar-badge-ai">AI Interview</span>
+                <span className="avatar-badge-live">
+                    <span className="live-dot" />
+                    Live
+                </span>
             </div>
 
+            {/* Video preview simulation */}
+            <div className="avatar-image-container">
+                <img 
+                    src={aiAvatar} 
+                    alt="AI Interviewer Avatar" 
+                    className="avatar-image" 
+                />
+                <div className="avatar-subtitle-overlay" id="interview-subtitles">
+                    <span>Click avatar to start simulated interview!</span>
+                </div>
+            </div>
+
+            {/* Controls */}
             <div className="avatar-footer">
                 <div className="control-btn-group">
                     <button
@@ -122,7 +142,7 @@ const DashboardPreview = () => (
                         id="ctrl-mic"
                         aria-label="Toggle Microphone"
                     >
-                        <i data-lucide="mic"></i>
+                        <Mic size={18} />
                     </button>
 
                     <button
@@ -130,7 +150,7 @@ const DashboardPreview = () => (
                         id="ctrl-video"
                         aria-label="Toggle Camera"
                     >
-                        <i data-lucide="video"></i>
+                        <Video size={18} />
                     </button>
 
                     <button
@@ -138,15 +158,15 @@ const DashboardPreview = () => (
                         id="ctrl-start"
                         title="Start/Stop Demonstration"
                     >
-                        <i data-lucide="phone"></i>
+                        <Phone size={20} />
                     </button>
                 </div>
             </div>
 
+            {/* Panel */}
             <div className="interview-panel" id="interview-panel">
                 <div className="panel-header">
                     <span>Interview Interaction Console</span>
-
                     <button
                         id="close-panel"
                         className="close-panel-btn"
@@ -155,7 +175,6 @@ const DashboardPreview = () => (
                         &times;
                     </button>
                 </div>
-
                 <div className="panel-choices" id="panel-choices"></div>
             </div>
         </div>
