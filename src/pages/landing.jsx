@@ -40,7 +40,7 @@ const DashboardPreview = () => (
                 {/* dark sidebar */}
                 <div className="w-40 bg-slate-900 py-5 px-3 hidden sm:block">
                     <div className="text-white font-bold mb-6 px-2">AvaHire</div>
-                    {["Dashboard", "Jobs", "Candidates", "Interviews", "Reports", "Messages", "Settings"].map((it, i) => (
+                    {["Dashboard", "Jobs", "Candidates", "Interviews", "Messages", "Settings"].map((it, i) => (
                         <div key={it} className={`text-xs px-3 py-2.5 rounded-lg mb-1 ${i === 0 ? "bg-violet-600 text-white" : "text-slate-400 hover:text-white"}`}>
                             {it}
                         </div>

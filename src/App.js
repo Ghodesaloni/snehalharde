@@ -18,10 +18,10 @@ import Jobs from "@/pages/dashboard/job";
 import Resumes from "@/pages/dashboard/Resume";
 import Candidates from "@/pages/dashboard/candidates";
 import Interviews from "@/pages/dashboard/interview";
-import Reports from "@/pages/dashboard/Report";
 import EmailCenter from "@/pages/dashboard/emailcenter";
 import CalendarPage from "@/pages/dashboard/calenderpage";
 import Settings from "@/pages/dashboard/settings";
+import Profile from "@/pages/dashboard/Profile";
 
 const RequireAuth = ({ children }) => {
   const user = localStorage.getItem("avahire_user");
@@ -58,10 +58,10 @@ function App() {
             <Route path="resumes" element={<Resumes />} />
             <Route path="candidates" element={<Candidates />} />
             <Route path="interviews" element={<Interviews />} />
-            <Route path="reports" element={<Reports />} />
             <Route path="email" element={<EmailCenter />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="profile" element={<Profile />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
