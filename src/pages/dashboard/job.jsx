@@ -6,14 +6,16 @@ import {
     X,
     ChevronDown,
     Plus,
-    Minus,
     Briefcase,
     Users,
     Clock,
     Building2,
     Search,
     MoreVertical,
-    CheckCircle2
+    CheckCircle2,
+    Tag,
+    AlignLeft,
+    Sparkles
 } from "lucide-react";
 
 const seedJobs = [
@@ -27,9 +29,9 @@ const seedJobs = [
         isRemotePosition: false,
         workMode: "Hybrid",
         type: "Full-time",
-        openings: 3,
         expLevel: "4-7 Years",
-        noticePeriod: "30 Days",
+        description: "Looking for an experienced Senior Software Engineer to design scalable microservices, lead frontend architecture in React/Next.js, and mentor engineering teams.",
+        keySkills: ["React", "Node.js", "TypeScript", "AWS", "System Design"],
         candidates: 18,
         status: "Active",
         posted: "20 May 2025"
@@ -44,9 +46,9 @@ const seedJobs = [
         isRemotePosition: false,
         workMode: "On-site",
         type: "Full-time",
-        openings: 2,
         expLevel: "2-4 Years",
-        noticePeriod: "30 Days",
+        description: "Join our backend platform team to build robust APIs, ETL pipelines, and high-performance services using FastAPI, Django, and PostgreSQL.",
+        keySkills: ["Python", "FastAPI", "Django", "PostgreSQL", "Docker"],
         candidates: 24,
         status: "Active",
         posted: "18 May 2025"
@@ -61,9 +63,9 @@ const seedJobs = [
         isRemotePosition: true,
         workMode: "Remote",
         type: "Full-time",
-        openings: 1,
         expLevel: "3-5 Years",
-        noticePeriod: "Immediate / 15 Days",
+        description: "Craft modern, intuitive design systems and end-to-end user experiences for our recruitment intelligence platform across web and mobile.",
+        keySkills: ["Figma", "Design Systems", "User Research", "Wireframing", "Prototyping"],
         candidates: 12,
         status: "Active",
         posted: "15 May 2025"
@@ -78,17 +80,36 @@ const seedJobs = [
         isRemotePosition: false,
         workMode: "Hybrid",
         type: "Full-time",
-        openings: 2,
         expLevel: "2-4 Years",
-        noticePeriod: "30 Days",
+        description: "Analyze user behaviors, hiring funnels, and recruitment metrics to uncover actionable insights and drive product strategy with data visualizations.",
+        keySkills: ["SQL", "Python", "Tableau", "Power BI", "Data Modeling"],
         candidates: 9,
         status: "Active",
         posted: "12 May 2025"
     }
 ];
 
+const SUGGESTED_SKILLS = [
+    "React",
+    "Node.js",
+    "Python",
+    "TypeScript",
+    "JavaScript",
+    "SQL",
+    "AWS",
+    "Docker",
+    "Figma",
+    "Tailwind CSS",
+    "GraphQL",
+    "System Design",
+    "Git",
+    "FastAPI",
+    "MongoDB",
+    "PostgreSQL"
+];
+
 const defaultFormState = {
-    title: "Senior Software Engineer",
+    title: "",
     dept: "Engineering",
     jobLevel: "Mid Level",
     reportsTo: "Engineering Manager",
@@ -96,9 +117,9 @@ const defaultFormState = {
     isRemotePosition: false,
     workMode: "On-site",
     type: "Full-time",
-    openings: 2,
     expLevel: "3-5 Years",
-    noticePeriod: "30 Days"
+    description: "",
+    keySkills: []
 };
 
 const Jobs = () => {
@@ -106,12 +127,44 @@ const Jobs = () => {
     const [q, setQ] = useState("");
     const [modal, setModal] = useState(false);
     const [form, setForm] = useState(defaultFormState);
+    const [skillInput, setSkillInput] = useState("");
+    const [selectedJobView, setSelectedJobView] = useState(null);
 
     const filtered = jobs.filter((j) =>
         j.title.toLowerCase().includes(q.toLowerCase()) ||
         j.dept.toLowerCase().includes(q.toLowerCase()) ||
-        j.loc.toLowerCase().includes(q.toLowerCase())
+        j.loc.toLowerCase().includes(q.toLowerCase()) ||
+        (j.keySkills && j.keySkills.some(skill => skill.toLowerCase().includes(q.toLowerCase())))
     );
+
+    const handleAddSkill = (skillToAdd) => {
+        const trimmed = (skillToAdd || skillInput).trim();
+        if (!trimmed) return;
+        if (form.keySkills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+            toast.info(`"${trimmed}" is already in the skills list`);
+            setSkillInput("");
+            return;
+        }
+        setForm(prev => ({
+            ...prev,
+            keySkills: [...prev.keySkills, trimmed]
+        }));
+        setSkillInput("");
+    };
+
+    const handleRemoveSkill = (skillToRemove) => {
+        setForm(prev => ({
+            ...prev,
+            keySkills: prev.keySkills.filter(s => s !== skillToRemove)
+        }));
+    };
+
+    const handleSkillKeyDown = (e) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            handleAddSkill();
+        }
+    };
 
     const submit = (e) => {
         e?.preventDefault();
@@ -122,6 +175,7 @@ const Jobs = () => {
         const newJob = {
             id: `job-${Date.now()}`,
             ...form,
+            keySkills: form.keySkills.length > 0 ? form.keySkills : (skillInput.trim() ? [skillInput.trim()] : []),
             candidates: 0,
             status: "Active",
             posted: "Just now"
@@ -130,6 +184,7 @@ const Jobs = () => {
         setJobs([newJob, ...jobs]);
         setModal(false);
         setForm(defaultFormState);
+        setSkillInput("");
         toast.success("Job posting created successfully!");
     };
 
@@ -148,14 +203,18 @@ const Jobs = () => {
                             data-testid="jobs-search"
                             value={q}
                             onChange={(e) => setQ(e.target.value)}
-                            placeholder="Search jobs, departments..."
+                            placeholder="Search jobs, departments, skills..."
                             className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-full text-sm w-64 sm:w-72 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition shadow-xs"
                         />
                     </div>
                     <button
                         data-testid="new-job-btn"
-                        onClick={() => setModal(true)}
-                        className="btn-primary px-5 py-2.5 rounded-full text-white font-semibold text-sm flex items-center gap-2 shadow-md shadow-violet-500/25 transition active:scale-95"
+                        onClick={() => {
+                            setForm(defaultFormState);
+                            setSkillInput("");
+                            setModal(true);
+                        }}
+                        className="btn-primary px-5 py-2.5 rounded-full text-white font-semibold text-sm flex items-center gap-2 shadow-md shadow-violet-500/25 transition active:scale-95 cursor-pointer"
                     >
                         <Plus className="w-4 h-4" /> New Job
                     </button>
@@ -174,8 +233,12 @@ const Jobs = () => {
                     </p>
                     {!q && (
                         <button
-                            onClick={() => setModal(true)}
-                            className="btn-primary px-5 py-2.5 rounded-full text-white font-semibold text-sm mt-4 inline-flex items-center gap-2 shadow-md shadow-violet-500/25"
+                            onClick={() => {
+                                setForm(defaultFormState);
+                                setSkillInput("");
+                                setModal(true);
+                            }}
+                            className="btn-primary px-5 py-2.5 rounded-full text-white font-semibold text-sm mt-4 inline-flex items-center gap-2 shadow-md shadow-violet-500/25 cursor-pointer"
                         >
                             <Plus className="w-4 h-4" /> New Job
                         </button>
@@ -205,6 +268,31 @@ const Jobs = () => {
                                     </span>
                                 </div>
 
+                                {j.description && (
+                                    <p className="text-xs text-slate-500 mt-3 line-clamp-2 leading-relaxed">
+                                        {j.description}
+                                    </p>
+                                )}
+
+                                {/* Key Skills Badges */}
+                                {j.keySkills && j.keySkills.length > 0 && (
+                                    <div className="mt-3.5 flex flex-wrap gap-1.5">
+                                        {j.keySkills.slice(0, 4).map((skill, sIdx) => (
+                                            <span
+                                                key={sIdx}
+                                                className="text-[11px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md"
+                                            >
+                                                {skill}
+                                            </span>
+                                        ))}
+                                        {j.keySkills.length > 4 && (
+                                            <span className="text-[11px] font-medium px-1.5 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-100">
+                                                +{j.keySkills.length - 4} more
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
                                     <span className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-100 flex items-center gap-1 font-medium">
                                         <MapPin className="w-3 h-3 text-slate-400" />
@@ -223,21 +311,19 @@ const Jobs = () => {
                                         <Users className="w-3 h-3 text-violet-500" />
                                         {j.candidates} candidates
                                     </span>
-                                    {j.openings && (
-                                        <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 border border-slate-100 font-medium">
-                                            {j.openings} opening{j.openings > 1 ? "s" : ""}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
 
                             <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
                                 <span className="text-slate-400 font-medium">Posted {j.posted}</span>
                                 <div className="flex items-center gap-3">
-                                    <button onClick={() => toast.info(`Viewing details for ${j.title}`)} className="text-violet-600 font-bold hover:text-violet-700 transition">
+                                    <button
+                                        onClick={() => setSelectedJobView(j)}
+                                        className="text-violet-600 font-bold hover:text-violet-700 transition cursor-pointer"
+                                    >
                                         View
                                     </button>
-                                    <button className="text-slate-400 hover:text-slate-700 transition p-1">
+                                    <button className="text-slate-400 hover:text-slate-700 transition p-1 cursor-pointer">
                                         <MoreVertical className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -247,7 +333,91 @@ const Jobs = () => {
                 </div>
             )}
 
-            {/* Create New Job Modal Matching Uploaded Image */}
+            {/* View Job Details Modal */}
+            {selectedJobView && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+                            <div>
+                                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${selectedJobView.status === "Active" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"}`}>
+                                    {selectedJobView.status}
+                                </span>
+                                <h3 className="text-xl font-bold text-slate-900 mt-2">{selectedJobView.title}</h3>
+                                <p className="text-sm text-violet-600 font-semibold mt-0.5 flex items-center gap-1.5">
+                                    <Building2 className="w-4 h-4" />
+                                    {selectedJobView.dept} • {selectedJobView.jobLevel || "Mid Level"}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedJobView(null)}
+                                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="mt-5 space-y-5">
+                            {/* Key Highlights */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span className="text-[11px] text-slate-400 font-medium block">Location</span>
+                                    <span className="text-xs font-bold text-slate-800 mt-0.5 block truncate">{selectedJobView.loc}</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span className="text-[11px] text-slate-400 font-medium block">Work Mode</span>
+                                    <span className="text-xs font-bold text-slate-800 mt-0.5 block">{selectedJobView.workMode || "On-site"}</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                    <span className="text-[11px] text-slate-400 font-medium block">Experience</span>
+                                    <span className="text-xs font-bold text-slate-800 mt-0.5 block">{selectedJobView.expLevel || "3-5 Years"}</span>
+                                </div>
+                            </div>
+
+                            {/* Job Description */}
+                            {selectedJobView.description && (
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <AlignLeft className="w-3.5 h-3.5 text-violet-600" /> Job Description
+                                    </h4>
+                                    <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                        {selectedJobView.description}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Key Skills */}
+                            {selectedJobView.keySkills && selectedJobView.keySkills.length > 0 && (
+                                <div>
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Tag className="w-3.5 h-3.5 text-blue-600" /> Required Key Skills
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedJobView.keySkills.map((skill, idx) => (
+                                            <span
+                                                key={idx}
+                                                className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-xs font-semibold"
+                                            >
+                                                {skill}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end">
+                            <button
+                                onClick={() => setSelectedJobView(null)}
+                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-semibold transition cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Create New Job Modal */}
             {modal && (
                 <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in" data-testid="new-job-modal">
                     <div className="bg-white rounded-3xl w-full max-w-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto">
@@ -259,16 +429,16 @@ const Jobs = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
-                                        Basic Information
+                                        Create New Job Posting
                                     </h3>
                                     <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                                        Add the essential details about the role.
+                                        Add the essential details, role description, and key skills required.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setModal(false)}
-                                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition"
+                                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -277,8 +447,6 @@ const Jobs = () => {
                         {/* Modal Form */}
                         <form onSubmit={submit} className="mt-6 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                {/* LEFT COLUMN */}
-
                                 {/* Job Title * */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
@@ -290,7 +458,7 @@ const Jobs = () => {
                                         data-testid="job-form-title"
                                         value={form.title}
                                         onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                        placeholder="Senior Software Engineer"
+                                        placeholder="e.g. Senior Software Engineer"
                                         className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
                                     />
                                 </div>
@@ -341,7 +509,6 @@ const Jobs = () => {
                                     </div>
                                 </div>
 
-
                                 {/* Location * */}
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1.5">
@@ -363,8 +530,6 @@ const Jobs = () => {
                                             }}
                                             className="w-full appearance-none pl-10 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition cursor-pointer"
                                         >
-
-
                                             <optgroup>
                                                 <option value="Andhra Pradesh">Andhra Pradesh</option>
                                                 <option value="Arunachal Pradesh">Arunachal Pradesh</option>
@@ -431,7 +596,7 @@ const Jobs = () => {
                                                     key={mode}
                                                     type="button"
                                                     onClick={() => setForm({ ...form, workMode: mode })}
-                                                    className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition text-center ${isActive
+                                                    className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-semibold transition text-center cursor-pointer ${isActive
                                                         ? "bg-blue-50/70 border-2 border-blue-500 text-blue-600 shadow-xs"
                                                         : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                                                         }`}
@@ -456,7 +621,7 @@ const Jobs = () => {
                                                     key={type}
                                                     type="button"
                                                     onClick={() => setForm({ ...form, type: type })}
-                                                    className={`py-2.5 px-2 rounded-xl text-xs font-semibold transition text-center whitespace-nowrap ${isActive
+                                                    className={`py-2.5 px-2 rounded-xl text-xs font-semibold transition text-center whitespace-nowrap cursor-pointer ${isActive
                                                         ? "bg-blue-50/70 border-2 border-blue-500 text-blue-600 shadow-xs"
                                                         : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
                                                         }`}
@@ -465,34 +630,6 @@ const Jobs = () => {
                                                 </button>
                                             );
                                         })}
-                                    </div>
-                                </div>
-
-                                {/* Number of Openings */}
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                                        Number of Openings
-                                    </label>
-                                    <div className="inline-flex items-center border border-slate-200 rounded-xl bg-white overflow-hidden">
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setForm({ ...form, openings: Math.max(1, (form.openings || 1) - 1) })
-                                            }
-                                            className="px-3.5 py-2 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
-                                        >
-                                            <Minus className="w-3.5 h-3.5" />
-                                        </button>
-                                        <span className="px-5 py-2 font-bold text-slate-800 text-sm border-x border-slate-100 min-w-[40px] text-center">
-                                            {form.openings}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setForm({ ...form, openings: (form.openings || 1) + 1 })}
-                                            className="px-3.5 py-2 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition"
-                                        >
-                                            <Plus className="w-3.5 h-3.5" />
-                                        </button>
                                     </div>
                                 </div>
 
@@ -517,25 +654,110 @@ const Jobs = () => {
                                     </div>
                                 </div>
 
-                                {/* Notice Period (Optional) */}
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                                        Notice Period (Optional)
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={form.noticePeriod}
-                                            onChange={(e) => setForm({ ...form, noticePeriod: e.target.value })}
-                                            className="w-full appearance-none px-4 py-2.5 pr-10 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition cursor-pointer"
+                                {/* JOB DESCRIPTION BOX */}
+                                <div className="col-span-1 md:col-span-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <AlignLeft className="w-3.5 h-3.5 text-blue-600" />
+                                            Job Description
+                                        </label>
+                                        <span className="text-[11px] text-slate-400">
+                                            {form.description.length} characters
+                                        </span>
+                                    </div>
+                                    <textarea
+                                        rows={4}
+                                        data-testid="job-form-description"
+                                        value={form.description}
+                                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                                        placeholder="Describe the role responsibilities, ideal candidate background, mission, and key daily expectations..."
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition resize-y leading-relaxed"
+                                    />
+                                    <p className="text-[11px] text-slate-400 mt-1">
+                                        Provide a clear summary of what candidates will be doing in this role.
+                                    </p>
+                                </div>
+
+                                {/* KEY SKILLS */}
+                                <div className="col-span-1 md:col-span-2">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="block text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                            <Tag className="w-3.5 h-3.5 text-blue-600" />
+                                            Key Skills
+                                        </label>
+                                        <span className="text-[11px] text-slate-400">
+                                            {form.keySkills.length} skill{form.keySkills.length === 1 ? "" : "s"} added
+                                        </span>
+                                    </div>
+
+                                    {/* Skills Input Bar */}
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="text"
+                                                data-testid="job-form-skill-input"
+                                                value={skillInput}
+                                                onChange={(e) => setSkillInput(e.target.value)}
+                                                onKeyDown={handleSkillKeyDown}
+                                                placeholder="Type a skill and press Enter (e.g. React, Python, AWS)..."
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleAddSkill()}
+                                            disabled={!skillInput.trim()}
+                                            className="px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 disabled:pointer-events-none rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 border border-blue-200 cursor-pointer"
                                         >
-                                            <option>30 Days</option>
-                                            <option>Immediate / 15 Days</option>
-                                            <option>45 Days</option>
-                                            <option>60 Days</option>
-                                            <option>90 Days</option>
-                                            <option>NA</option>
-                                        </select>
-                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                            <Plus className="w-3.5 h-3.5" /> Add
+                                        </button>
+                                    </div>
+
+                                    {/* Added Skills Pill Badges */}
+                                    {form.keySkills.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2 p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                                            {form.keySkills.map((skill) => (
+                                                <span
+                                                    key={skill}
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-blue-200 text-blue-700 rounded-full text-xs font-semibold shadow-2xs group"
+                                                >
+                                                    {skill}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveSkill(skill)}
+                                                        className="text-slate-400 hover:text-rose-600 transition -mr-0.5 cursor-pointer"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm(prev => ({ ...prev, keySkills: [] }))}
+                                                className="text-[11px] text-slate-400 hover:text-rose-500 font-semibold px-2 py-1 transition cursor-pointer"
+                                            >
+                                                Clear all
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* Suggested Skills Quick-Add */}
+                                    <div className="mt-2.5">
+                                        <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mb-1.5">
+                                            <Sparkles className="w-3 h-3 text-amber-500" /> Suggested Skills (Click to add):
+                                        </span>
+                                        <div className="flex flex-wrap gap-1.5">
+                                            {SUGGESTED_SKILLS.filter(s => !form.keySkills.some(existing => existing.toLowerCase() === s.toLowerCase())).slice(0, 10).map((skill) => (
+                                                <button
+                                                    key={skill}
+                                                    type="button"
+                                                    onClick={() => handleAddSkill(skill)}
+                                                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-slate-100 hover:bg-blue-50 hover:text-blue-600 text-slate-600 border border-slate-200/60 transition flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <Plus className="w-3 h-3 text-slate-400" /> {skill}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -545,14 +767,14 @@ const Jobs = () => {
                                 <button
                                     type="button"
                                     onClick={() => setModal(false)}
-                                    className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                                    className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     data-testid="job-form-submit"
-                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/25 transition active:scale-[0.98]"
+                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/25 transition active:scale-[0.98] cursor-pointer"
                                 >
                                     Create Job
                                 </button>
