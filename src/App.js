@@ -11,6 +11,14 @@ import Features from "@/pages/Features";
 import HowItWorks from "@/pages/Howitworks";
 import About from "@/pages/aboutus";
 import Contact from "@/pages/Contact";
+import CandidateInterviewInvite from "@/pages/candidate/CandidateInterviewInvite";
+import CandidateLogin from "@/pages/candidate/CandidateLogin";
+import CandidateSystemCheck from "@/pages/candidate/CandidateSystemCheck";
+import CandidateInstructions from "@/pages/candidate/CandidateInstructions";
+import CandidateWaitingRoom from "@/pages/candidate/CandidateWaitingRoom";
+import CandidateLiveRoom from "@/pages/candidate/CandidateLiveRoom";
+import CandidateThankYou from "@/pages/candidate/CandidateThankYou";
+import CandidateLinkExpired from "@/pages/candidate/CandidateLinkExpired";
 
 import DashboardLayout from "@/components/DashboardLayout";
 import Dashboard from "@/pages/dashboard/Dashboard";
@@ -43,6 +51,33 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+
+          {/* Candidate AI Interview Portal */}
+          <Route path="/i/:code" element={<CandidateInterviewInvite />} />
+          <Route path="/i/:code/login" element={<CandidateLogin />} />
+          <Route path="/i/:code/system-check" element={<CandidateSystemCheck />} />
+          <Route path="/i/:code/instructions" element={<CandidateInstructions />} />
+          <Route path="/i/:code/waiting-room" element={<CandidateWaitingRoom />} />
+          <Route path="/i/:code/live" element={<CandidateLiveRoom />} />
+          <Route path="/i/:code/thank-you" element={<CandidateThankYou />} />
+          <Route path="/i/:code/expired" element={<CandidateLinkExpired />} />
+
+          <Route path="/interview/:code" element={<CandidateInterviewInvite />} />
+          <Route path="/interview/:code/login" element={<CandidateLogin />} />
+          <Route path="/interview/:code/system-check" element={<CandidateSystemCheck />} />
+          <Route path="/interview/:code/instructions" element={<CandidateInstructions />} />
+          <Route path="/interview/:code/waiting-room" element={<CandidateWaitingRoom />} />
+          <Route path="/interview/:code/live" element={<CandidateLiveRoom />} />
+          <Route path="/interview/:code/thank-you" element={<CandidateThankYou />} />
+          <Route path="/interview/:code/expired" element={<CandidateLinkExpired />} />
+
+          <Route path="/interview" element={<CandidateInterviewInvite />} />
+          <Route path="/candidate-login" element={<CandidateLogin />} />
+          <Route path="/system-check" element={<CandidateSystemCheck />} />
+          <Route path="/instructions" element={<CandidateInstructions />} />
+          <Route path="/waiting-room" element={<CandidateWaitingRoom />} />
+          <Route path="/thank-you" element={<CandidateThankYou />} />
+          <Route path="/expired" element={<CandidateLinkExpired />} />
 
           <Route
             path="/app"

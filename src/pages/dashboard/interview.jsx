@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import {
     Calendar,
@@ -20,110 +20,10 @@ import {
     ShieldCheck,
     ExternalLink
 } from "lucide-react";
-
-const initialInterviews = [
-    {
-        id: "iv-1",
-        name: "Rahul Sharma",
-        email: "rahul.sharma@email.com",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150",
-        role: "Frontend Developer",
-        date: "24 May 2024",
-        time: "11:00 AM",
-        linkCode: "akc123",
-        status: "Active",
-        expiry: "04:56 Remaining",
-        expiryTime: "24 May 2024, 11:56 AM",
-        isExpired: false
-    },
-    {
-        id: "iv-2",
-        name: "Anjali Mehta",
-        email: "anjali.mehta@email.com",
-        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=150",
-        role: "Backend Developer",
-        date: "24 May 2024",
-        time: "02:00 PM",
-        linkCode: "def456",
-        status: "Active",
-        expiry: "04:55 Remaining",
-        expiryTime: "24 May 2024, 02:55 PM",
-        isExpired: false
-    },
-    {
-        id: "iv-3",
-        name: "Vikram Singh",
-        email: "vikram.singh@email.com",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
-        role: "Full Stack Developer",
-        date: "25 May 2024",
-        time: "10:00 AM",
-        linkCode: "ghi789",
-        status: "Scheduled",
-        expiry: "Not started",
-        expiryTime: "25 May 2024, 11:00 AM",
-        isExpired: false
-    },
-    {
-        id: "iv-4",
-        name: "Neha Patel",
-        email: "neha.patel@email.com",
-        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=150",
-        role: "Frontend Developer",
-        date: "25 May 2024",
-        time: "01:00 PM",
-        linkCode: "jkl012",
-        status: "Scheduled",
-        expiry: "Not started",
-        expiryTime: "25 May 2024, 02:00 PM",
-        isExpired: false
-    },
-    {
-        id: "iv-5",
-        name: "Amit Kumar",
-        email: "amit.kumar@email.com",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150",
-        role: "Backend Developer",
-        date: "24 May 2024",
-        time: "03:30 PM",
-        linkCode: "mno345",
-        status: "Completed",
-        expiry: "Completed",
-        expiryTime: "24 May 2024, 04:00 PM",
-        isExpired: false
-    },
-    {
-        id: "iv-6",
-        name: "Sneha Reddy",
-        email: "sneha.reddy@email.com",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
-        role: "UI/UX Designer",
-        date: "24 May 2024",
-        time: "04:00 PM",
-        linkCode: "pqr678",
-        status: "Expired",
-        expiry: "24 May 2024, 04:05 PM",
-        expiryTime: "24 May 2024, 04:05 PM",
-        isExpired: true
-    },
-    {
-        id: "iv-7",
-        name: "Karan Joshi",
-        email: "karan.joshi@email.com",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150",
-        role: "DevOps Engineer",
-        date: "23 May 2024",
-        time: "11:30 AM",
-        linkCode: "stu901",
-        status: "Expired",
-        expiry: "23 May 2024, 11:35 AM",
-        expiryTime: "23 May 2024, 11:35 AM",
-        isExpired: true
-    }
-];
+import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
 
 const Interviews = () => {
-    const [interviews, setInterviews] = useState(initialInterviews);
+    const [interviews, setInterviews] = useState(getStoredInterviews);
     const [statusFilter, setStatusFilter] = useState("All Status");
     const [copiedId, setCopiedId] = useState(null);
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
@@ -135,41 +35,53 @@ const Interviews = () => {
     const [newCandidateName, setNewCandidateName] = useState("");
     const [newCandidateEmail, setNewCandidateEmail] = useState("");
     const [newRole, setNewRole] = useState("Frontend Developer");
-    const [newDate, setNewDate] = useState("2025-06-01");
-    const [newTime, setNewTime] = useState("10:00");
-    const [newValidity, setNewValidity] = useState("24 Hours");
+    const [newDate, setNewDate] = useState("2026-09-02");
+    const [newTime, setNewTime] = useState("11:00");
+    const [newValidity, setNewValidity] = useState("45 Minutes");
+
+    useEffect(() => {
+        setInterviews(getStoredInterviews());
+    }, []);
 
     const filteredInterviews = useMemo(() => {
         return interviews.filter((iv) => {
             if (statusFilter === "All Status") return true;
-            return iv.status.toLowerCase() === statusFilter.toLowerCase();
+            return iv.status?.toLowerCase() === statusFilter.toLowerCase();
         });
     }, [interviews, statusFilter]);
 
+    const getCandidatePortalUrl = (linkCode) => {
+        return `${window.location.origin}/i/${linkCode}`;
+    };
+
     const copyInterviewLink = (linkCode, id) => {
-        const fullUrl = `https://avahire.com/i/${linkCode}`;
+        const fullUrl = getCandidatePortalUrl(linkCode);
         navigator.clipboard.writeText(fullUrl);
         setCopiedId(id);
-        toast.success(`Copied: ${fullUrl}`);
+        toast.success(`Copied Candidate Portal Link: ${fullUrl}`);
         setTimeout(() => setCopiedId(null), 2000);
+    };
+
+    const handleOpenCandidatePortal = (linkCode) => {
+        window.open(`/i/${linkCode}`, "_blank");
     };
 
     const handleRegenerateLink = (id, name) => {
         const newCode = "gen" + Math.floor(100 + Math.random() * 900);
-        setInterviews((prev) =>
-            prev.map((iv) =>
-                iv.id === id
-                    ? {
-                        ...iv,
-                        linkCode: newCode,
-                        status: "Active",
-                        expiry: "05:00 Remaining",
-                        isExpired: false
-                    }
-                    : iv
-            )
+        const updated = interviews.map((iv) =>
+            iv.id === id
+                ? {
+                    ...iv,
+                    linkCode: newCode,
+                    status: "Active",
+                    expiry: "05:00 Remaining",
+                    isExpired: false
+                }
+                : iv
         );
-        toast.success(`New interview link generated for ${name}!`);
+        setInterviews(updated);
+        saveInterviews(updated);
+        toast.success(`New interview link generated for ${name}! (Code: ${newCode})`);
     };
 
     const handleCreateInterviewLink = (e) => {
@@ -180,30 +92,44 @@ const Interviews = () => {
         }
 
         const randomCode = "ava" + Math.floor(100 + Math.random() * 900);
+        const dateObj = new Date(newDate);
+        const formattedDate = !isNaN(dateObj)
+            ? dateObj.toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric"
+            })
+            : "02 September 2026";
+
+        const dayName = !isNaN(dateObj)
+            ? dateObj.toLocaleDateString("en-US", { weekday: "long" })
+            : "Tuesday";
+
         const newEntry = {
             id: `iv-${Date.now()}`,
             name: newCandidateName,
             email: newCandidateEmail,
             avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
             role: newRole,
-            date: new Date(newDate).toLocaleDateString("en-GB", {
-                day: "numeric",
-                month: "short",
-                year: "numeric"
-            }),
-            time: newTime,
+            company: "AvaHire Technologies Pvt. Ltd.",
+            date: formattedDate,
+            dayOfWeek: dayName,
+            time: newTime ? `${newTime} AM` : "11:00 AM",
+            timeZone: "IST",
+            duration: newValidity || "45 Minutes",
             linkCode: randomCode,
             status: "Scheduled",
             expiry: "Not started",
-            expiryTime: `${newDate} ${newTime}`,
+            expiryTime: `${formattedDate}, ${newTime}`,
             isExpired: false
         };
 
-        setInterviews([newEntry, ...interviews]);
+        const updated = addOrUpdateInterview(newEntry);
+        setInterviews((prev) => [updated, ...prev.filter(x => x.id !== updated.id)]);
         setIsGenerateModalOpen(false);
         setNewCandidateName("");
         setNewCandidateEmail("");
-        toast.success(`Interview link created: avahire.com/i/${randomCode}`);
+        toast.success(`Candidate interview link generated! Code: ${randomCode}`);
     };
 
     const getStatusPill = (status) => {
@@ -345,9 +271,16 @@ const Interviews = () => {
                                             {/* Column 4: Link */}
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-2 font-semibold text-violet-600">
-                                                    <span className="font-mono text-xs hover:underline cursor-pointer">
-                                                        avahire.com/i/{iv.linkCode}
-                                                    </span>
+                                                    <a
+                                                        href={`/i/${iv.linkCode}`}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className="font-mono text-xs hover:underline flex items-center gap-1 text-violet-600 hover:text-violet-800"
+                                                        title="Open Candidate Interview Page"
+                                                    >
+                                                        <span>/i/{iv.linkCode}</span>
+                                                        <ExternalLink className="w-3 h-3 opacity-60" />
+                                                    </a>
                                                     <button
                                                         onClick={() => copyInterviewLink(iv.linkCode, iv.id)}
                                                         className="p-1 text-slate-400 hover:text-violet-600 rounded transition"
@@ -677,15 +610,24 @@ const Interviews = () => {
                             </div>
                         </div>
 
-                        <div className="flex justify-end gap-3 pt-2">
+                        <div className="flex items-center gap-2 pt-2">
                             <button
                                 onClick={() => {
                                     copyInterviewLink(selectedInterviewForView.linkCode, selectedInterviewForView.id);
                                 }}
-                                className="w-full py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs"
+                                className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs"
                             >
-                                Copy Interview Link
+                                Copy Link
                             </button>
+                            <a
+                                href={`/i/${selectedInterviewForView.linkCode}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-xs text-center flex items-center justify-center gap-1.5"
+                            >
+                                <span>Open Portal</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
                         </div>
                     </div>
                 </div>

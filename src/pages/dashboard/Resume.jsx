@@ -31,8 +31,12 @@ import {
     UserCheck,
     UserX,
     Send,
-    Star
+    Star,
+    ExternalLink,
+    Copy,
+    Check
 } from "lucide-react";
+import { addOrUpdateInterview, getInterviewByCodeOrId } from "@/utils/interviewStore";
 
 // Seed Candidate Data matching reference UI
 const initialCandidates = [
@@ -204,6 +208,12 @@ const Resumes = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [showFullProfileModal, setShowFullProfileModal] = useState(false);
     const [showInterviewModal, setShowInterviewModal] = useState(false);
+    const [schedRound, setSchedRound] = useState("Technical Screening Round (45 mins)");
+    const [schedDate, setSchedDate] = useState("2026-09-02");
+    const [schedTime, setSchedTime] = useState("11:00");
+    const [schedDuration, setSchedDuration] = useState("45 Minutes");
+    const [generatedLinkData, setGeneratedLinkData] = useState(null);
+    const [copiedInterviewLink, setCopiedInterviewLink] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [filterRole, setFilterRole] = useState("All");
     const [filterMinScore, setFilterMinScore] = useState(0);
@@ -1031,13 +1041,29 @@ const Resumes = () => {
                         </div>
 
                         {/* Schedule Interview */}
-                        <button
-                            onClick={() => setShowInterviewModal(true)}
-                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition shadow-xs"
-                        >
-                            <Calendar className="w-4 h-4 text-slate-500" />
-                            <span>Schedule Interview</span>
-                        </button>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button
+                                onClick={() => {
+                                    setGeneratedLinkData(null);
+                                    setShowInterviewModal(true);
+                                }}
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition shadow-xs"
+                            >
+                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Schedule</span>
+                            </button>
+
+                            <a
+                                href={`/i/${selectedCandidate.id === "c1" ? "akc123" : selectedCandidate.id === "c2" ? "def456" : `ava-${selectedCandidate.id}`}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200/80 rounded-xl text-xs font-semibold transition text-center"
+                                title="Open Candidate's Unique Interview Page"
+                            >
+                                <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
+                                <span>Candidate Portal</span>
+                            </a>
+                        </div>
 
                         {/* Download Resume */}
                         <button
@@ -1235,82 +1261,201 @@ const Resumes = () => {
             {/* Modal: Schedule Interview */}
             {showInterviewModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
-                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-5">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
                                     <Calendar className="w-5 h-5" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-slate-900">Schedule Interview</h3>
-                                    <p className="text-xs text-slate-500">{selectedCandidate.name}</p>
+                                    <h3 className="font-bold text-slate-900 text-base">Schedule Candidate Interview</h3>
+                                    <p className="text-xs text-slate-500">{selectedCandidate.name} • {selectedCandidate.role}</p>
                                 </div>
                             </div>
                             <button
-                                onClick={() => setShowInterviewModal(false)}
+                                onClick={() => {
+                                    setShowInterviewModal(false);
+                                    setGeneratedLinkData(null);
+                                }}
                                 className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <div className="space-y-3 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 block mb-1">Interview Round</label>
-                                <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500">
-                                    <option>Technical Screening Round 1 (45 mins)</option>
-                                    <option>AI Avatar Live Assessment (30 mins)</option>
-                                    <option>System Architecture &amp; Coding (60 mins)</option>
-                                    <option>HR &amp; Culture Fit (30 mins)</option>
-                                </select>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
+                        {!generatedLinkData ? (
+                            <div className="space-y-3.5 text-xs">
                                 <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Date</label>
-                                    <input
-                                        type="date"
-                                        defaultValue="2025-05-25"
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500"
-                                    />
+                                    <label className="font-semibold text-slate-700 block mb-1">Interview Round</label>
+                                    <select
+                                        value={schedRound}
+                                        onChange={(e) => setSchedRound(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 font-medium"
+                                    >
+                                        <option>Technical Screening Round (45 mins)</option>
+                                        <option>AI Live Video Assessment (30 mins)</option>
+                                        <option>Full-Stack &amp; Coding Round (60 mins)</option>
+                                        <option>HR &amp; Cultural Fit Interview (30 mins)</option>
+                                    </select>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Date</label>
+                                        <input
+                                            type="date"
+                                            value={schedDate}
+                                            onChange={(e) => setSchedDate(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 font-medium text-slate-800"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Time</label>
+                                        <input
+                                            type="time"
+                                            value={schedTime}
+                                            onChange={(e) => setSchedTime(e.target.value)}
+                                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 font-medium text-slate-800"
+                                        />
+                                    </div>
+                                </div>
+
                                 <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Time</label>
-                                    <input
-                                        type="time"
-                                        defaultValue="14:00"
-                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500"
-                                    />
+                                    <label className="font-semibold text-slate-700 block mb-1">Estimated Duration</label>
+                                    <select
+                                        value={schedDuration}
+                                        onChange={(e) => setSchedDuration(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 font-medium"
+                                    >
+                                        <option>45 Minutes</option>
+                                        <option>30 Minutes</option>
+                                        <option>60 Minutes</option>
+                                        <option>15 Minutes</option>
+                                    </select>
+                                </div>
+
+                                <div className="p-3 bg-violet-50/70 border border-violet-100 rounded-2xl flex items-center gap-2.5 text-slate-700 font-medium">
+                                    <ShieldCheck className="w-4 h-4 text-violet-600 shrink-0" />
+                                    <span>AI will prepare personalized questions from <strong>{selectedCandidate.name}'s resume</strong>.</span>
+                                </div>
+
+                                <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowInterviewModal(false)}
+                                        className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const code = `ava-${selectedCandidate.id}`;
+                                            const dateObj = new Date(schedDate);
+                                            const formattedDate = !isNaN(dateObj)
+                                                ? dateObj.toLocaleDateString("en-GB", {
+                                                    day: "2-digit",
+                                                    month: "long",
+                                                    year: "numeric"
+                                                })
+                                                : "02 September 2026";
+                                            const dayName = !isNaN(dateObj)
+                                                ? dateObj.toLocaleDateString("en-US", { weekday: "long" })
+                                                : "Tuesday";
+
+                                            const newIv = {
+                                                id: `iv-${selectedCandidate.id}`,
+                                                candidateId: selectedCandidate.id,
+                                                name: selectedCandidate.name,
+                                                email: selectedCandidate.email,
+                                                avatar: selectedCandidate.avatar,
+                                                role: selectedCandidate.role,
+                                                company: "AvaHire Technologies Pvt. Ltd.",
+                                                date: formattedDate,
+                                                dayOfWeek: dayName,
+                                                time: schedTime ? `${schedTime} AM` : "11:00 AM",
+                                                timeZone: "IST",
+                                                duration: schedDuration,
+                                                linkCode: code,
+                                                status: "Active",
+                                                expiry: "05:00 Remaining",
+                                                expiryTime: `${formattedDate}, ${schedTime}`,
+                                                isExpired: false
+                                            };
+
+                                            addOrUpdateInterview(newIv);
+                                            setGeneratedLinkData(newIv);
+                                            handleStatusChange(selectedCandidate.id, "Shortlisted");
+                                            toast.success(`Interview invitation created for ${selectedCandidate.name}!`);
+                                        }}
+                                        className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 active:scale-[0.98] transition"
+                                    >
+                                        Generate &amp; Schedule
+                                    </button>
                                 </div>
                             </div>
+                        ) : (
+                            <div className="space-y-4 text-xs animate-in zoom-in-95">
+                                <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center gap-2.5 text-emerald-800 font-medium">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                                    <span>Interview link successfully generated &amp; linked to resume!</span>
+                                </div>
 
-                            <div>
-                                <label className="font-semibold text-slate-700 block mb-1">Interviewer</label>
-                                <input
-                                    type="text"
-                                    defaultValue="Priya Mehta (Lead Talent Partner)"
-                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500"
-                                />
+                                <div className="space-y-1.5">
+                                    <label className="font-semibold text-slate-700 block">Candidate Interview Link</label>
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-violet-700 font-bold break-all flex items-center justify-between gap-2">
+                                        <span>{`${window.location.origin}/i/${generatedLinkData.linkCode}`}</span>
+                                        <button
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/i/${generatedLinkData.linkCode}`;
+                                                navigator.clipboard.writeText(url);
+                                                setCopiedInterviewLink(true);
+                                                toast.success("Copied candidate link!");
+                                                setTimeout(() => setCopiedInterviewLink(false), 2000);
+                                            }}
+                                            className="p-1 text-slate-500 hover:text-violet-600"
+                                            title="Copy link"
+                                        >
+                                            {copiedInterviewLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 p-3 bg-slate-50/70 rounded-2xl border border-slate-100 text-slate-600">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Scheduled For:</span>
+                                        <span className="font-semibold text-slate-800">{generatedLinkData.date} at {generatedLinkData.time}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Target Role:</span>
+                                        <span className="font-semibold text-slate-800">{generatedLinkData.role}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-2">
+                                    <button
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/i/${generatedLinkData.linkCode}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast.success("Interview URL copied to clipboard!");
+                                        }}
+                                        className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                        <span>Copy Link</span>
+                                    </button>
+                                    <a
+                                        href={`/i/${generatedLinkData.linkCode}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 flex items-center justify-center gap-1.5 text-center"
+                                    >
+                                        <span>Open Candidate Portal</span>
+                                        <ExternalLink className="w-3.5 h-3.5" />
+                                    </a>
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2.5 pt-2">
-                            <button
-                                onClick={() => setShowInterviewModal(false)}
-                                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    toast.success(`Interview invitation sent to ${selectedCandidate.name}!`);
-                                    setShowInterviewModal(false);
-                                }}
-                                className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-sm"
-                            >
-                                Send Invitation
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}

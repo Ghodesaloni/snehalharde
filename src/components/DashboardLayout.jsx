@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import AvaHireLogo from "@/components/AvaHireLogo";
 import {
     Bell,
     Check,
@@ -166,18 +167,7 @@ const DashboardLayout = () => {
             {/* Sidebar */}
             <aside className="w-64 shrink-0 bg-slate-900 text-slate-300 flex flex-col fixed inset-y-0 left-0 z-30">
                 <div className="p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-700 flex items-center justify-center shadow-lg shadow-violet-500/40">
-                            <svg viewBox="0 0 24 24" fill="none" className="w-7 h-7 text-white">
-                                <path d="M12 3 L4 20 H9 L12 13 L15 20 H20 Z" fill="currentColor" />
-                                <circle cx="12" cy="8" r="2.2" fill="currentColor" />
-                            </svg>
-                        </div>
-                        <div>
-                            <div className="text-2xl font-extrabold tracking-tight text-white">Ava<span className="text-violet-400">Hire</span></div>
-                            <div className="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">AI Recruitment System</div>
-                        </div>
-                    </div>
+                    <AvaHireLogo size="md" variant="darkBg" />
                 </div>
 
                 <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
