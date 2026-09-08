@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { toast } from "sonner";
+import { resumesApi } from "@/services/api";
 import {
     Search,
     Filter,
@@ -222,6 +223,20 @@ const Resumes = () => {
 
     const fileInputRef = useRef(null);
 
+    useEffect(() => {
+        const fetchCandidates = async () => {
+            try {
+                const data = await resumesApi.getAll();
+                if (data && data.length > 0) {
+                    setCandidates(data);
+                }
+            } catch (err) {
+                console.error("Failed to load resumes from backend:", err);
+            }
+        };
+        fetchCandidates();
+    }, []);
+
     const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0];
 
     // Filter and Sort Candidates
@@ -314,6 +329,11 @@ const Resumes = () => {
             setSelectedCandidateId(newAdded[0].id);
             setIsUploading(false);
             toast.success(`Successfully screened ${fileList.length} resume${fileList.length > 1 ? "s" : ""}!`);
+
+            // Persist to backend database
+            newAdded.forEach((c) => {
+                resumesApi.create(c).catch((err) => console.error("Failed to save resume:", err));
+            });
         }, 1200);
     };
 
@@ -325,7 +345,7 @@ const Resumes = () => {
         }
     };
 
-    const handleStatusChange = (id, newStatus) => {
+    const handleStatusChange = async (id, newStatus) => {
         setCandidates((prev) =>
             prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
         );
@@ -337,6 +357,11 @@ const Resumes = () => {
             toast.info(`Candidate status updated to ${newStatus}.`);
         }
         setOpenActionMenuId(null);
+        try {
+            await resumesApi.updateStatus(id, newStatus);
+        } catch (err) {
+            console.error("Failed to sync resume status to database:", err);
+        }
     };
 
     const handleSelectAll = (e) => {

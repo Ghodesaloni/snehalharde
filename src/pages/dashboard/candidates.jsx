@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
+import { candidatesApi } from "@/services/api";
 import {
     Mail,
     Phone,
@@ -321,6 +322,20 @@ const Candidates = () => {
     const [isMuted, setIsMuted] = useState(false);
     const [currentCandidateNotes, setCurrentCandidateNotes] = useState({});
 
+    useEffect(() => {
+        const fetchCandidates = async () => {
+            try {
+                const data = await candidatesApi.getAll();
+                if (data && data.length > 0) {
+                    setCandidates(data);
+                }
+            } catch (err) {
+                console.error("Failed to load candidates from backend:", err);
+            }
+        };
+        fetchCandidates();
+    }, []);
+
     // Sorting and Filtering
     const filteredCandidates = useMemo(() => {
         return candidates
@@ -337,34 +352,49 @@ const Candidates = () => {
             });
     }, [candidates, sortBy, statusFilter]);
 
-    const totalCount = 24; // Visual total matching image
+    const totalCount = candidates.length || 24;
 
     const toggleExpandCandidate = (id) => {
         setExpandedCandidateId((prev) => (prev === id ? null : id));
     };
 
-    const handleSelectCandidate = (id, name, e) => {
+    const handleSelectCandidate = async (id, name, e) => {
         e?.stopPropagation();
         setCandidates((prev) =>
             prev.map((c) => (c.id === id ? { ...c, status: "Selected" } : c))
         );
         toast.success(`${name} marked as Selected!`);
+        try {
+            await candidatesApi.update(id, { status: "Selected" });
+        } catch (err) {
+            console.error("Failed to sync candidate status:", err);
+        }
     };
 
-    const handleRejectCandidate = (id, name, e) => {
+    const handleRejectCandidate = async (id, name, e) => {
         e?.stopPropagation();
         setCandidates((prev) =>
             prev.map((c) => (c.id === id ? { ...c, status: "Rejected" } : c))
         );
         toast.error(`${name} marked as Rejected.`);
+        try {
+            await candidatesApi.update(id, { status: "Rejected" });
+        } catch (err) {
+            console.error("Failed to sync candidate status:", err);
+        }
     };
 
-    const handleSaveNotes = (candidateId, candidateName) => {
+    const handleSaveNotes = async (candidateId, candidateName) => {
         const text = currentCandidateNotes[candidateId] || "";
         setCandidates((prev) =>
             prev.map((c) => (c.id === candidateId ? { ...c, notes: text } : c))
         );
         toast.success(`Notes saved for ${candidateName}`);
+        try {
+            await candidatesApi.update(candidateId, { notes: text });
+        } catch (err) {
+            console.error("Failed to sync candidate notes:", err);
+        }
     };
 
     const handleDownloadTranscript = (candidate, e) => {

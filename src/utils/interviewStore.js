@@ -1,4 +1,5 @@
-// Storage helper for interviews and candidate links
+// Storage helper for interviews and candidate links with backend database synchronization
+import { interviewsApi } from "@/services/api";
 
 const STORAGE_KEY = "avahire_interview_sessions";
 
@@ -160,5 +161,15 @@ export const addOrUpdateInterview = (interviewData) => {
     }
 
     saveInterviews(updatedList);
+
+    // Sync with backend API
+    try {
+        interviewsApi.create(interviewData).catch(() => {
+            // Already created or network fallback
+        });
+    } catch (err) {
+        console.warn("Could not sync interview to backend:", err);
+    }
+
     return interviewData;
 };

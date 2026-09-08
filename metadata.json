@@ -1,0 +1,11 @@
+{
+  "name": "AvaHire - AI Recruitment System",
+  "description": "AI-powered recruitment and candidate interviewing platform with live interview rooms, automated assessment, and recruiter dashboard.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

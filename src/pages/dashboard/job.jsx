@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { jobsApi } from "@/services/api";
 import {
     FileText,
     MapPin,
@@ -129,6 +130,21 @@ const Jobs = () => {
     const [form, setForm] = useState(defaultFormState);
     const [skillInput, setSkillInput] = useState("");
     const [selectedJobView, setSelectedJobView] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        const loadJobs = async () => {
+            try {
+                const data = await jobsApi.getAll();
+                if (data && data.length > 0) {
+                    setJobs(data);
+                }
+            } catch (err) {
+                console.error("Failed to load jobs from database:", err);
+            }
+        };
+        loadJobs();
+    }, []);
 
     const filtered = jobs.filter((j) =>
         j.title.toLowerCase().includes(q.toLowerCase()) ||
@@ -166,14 +182,14 @@ const Jobs = () => {
         }
     };
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e?.preventDefault();
         if (!form.title.trim() || !form.dept.trim()) {
             return toast.error("Please fill in the required fields");
         }
 
-        const newJob = {
-            id: `job-${Date.now()}`,
+        setIsSubmitting(true);
+        const jobPayload = {
             ...form,
             keySkills: form.keySkills.length > 0 ? form.keySkills : (skillInput.trim() ? [skillInput.trim()] : []),
             candidates: 0,
@@ -181,11 +197,21 @@ const Jobs = () => {
             posted: "Just now"
         };
 
-        setJobs([newJob, ...jobs]);
-        setModal(false);
-        setForm(defaultFormState);
-        setSkillInput("");
-        toast.success("Job posting created successfully!");
+        try {
+            const savedJob = await jobsApi.create(jobPayload);
+            setJobs([savedJob, ...jobs]);
+            toast.success("Job posting created and saved to database!");
+        } catch (err) {
+            console.error("Backend error, adding locally:", err);
+            const localJob = { id: `job-${Date.now()}`, ...jobPayload };
+            setJobs([localJob, ...jobs]);
+            toast.success("Job posting created!");
+        } finally {
+            setIsSubmitting(false);
+            setModal(false);
+            setForm(defaultFormState);
+            setSkillInput("");
+        }
     };
 
     return (

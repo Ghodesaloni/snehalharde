@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { settingsApi } from "@/services/api";
 import {
     Save,
     Lock,
@@ -126,6 +127,26 @@ const Settings = () => {
     const [showEditInstructionsModal, setShowEditInstructionsModal] = useState(false);
     const [tempGuidelines, setTempGuidelines] = useState(interviewSettings.guidelines);
 
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const data = await settingsApi.get();
+                if (data) {
+                    if (data.preferences) setPreferences(data.preferences);
+                    if (data.interviewSettings) {
+                        setInterviewSettings(data.interviewSettings);
+                        if (data.interviewSettings.guidelines) {
+                            setTempGuidelines(data.interviewSettings.guidelines);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to load settings from database:", err);
+            }
+        };
+        fetchSettings();
+    }, []);
+
     // Password form state
     const [pwdForm, setPwdForm] = useState({ current: "", newPwd: "", confirmPwd: "" });
 
@@ -157,14 +178,24 @@ const Settings = () => {
         }));
     };
 
-    const saveGeneralSettings = () => {
+    const saveGeneralSettings = async () => {
         localStorage.setItem("avahire_settings_preferences", JSON.stringify(preferences));
         toast.success("General settings saved successfully!");
+        try {
+            await settingsApi.updatePreferences(preferences);
+        } catch (err) {
+            console.error("Failed to sync preferences to database:", err);
+        }
     };
 
-    const saveInterviewSettings = () => {
+    const saveInterviewSettings = async () => {
         localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewSettings));
         toast.success("Interview settings & proctoring configuration saved!");
+        try {
+            await settingsApi.updateInterviewSettings(interviewSettings);
+        } catch (err) {
+            console.error("Failed to sync interview settings to database:", err);
+        }
     };
 
     const handlePasswordSubmit = (e) => {
@@ -180,17 +211,17 @@ const Settings = () => {
         setPwdForm({ current: "", newPwd: "", confirmPwd: "" });
     };
 
-    const handleSaveInstructions = () => {
-        setInterviewSettings((prev) => ({
-            ...prev,
-            guidelines: tempGuidelines
-        }));
-        localStorage.setItem(
-            "avahire_interview_settings",
-            JSON.stringify({ ...interviewSettings, guidelines: tempGuidelines })
-        );
+    const handleSaveInstructions = async () => {
+        const updated = { ...interviewSettings, guidelines: tempGuidelines };
+        setInterviewSettings(updated);
+        localStorage.setItem("avahire_interview_settings", JSON.stringify(updated));
         setShowEditInstructionsModal(false);
         toast.success("Interview guidelines updated!");
+        try {
+            await settingsApi.updateInterviewSettings(updated);
+        } catch (err) {
+            console.error("Failed to sync guidelines to database:", err);
+        }
     };
 
     return (

@@ -21,6 +21,7 @@ import {
     ExternalLink
 } from "lucide-react";
 import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
+import { interviewsApi } from "@/services/api";
 
 const Interviews = () => {
     const [interviews, setInterviews] = useState(getStoredInterviews);
@@ -40,7 +41,20 @@ const Interviews = () => {
     const [newValidity, setNewValidity] = useState("45 Minutes");
 
     useEffect(() => {
-        setInterviews(getStoredInterviews());
+        const fetchInterviews = async () => {
+            try {
+                const data = await interviewsApi.getAll();
+                if (data && data.length > 0) {
+                    setInterviews(data);
+                    saveInterviews(data);
+                    return;
+                }
+            } catch (err) {
+                console.error("Failed to load interviews from backend:", err);
+            }
+            setInterviews(getStoredInterviews());
+        };
+        fetchInterviews();
     }, []);
 
     const filteredInterviews = useMemo(() => {

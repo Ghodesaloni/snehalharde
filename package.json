@@ -36,10 +36,12 @@
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
+    "cors": "^2.8.6",
     "cra-template": "1.2.0",
     "date-fns": "4.1.0",
     "dayjs": "1.11.13",
     "embla-carousel-react": "8.6.0",
+    "express": "4.21.2",
     "framer-motion": "11.18.0",
     "input-otp": "1.4.2",
     "lodash": "4.18.1",
@@ -61,8 +63,10 @@
     "zod": "3.24.4"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
+    "dev": "PORT=3000 HOST=0.0.0.0 DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
+    "start": "node server/server.js",
+    "build": "FAST_REFRESH=false BUILD_PATH=dist craco build",
+    "lint": "eslint src/ --max-warnings=500",
     "test": "craco test"
   },
   "browserslist": {
@@ -96,7 +100,7 @@
     "tailwindcss": "3.4.17",
     "typescript": "^5.9.3"
   },
-  "resolutions": {
+  "overrides": {
     "react-router": "7.15.1",
     "node-forge": "1.4.0",
     "fast-uri": "3.1.2",
@@ -115,30 +119,59 @@
     "serialize-javascript": "7.0.5",
     "uuid": "11.1.1",
     "@tootallnate/once": "2.0.1",
-    "webpack-dev-server": "5.2.6",
+    "webpack-dev-server": "4.15.2",
     "resolve-url-loader": "5.0.0",
-    "**/resolve-url-loader/postcss": "8.5.10",
-    "**/axios/form-data": "4.0.6",
-    "**/jsdom/form-data": "3.0.5",
-    "**/postcss-svgo/svgo": "2.8.1",
-    "**/webpack-dev-server/ws": "8.21.0",
-    "**/postcss-load-config/yaml": "2.8.3",
-    "**/cosmiconfig/yaml": "1.10.3",
-    "**/cssnano/yaml": "1.10.3",
-    "**/eslint/js-yaml": "4.3.0",
-    "**/@eslint/eslintrc/js-yaml": "4.3.0",
-    "**/svgo/js-yaml": "3.15.0",
-    "**/@istanbuljs/load-nyc-config/js-yaml": "3.15.0",
-    "**/css-loader/postcss": "8.5.10",
-    "**/css-minimizer-webpack-plugin/postcss": "8.5.10",
-    "**/react-scripts/postcss": "8.5.10",
-    "**/filelist/minimatch": "5.1.8",
-    "**/anymatch/picomatch": "2.3.2",
-    "**/micromatch/picomatch": "2.3.2",
-    "**/readdirp/picomatch": "2.3.2",
-    "**/jest-util/picomatch": "2.3.2",
-    "**/tinyglobby/picomatch": "4.0.4",
+    "axios": {
+      "form-data": "4.0.6"
+    },
+    "jsdom": {
+      "form-data": "3.0.5"
+    },
+    "postcss-svgo": {
+      "svgo": "2.8.1"
+    },
+    "postcss-load-config": {
+      "yaml": "2.8.3"
+    },
+    "cosmiconfig": {
+      "yaml": "1.10.3"
+    },
+    "cssnano": {
+      "yaml": "1.10.3"
+    },
+    "eslint": {
+      "js-yaml": "4.3.0"
+    },
+    "svgo": {
+      "js-yaml": "3.15.0"
+    },
+    "css-loader": {
+      "postcss": "8.5.10"
+    },
+    "css-minimizer-webpack-plugin": {
+      "postcss": "8.5.10"
+    },
+    "react-scripts": {
+      "postcss": "8.5.10"
+    },
+    "filelist": {
+      "minimatch": "5.1.8"
+    },
+    "anymatch": {
+      "picomatch": "2.3.2"
+    },
+    "micromatch": {
+      "picomatch": "2.3.2"
+    },
+    "readdirp": {
+      "picomatch": "2.3.2"
+    },
+    "jest-util": {
+      "picomatch": "2.3.2"
+    },
+    "tinyglobby": {
+      "picomatch": "4.0.4"
+    },
     "http-proxy-middleware": "2.0.10"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  }
 }
