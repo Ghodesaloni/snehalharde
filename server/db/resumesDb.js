@@ -132,8 +132,41 @@ const seedResumes = [
 ];
 
 class ResumesDatabase {
+  ensureFields(candidate) {
+    if (!candidate) return candidate;
+    const skills = candidate.allSkills || candidate.skills || ["JavaScript", "Python"];
+    const status = candidate.status === "Under Review" ? "Review" : candidate.status || "Review";
+    const expYears = candidate.expYears || 2;
+    return {
+      ...candidate,
+      status,
+      currentRole: candidate.currentRole || `${candidate.role} at Tech Corp`,
+      education: candidate.education || "B.Tech in Computer Science",
+      summary: candidate.summary || `${candidate.name} has demonstrated strong background in ${skills.slice(0, 3).join(", ")} with ${candidate.experience || `${expYears} years`} experience.`,
+      matchedSkills: candidate.matchedSkills || skills.slice(0, 3),
+      missingSkills: candidate.missingSkills || [],
+      keyPoints: candidate.keyPoints || {
+        strengths: [
+          `Proficient in core technical competencies: ${skills.slice(0, 3).join(", ")}.`,
+          `Over ${candidate.experience || `${expYears} years`} of practical domain experience.`,
+          "Consistent record of clean code delivery and agile collaboration."
+        ],
+        missingSkills: candidate.missingSkills && candidate.missingSkills.length > 0 
+          ? candidate.missingSkills 
+          : ["Advanced cloud deployment automation could be expanded."],
+        experienceMatch: `Meets experience criteria with ${candidate.experience || `${expYears} years`}.`,
+        verdict: status === "Shortlisted" 
+          ? "High ATS compatibility. Shortlisted for screening round." 
+          : status === "Review" 
+          ? "Strong candidate profile under evaluation for potential match." 
+          : "Candidate does not meet baseline ATS threshold."
+      }
+    };
+  }
+
   getAll(filters = {}) {
     let list = readData(COLLECTION, seedResumes);
+    list = list.map(c => this.ensureFields(c));
     if (filters.status && filters.status !== "All") {
       list = list.filter(r => r.status.toLowerCase() === filters.status.toLowerCase());
     }
@@ -154,7 +187,8 @@ class ResumesDatabase {
 
   getById(id) {
     const list = readData(COLLECTION, seedResumes);
-    return list.find(r => r.id === id) || null;
+    const item = list.find(r => r.id === id);
+    return item ? this.ensureFields(item) : null;
   }
 
   create(resumeData) {

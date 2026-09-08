@@ -68,6 +68,20 @@ export const resumesApi = {
   delete: async (id) => {
     const res = await api.delete(`/resumes/${id}`);
     return res.data;
+  },
+  analyzeCandidate: async (id, { jobId, customJd } = {}) => {
+    const res = await api.post(`/resumes/${id}/analyze-jd`, { jobId, customJd });
+    return res.data;
+  },
+  analyzeBatch: async ({ jobId, customJd, candidateIds } = {}) => {
+    const res = await api.post("/resumes/analyze-batch-jd", { jobId, customJd, candidateIds });
+    return res.data;
+  },
+  uploadAndScreen: async (formData) => {
+    const res = await api.post("/resumes/upload-and-screen", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return res.data;
   }
 };
 

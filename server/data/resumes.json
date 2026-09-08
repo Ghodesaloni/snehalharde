@@ -23,13 +23,39 @@
       "HTML",
       "CSS"
     ],
-    "atsScore": 87,
-    "matchScore": 92,
-    "skillsMatchPct": 95,
-    "status": "Shortlisted",
+    "atsScore": 57,
+    "matchScore": 50,
+    "skillsMatchPct": 40,
+    "status": "Rejected",
     "uploadedDate": "20 May 2025",
     "jobId": "job-2",
-    "createdAt": "2025-05-20T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "Python Developer Intern at ABC Pvt. Ltd.",
+    "education": "B.Tech in Computer Science",
+    "matchedSkills": [
+      "Python",
+      "PostgreSQL"
+    ],
+    "missingSkills": [
+      "FastAPI",
+      "Django",
+      "Docker"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Direct alignment in required competencies: Python, PostgreSQL.",
+        "Meets required experience threshold with 2 Years.",
+        "Education: B.Tech in Computer Science."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: FastAPI, Django, Docker."
+      ],
+      "experienceMatch": "Candidate possesses 2 years of experience, meeting the required 2 years threshold.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 3 essential skills with an ATS score of 57/100."
+    },
+    "summary": "Snehal Harde scored 57/100 ATS match for the Python Developer position (Rejected). Matches 2 out of 5 required skills (40% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:25.762Z"
   },
   {
     "id": "c2",
@@ -54,13 +80,37 @@
       "TypeScript",
       "Tailwind"
     ],
-    "atsScore": 91,
-    "matchScore": 88,
-    "skillsMatchPct": 90,
-    "status": "Shortlisted",
+    "atsScore": 35,
+    "matchScore": 21,
+    "skillsMatchPct": 0,
+    "status": "Rejected",
     "uploadedDate": "19 May 2025",
     "jobId": "job-1",
-    "createdAt": "2025-05-19T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "Backend Software Engineer at Infosys",
+    "education": "B.Tech in Computer Science",
+    "matchedSkills": [],
+    "missingSkills": [
+      "Python",
+      "FastAPI",
+      "Django",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Meets required experience threshold with 4 Years.",
+        "Education: B.Tech in Computer Science."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker."
+      ],
+      "experienceMatch": "Candidate has 4 years of experience, comfortably exceeding the required 2+ years.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
+    },
+    "summary": "Rohan Verma scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:30.065Z"
   },
   {
     "id": "c3",
@@ -85,13 +135,37 @@
       "User Research",
       "Wireframing"
     ],
-    "atsScore": 84,
-    "matchScore": 85,
-    "skillsMatchPct": 88,
-    "status": "Under Review",
+    "atsScore": 35,
+    "matchScore": 21,
+    "skillsMatchPct": 0,
+    "status": "Rejected",
     "uploadedDate": "18 May 2025",
     "jobId": "job-3",
-    "createdAt": "2025-05-18T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "UI/UX Designer at Design Studio",
+    "education": "B.Des in Visual Communication",
+    "matchedSkills": [],
+    "missingSkills": [
+      "Python",
+      "FastAPI",
+      "Django",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Meets required experience threshold with 3 Years.",
+        "Education: B.Des in Visual Communication."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker."
+      ],
+      "experienceMatch": "Candidate has 3 years of experience, comfortably exceeding the required 2+ years.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
+    },
+    "summary": "Aisha Khan scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:30.282Z"
   },
   {
     "id": "c4",
@@ -117,13 +191,39 @@
       "CI/CD",
       "Linux"
     ],
-    "atsScore": 94,
-    "matchScore": 90,
-    "skillsMatchPct": 92,
-    "status": "Shortlisted",
+    "atsScore": 37,
+    "matchScore": 30,
+    "skillsMatchPct": 20,
+    "status": "Rejected",
     "uploadedDate": "17 May 2025",
     "jobId": "job-4",
-    "createdAt": "2025-05-17T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "Senior Cloud & DevOps Engineer at TCS",
+    "education": "M.Tech in Software Systems",
+    "matchedSkills": [
+      "Docker"
+    ],
+    "missingSkills": [
+      "Python",
+      "FastAPI",
+      "Django",
+      "PostgreSQL"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Direct alignment in required competencies: Docker.",
+        "Meets required experience threshold with 5 Years.",
+        "Education: M.Tech in Software Systems."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL."
+      ],
+      "experienceMatch": "Candidate has 5 years of experience, comfortably exceeding the required 2+ years.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 4 essential skills with an ATS score of 37/100."
+    },
+    "summary": "Vikram Malhotra scored 37/100 ATS match for the Python Developer position (Rejected). Matches 1 out of 5 required skills (20% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:30.497Z"
   },
   {
     "id": "c5",
@@ -147,13 +247,38 @@
       "ATS",
       "Talent Engagement"
     ],
-    "atsScore": 78,
-    "matchScore": 80,
-    "skillsMatchPct": 82,
-    "status": "New",
+    "atsScore": 35,
+    "matchScore": 21,
+    "skillsMatchPct": 0,
+    "status": "Rejected",
     "uploadedDate": "16 May 2025",
     "jobId": "job-5",
-    "createdAt": "2025-05-16T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "HR Specialist at Global Tech",
+    "education": "MBA in Human Resources",
+    "matchedSkills": [],
+    "missingSkills": [
+      "Python",
+      "FastAPI",
+      "Django",
+      "PostgreSQL",
+      "Docker"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Meets required experience threshold with 2 Years.",
+        "Education: MBA in Human Resources."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker.",
+        "Severe domain mismatch: candidate background (HR Talent Acquisition Specialist) differs from target role (Python Developer)."
+      ],
+      "experienceMatch": "Candidate possesses 2 years of experience, meeting the required 2 years threshold.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
+    },
+    "summary": "Pooja Hegde scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:30.706Z"
   },
   {
     "id": "c6",
@@ -162,7 +287,7 @@
     "phone": "+91 94567 89012",
     "location": "Chennai, Tamil Nadu, India",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    "role": "Senior Software Engineer",
+    "role": "Java Backend Engineer",
     "experience": "6 Years",
     "expYears": 6,
     "skills": [
@@ -179,12 +304,38 @@
       "PostgreSQL",
       "Docker"
     ],
-    "atsScore": 92,
-    "matchScore": 94,
-    "skillsMatchPct": 96,
-    "status": "Shortlisted",
+    "atsScore": 50,
+    "matchScore": 46,
+    "skillsMatchPct": 40,
+    "status": "Rejected",
     "uploadedDate": "15 May 2025",
     "jobId": "job-1",
-    "createdAt": "2025-05-15T00:00:00.000Z"
+    "targetJobId": "job-2",
+    "targetJobTitle": "Python Developer",
+    "currentRole": "Senior Java Developer at Wipro",
+    "education": "B.Tech in Computer Science",
+    "matchedSkills": [
+      "PostgreSQL",
+      "Docker"
+    ],
+    "missingSkills": [
+      "Python",
+      "FastAPI",
+      "Django"
+    ],
+    "keyPoints": {
+      "strengths": [
+        "Direct alignment in required competencies: PostgreSQL, Docker.",
+        "Meets required experience threshold with 6 Years.",
+        "Education: B.Tech in Computer Science."
+      ],
+      "missingSkills": [
+        "Missing required skills for this JD: Python, FastAPI, Django."
+      ],
+      "experienceMatch": "Candidate has 6 years of experience, comfortably exceeding the required 2+ years.",
+      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 3 essential skills with an ATS score of 50/100."
+    },
+    "summary": "Ananya Iyer scored 50/100 ATS match for the Python Developer position (Rejected). Matches 2 out of 5 required skills (40% skill overlap).",
+    "updatedAt": "2026-09-08T19:06:31.018Z"
   }
 ]
