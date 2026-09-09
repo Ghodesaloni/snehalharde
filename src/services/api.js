@@ -21,6 +21,36 @@ const api = axios.create({
   }
 });
 
+// Attach PostgreSQL Auth Token from localStorage if present
+api.interceptors.request.use((config) => {
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("avahire_token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+export const authApi = {
+  login: async (credentials) => {
+    const res = await api.post("/users/login", credentials);
+    return res.data;
+  },
+  register: async (userData) => {
+    const res = await api.post("/users/register", userData);
+    return res.data;
+  },
+  getMe: async () => {
+    const res = await api.get("/users/me");
+    return res.data;
+  },
+  getDemoAccounts: async () => {
+    const res = await api.get("/users/demo-accounts");
+    return res.data;
+  }
+};
+
 export const jobsApi = {
   getAll: async (params = {}) => {
     const res = await api.get("/jobs", { params });

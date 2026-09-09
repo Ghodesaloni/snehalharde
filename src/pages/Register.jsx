@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Database } from "lucide-react";
 import AvaHireLogo from "@/components/AvaHireLogo";
 import { toast } from "sonner";
+import { authApi } from "@/services/api";
 
 const AuthIllustration = ({ title, subtitle, bullets }) => (
   <div className="relative h-full flex flex-col justify-between p-10 lg:p-14 bg-gradient-to-br from-violet-50 via-white to-violet-50 rounded-3xl">
@@ -62,6 +63,7 @@ const Register = () => {
   const navigate = useNavigate();
   const [show, setShow] = useState(false);
   const [show2, setShow2] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -79,7 +81,7 @@ const Register = () => {
     setForm({ ...form, [k]: v });
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.fullName || !form.email || !form.password) {
       toast.error("Please fill all required fields");
@@ -90,17 +92,45 @@ const Register = () => {
       return;
     }
     if (!form.agree) {
-      toast.error("Please accept the terms");
+      toast.error("Please accept the terms and conditions");
       return;
     }
-    localStorage.setItem("avahire_user", JSON.stringify({
-      name: form.fullName,
-      email: form.email,
-      company: form.company,
-      designation: form.designation,
-    }));
-    toast.success("Account created! Welcome to AvaHire 🎉");
-    setTimeout(() => navigate("/app/dashboard"), 400);
+
+    setLoading(true);
+    try {
+      const response = await authApi.register({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        company: form.company.trim() || "TechCorp Solutions",
+        designation: form.designation.trim() || "HR Administrator",
+        phone: form.phone.trim() || "+91 98000 00000",
+      });
+
+      if (response && response.success) {
+        const userData = response.data;
+        const authToken = response.token || userData.uid;
+
+        localStorage.setItem("avahire_user", JSON.stringify(userData));
+        localStorage.setItem("avahire_token", authToken);
+        localStorage.setItem("avahire_remember_email", form.email.trim());
+
+        toast.success("HR Account registered in PostgreSQL! 🎉", {
+          description: `Welcome, ${userData.name}! Your workspace is ready.`,
+        });
+
+        setTimeout(() => navigate("/app/dashboard"), 350);
+      } else {
+        const err = response?.error || "Registration failed. Please check your details.";
+        toast.error(err);
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      const msg = err.response?.data?.error || "Failed to create account in database. Please try again.";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -160,10 +190,18 @@ const Register = () => {
 
           <button
             type="submit"
+            disabled={loading}
             data-testid="reg-submit"
-            className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold"
+            className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-75"
           >
-            Register
+            {loading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span>Creating Account in PostgreSQL...</span>
+              </>
+            ) : (
+              <span>Create HR Account</span>
+            )}
           </button>
 
           <div className="my-5 flex items-center gap-3 text-sm text-slate-400">

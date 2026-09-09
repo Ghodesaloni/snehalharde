@@ -111,7 +111,8 @@ const DashboardLayout = () => {
 
     const logout = () => {
         localStorage.removeItem("avahire_user");
-        toast.success("Logged out");
+        localStorage.removeItem("avahire_token");
+        toast.success("Logged out successfully");
         navigate("/login");
     };
 
