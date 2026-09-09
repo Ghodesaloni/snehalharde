@@ -499,17 +499,17 @@ const Candidates = () => {
 
     const handleDeleteCandidate = async (id, name, e) => {
         e?.stopPropagation();
-        if (!window.confirm(`Are you sure you want to delete ${name} from the PostgreSQL database?`)) return;
+        if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
         try {
             await candidatesApi.delete(id);
             setCandidates((prev) => prev.filter((c) => c.id !== id));
             if (expandedCandidateId === id) {
                 setExpandedCandidateId(null);
             }
-            toast.success(`${name} deleted from PostgreSQL!`);
+            toast.success(`${name} removed successfully!`);
         } catch (err) {
             console.error("Failed to delete candidate:", err);
-            toast.error("Failed to delete candidate from database");
+            toast.error("Failed to delete candidate");
         }
     };
 
@@ -540,7 +540,7 @@ const Candidates = () => {
                     </h1>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-xs font-semibold border border-violet-200 shadow-2xs">
                         <Database className="w-3.5 h-3.5 text-violet-600" />
-                        <span>PostgreSQL Active</span>
+                        <span>System Active</span>
                     </div>
                 </div>
 
@@ -738,7 +738,7 @@ const Candidates = () => {
                                                         <button
                                                             onClick={(e) => handleDeleteCandidate(candidate.id, candidate.name, e)}
                                                             className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition"
-                                                            title="Delete from PostgreSQL"
+                                                            title="Delete candidate"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
                                                             <span>Delete</span>
@@ -1075,8 +1075,8 @@ const Candidates = () => {
                                     <Database className="w-4 h-4" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">Add Candidate to Database</h3>
-                                    <p className="text-[11px] text-slate-400">Stores directly in PostgreSQL Cloud SQL</p>
+                                    <h3 className="font-bold text-slate-900 text-sm">Add Candidate Record</h3>
+                                    <p className="text-[11px] text-slate-400">Save candidate interview profile</p>
                                 </div>
                             </div>
                             <button
@@ -1189,7 +1189,7 @@ const Candidates = () => {
                                     disabled={isSavingCandidate}
                                     className="px-5 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-semibold transition shadow-xs"
                                 >
-                                    {isSavingCandidate ? "Saving to PostgreSQL..." : "Save to Database"}
+                                    {isSavingCandidate ? "Saving..." : "Save Candidate"}
                                 </button>
                             </div>
                         </form>

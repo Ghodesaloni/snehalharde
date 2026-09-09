@@ -90,7 +90,7 @@ const Login = () => {
         }
 
         toast.success(`Welcome back, ${userData.name || "HR Admin"}! 👋`, {
-          description: `Authenticated via PostgreSQL (${userData.company || "AvaHire"})`,
+          description: `Signed in as ${userData.company || "AvaHire Solutions"}`,
         });
 
         setTimeout(() => {
@@ -121,7 +121,7 @@ const Login = () => {
               <AvaHireLogo />
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <Database className="w-3.5 h-3.5 text-emerald-600" />
-                <span>PostgreSQL DB Active</span>
+                <span>Portal Ready</span>
               </span>
             </div>
 
@@ -130,12 +130,12 @@ const Login = () => {
               <span className="gradient-text">Building Great Teams</span>
             </h1>
             <p className="mt-4 text-slate-600 max-w-md">
-              Secure HR Portal login for talent acquisition leads, recruiters, and hiring managers powered by PostgreSQL and AI.
+              Secure HR Portal login for talent acquisition leads, recruiters, and hiring managers powered by AI and automated workflows.
             </p>
 
             <div className="mt-10 space-y-5">
               {[
-                { icon: "fa-database", bg: "bg-emerald-100 text-emerald-700", t: "Cloud SQL PostgreSQL Auth", d: "Secure credentials with cryptographic salting and role verification." },
+                { icon: "fa-shield-halved", bg: "bg-emerald-100 text-emerald-700", t: "Secure Authentication", d: "Protected credentials with role-based access verification." },
                 { icon: "fa-users-gear", bg: "bg-violet-100 text-violet-600", t: "AI-Powered Hiring", d: "Smart resume screening and live AI proctored interview pipelines." },
                 { icon: "fa-chart-column", bg: "bg-blue-100 text-blue-600", t: "Instant Analytics", d: "Deep insights into candidate evaluation metrics and hiring velocity." },
               ].map((b) => (
@@ -183,7 +183,7 @@ const Login = () => {
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-violet-600" />
-                Quick Demo Credentials (PostgreSQL)
+                Quick Demo Credentials
               </span>
               <span className="text-[11px] text-slate-400 font-medium">1-Click Fill</span>
             </div>
@@ -307,7 +307,7 @@ const Login = () => {
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  <span>Authenticating with PostgreSQL...</span>
+                  <span>Signing In...</span>
                 </>
               ) : (
                 <>

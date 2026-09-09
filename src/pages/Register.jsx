@@ -115,7 +115,7 @@ const Register = () => {
         localStorage.setItem("avahire_token", authToken);
         localStorage.setItem("avahire_remember_email", form.email.trim());
 
-        toast.success("HR Account registered in PostgreSQL! 🎉", {
+        toast.success("HR Account registered successfully! 🎉", {
           description: `Welcome, ${userData.name}! Your workspace is ready.`,
         });
 
@@ -197,7 +197,7 @@ const Register = () => {
             {loading ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                <span>Creating Account in PostgreSQL...</span>
+                <span>Creating Account...</span>
               </>
             ) : (
               <span>Create HR Account</span>
