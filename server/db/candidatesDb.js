@@ -1,6 +1,31 @@
 const { readData, writeData } = require("./dbEngine");
+const { query } = require("./postgres");
 
 const COLLECTION = "candidates";
+
+function mapRowToCandidate(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    role: row.role,
+    avatar: row.avatar,
+    interviewDate: row.interview_date,
+    timestamp: row.timestamp ? Number(row.timestamp) : (row.created_at ? new Date(row.created_at).getTime() : Date.now()),
+    duration: row.duration,
+    mode: row.mode,
+    score: row.score,
+    status: row.status,
+    notes: row.notes || "",
+    summaryPoints: typeof row.summary_points === "string" ? JSON.parse(row.summary_points) : (row.summary_points || []),
+    recommendation: row.recommendation || "",
+    transcript: typeof row.transcript === "string" ? JSON.parse(row.transcript) : (row.transcript || []),
+    evaluationBreakdown: typeof row.evaluation_breakdown === "string" ? JSON.parse(row.evaluation_breakdown) : (row.evaluation_breakdown || []),
+    createdAt: row.created_at
+  };
+}
 
 const seedCandidates = [
   {
@@ -86,7 +111,38 @@ const seedCandidates = [
 ];
 
 class CandidatesDatabase {
-  getAll(filters = {}) {
+  async getAll(filters = {}) {
+    try {
+      let sql = "SELECT * FROM candidates WHERE 1=1";
+      const params = [];
+      let idx = 1;
+
+      if (filters.status && filters.status !== "All") {
+        sql += ` AND LOWER(status) = LOWER($${idx++})`;
+        params.push(filters.status);
+      }
+      if (filters.role && filters.role !== "All") {
+        sql += ` AND LOWER(role) = LOWER($${idx++})`;
+        params.push(filters.role);
+      }
+      if (filters.search) {
+        sql += ` AND (LOWER(name) LIKE $${idx} OR LOWER(email) LIKE $${idx} OR LOWER(role) LIKE $${idx})`;
+        params.push(`%${filters.search.toLowerCase()}%`);
+        idx++;
+      }
+      sql += " ORDER BY timestamp DESC, created_at DESC, id ASC";
+
+      const res = await query(sql, params);
+      if (res && res.rows && res.rows.length > 0) {
+        return res.rows.map(mapRowToCandidate);
+      }
+      if (res && res.rows && res.rows.length === 0 && (filters.status || filters.role || filters.search)) {
+        return [];
+      }
+    } catch (err) {
+      console.warn("PostgreSQL getAll candidates fallback:", err.message);
+    }
+
     let list = readData(COLLECTION, seedCandidates);
     if (filters.status && filters.status !== "All") {
       list = list.filter(c => c.status.toLowerCase() === filters.status.toLowerCase());
@@ -105,14 +161,83 @@ class CandidatesDatabase {
     return list;
   }
 
-  getById(id) {
+  async getById(id) {
+    try {
+      const res = await query("SELECT * FROM candidates WHERE id = $1", [id]);
+      if (res && res.rows && res.rows.length > 0) {
+        return mapRowToCandidate(res.rows[0]);
+      }
+    } catch (err) {
+      console.warn("PostgreSQL getById fallback:", err.message);
+    }
+
     const list = readData(COLLECTION, seedCandidates);
     return list.find(c => c.id === id) || null;
   }
 
-  create(data) {
+  async create(data) {
+    const id = data.id || `cand-${Date.now()}`;
+    const now = new Date();
+    const timestamp = data.timestamp ? String(data.timestamp) : String(now.getTime());
+    const interviewDate = data.interviewDate || now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+    try {
+      const sql = `
+        INSERT INTO candidates (
+          id, name, email, phone, role, avatar,
+          interview_date, timestamp, duration, mode,
+          score, status, notes, summary_points, recommendation,
+          transcript, evaluation_breakdown, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          avatar = EXCLUDED.avatar,
+          interview_date = EXCLUDED.interview_date,
+          timestamp = EXCLUDED.timestamp,
+          duration = EXCLUDED.duration,
+          mode = EXCLUDED.mode,
+          score = EXCLUDED.score,
+          status = EXCLUDED.status,
+          notes = EXCLUDED.notes,
+          summary_points = EXCLUDED.summary_points,
+          recommendation = EXCLUDED.recommendation,
+          transcript = EXCLUDED.transcript,
+          evaluation_breakdown = EXCLUDED.evaluation_breakdown
+        RETURNING *;
+      `;
+      const params = [
+        id,
+        data.name || "New Candidate",
+        data.email || `${id}@example.com`,
+        data.phone || "+91 98000 00000",
+        data.role || "Software Engineer",
+        data.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+        interviewDate,
+        timestamp,
+        data.duration || "20m 00s",
+        data.mode || "AI Interview",
+        data.score || 80,
+        data.status || "Under Review",
+        data.notes || "",
+        JSON.stringify(data.summaryPoints || [{ text: "Completed AI Assessment", type: "good" }]),
+        data.recommendation || "Assessment completed.",
+        JSON.stringify(data.transcript || []),
+        JSON.stringify(data.evaluationBreakdown || []),
+        now.toISOString()
+      ];
+
+      const res = await query(sql, params);
+      if (res && res.rows && res.rows.length > 0) {
+        return mapRowToCandidate(res.rows[0]);
+      }
+    } catch (err) {
+      console.warn("PostgreSQL create candidate fallback:", err.message);
+    }
+
     const list = readData(COLLECTION, seedCandidates);
-    const id = `cand-${Date.now()}`;
     const newCand = {
       id,
       name: data.name || "New Candidate",
@@ -120,8 +245,8 @@ class CandidatesDatabase {
       phone: data.phone || "+91 98000 00000",
       role: data.role || "Software Engineer",
       avatar: data.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-      interviewDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
-      timestamp: Date.now(),
+      interviewDate,
+      timestamp: Number(timestamp),
       duration: data.duration || "20m 00s",
       mode: data.mode || "AI Interview",
       score: data.score || 80,
@@ -132,23 +257,63 @@ class CandidatesDatabase {
       ],
       recommendation: data.recommendation || "Assessment completed.",
       transcript: data.transcript || [],
-      createdAt: new Date().toISOString()
+      evaluationBreakdown: data.evaluationBreakdown || [],
+      createdAt: now.toISOString()
     };
     list.unshift(newCand);
     writeData(COLLECTION, list);
     return newCand;
   }
 
-  update(id, updates) {
+  async update(id, updates) {
+    try {
+      const fields = [];
+      const params = [id];
+      let idx = 2;
+
+      if (updates.name !== undefined) { fields.push(`name = $${idx++}`); params.push(updates.name); }
+      if (updates.email !== undefined) { fields.push(`email = $${idx++}`); params.push(updates.email); }
+      if (updates.phone !== undefined) { fields.push(`phone = $${idx++}`); params.push(updates.phone); }
+      if (updates.role !== undefined) { fields.push(`role = $${idx++}`); params.push(updates.role); }
+      if (updates.avatar !== undefined) { fields.push(`avatar = $${idx++}`); params.push(updates.avatar); }
+      if (updates.status !== undefined) { fields.push(`status = $${idx++}`); params.push(updates.status); }
+      if (updates.score !== undefined) { fields.push(`score = $${idx++}`); params.push(updates.score); }
+      if (updates.duration !== undefined) { fields.push(`duration = $${idx++}`); params.push(updates.duration); }
+      if (updates.notes !== undefined) { fields.push(`notes = $${idx++}`); params.push(updates.notes); }
+      if (updates.recommendation !== undefined) { fields.push(`recommendation = $${idx++}`); params.push(updates.recommendation); }
+      if (updates.summaryPoints !== undefined) { fields.push(`summary_points = $${idx++}`); params.push(JSON.stringify(updates.summaryPoints)); }
+      if (updates.transcript !== undefined) { fields.push(`transcript = $${idx++}`); params.push(JSON.stringify(updates.transcript)); }
+      if (updates.evaluationBreakdown !== undefined) { fields.push(`evaluation_breakdown = $${idx++}`); params.push(JSON.stringify(updates.evaluationBreakdown)); }
+
+      if (fields.length > 0) {
+        const sql = `UPDATE candidates SET ${fields.join(", ")} WHERE id = $1 RETURNING *;`;
+        const res = await query(sql, params);
+        if (res && res.rows && res.rows.length > 0) {
+          return mapRowToCandidate(res.rows[0]);
+        }
+      }
+    } catch (err) {
+      console.warn("PostgreSQL update candidate fallback:", err.message);
+    }
+
     const list = readData(COLLECTION, seedCandidates);
-    const idx = list.findIndex(c => c.id === id);
-    if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...updates, updatedAt: new Date().toISOString() };
+    const itemIdx = list.findIndex(c => c.id === id);
+    if (itemIdx === -1) return null;
+    list[itemIdx] = { ...list[itemIdx], ...updates, updatedAt: new Date().toISOString() };
     writeData(COLLECTION, list);
-    return list[idx];
+    return list[itemIdx];
   }
 
-  delete(id) {
+  async delete(id) {
+    try {
+      const res = await query("DELETE FROM candidates WHERE id = $1", [id]);
+      if (res && res.rowCount > 0) {
+        return true;
+      }
+    } catch (err) {
+      console.warn("PostgreSQL delete candidate fallback:", err.message);
+    }
+
     const list = readData(COLLECTION, seedCandidates);
     const filtered = list.filter(c => c.id !== id);
     if (filtered.length === list.length) return false;

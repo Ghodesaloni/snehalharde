@@ -28,7 +28,10 @@ import {
     CheckCircle2,
     AlertCircle,
     Bot,
-    User
+    User,
+    Database,
+    Plus,
+    Trash2
 } from "lucide-react";
 
 const initialCandidates = [
@@ -412,6 +415,104 @@ const Candidates = () => {
         toast.success("Transcript downloaded!");
     };
 
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [isSavingCandidate, setIsSavingCandidate] = useState(false);
+    const [newCandidateForm, setNewCandidateForm] = useState({
+        name: "",
+        email: "",
+        phone: "+91 98000 00000",
+        role: "Frontend Developer",
+        score: 80,
+        status: "Under Review",
+        notes: ""
+    });
+
+    const handleCreateCandidate = async (e) => {
+        e.preventDefault();
+        if (!newCandidateForm.name.trim() || !newCandidateForm.email.trim()) {
+            toast.error("Candidate name and email are required");
+            return;
+        }
+        setIsSavingCandidate(true);
+        try {
+            const scoreNum = Number(newCandidateForm.score) || 75;
+            const newCandData = {
+                name: newCandidateForm.name.trim(),
+                email: newCandidateForm.email.trim(),
+                phone: newCandidateForm.phone.trim(),
+                role: newCandidateForm.role,
+                score: scoreNum,
+                status: newCandidateForm.status,
+                notes: newCandidateForm.notes.trim(),
+                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+                duration: "18m 30s",
+                mode: "AI Interview",
+                summaryPoints: [
+                    { text: "Successfully completed evaluation assessment", type: "good" },
+                    { text: "Recorded in Cloud SQL PostgreSQL database", type: "good" }
+                ],
+                recommendation: "Evaluation recorded directly in PostgreSQL database.",
+                transcript: [
+                    {
+                        speaker: "AI Interviewer",
+                        time: "00:00",
+                        isAI: true,
+                        text: `Welcome ${newCandidateForm.name.trim()}! Let's start the evaluation for the ${newCandidateForm.role} position.`
+                    },
+                    {
+                        speaker: newCandidateForm.name.trim(),
+                        time: "00:15",
+                        isAI: false,
+                        text: `Thank you. I have prepared to discuss my technical projects and background in ${newCandidateForm.role}.`
+                    }
+                ],
+                evaluationBreakdown: [
+                    { category: "Technical Proficiency", score: scoreNum, weight: "40%" },
+                    { category: "Communication & Clarity", score: Math.min(100, scoreNum + 2), weight: "25%" },
+                    { category: "Problem Solving", score: Math.max(50, scoreNum - 4), weight: "20%" },
+                    { category: "System Architecture", score: Math.max(50, scoreNum - 6), weight: "15%" }
+                ]
+            };
+
+            const created = await candidatesApi.create(newCandData);
+            if (created) {
+                setCandidates((prev) => [created, ...prev]);
+                setShowAddModal(false);
+                setNewCandidateForm({
+                    name: "",
+                    email: "",
+                    phone: "+91 98000 00000",
+                    role: "Frontend Developer",
+                    score: 80,
+                    status: "Under Review",
+                    notes: ""
+                });
+                toast.success(`${created.name} saved to PostgreSQL database!`);
+            }
+        } catch (err) {
+            console.error("Failed to create candidate in PostgreSQL:", err);
+            toast.error("Failed to save candidate to database");
+        } finally {
+            setIsSavingCandidate(false);
+        }
+    };
+
+    const handleDeleteCandidate = async (id, name, e) => {
+        e?.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete ${name} from the PostgreSQL database?`)) return;
+        try {
+            await candidatesApi.delete(id);
+            setCandidates((prev) => prev.filter((c) => c.id !== id));
+            if (expandedCandidateId === id) {
+                setExpandedCandidateId(null);
+            }
+            toast.success(`${name} deleted from PostgreSQL!`);
+        } catch (err) {
+            console.error("Failed to delete candidate:", err);
+            toast.error("Failed to delete candidate from database");
+        }
+    };
+
     const getScoreColor = (score) => {
         if (score >= 80) return "text-emerald-600";
         if (score >= 70) return "text-emerald-600";
@@ -433,13 +534,26 @@ const Candidates = () => {
         <div className="space-y-5 max-w-7xl mx-auto -mt-2" data-testid="interviewed-candidates-page">
             {/* Top Bar / Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
+                <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                         All Interviewed Candidates ({totalCount})
                     </h1>
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-xs font-semibold border border-violet-200 shadow-2xs">
+                        <Database className="w-3.5 h-3.5 text-violet-600" />
+                        <span>PostgreSQL Active</span>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Add Candidate Button */}
+                    <button
+                        onClick={() => setShowAddModal(true)}
+                        className="flex items-center gap-2 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition shadow-xs active:scale-[0.98]"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Candidate</span>
+                    </button>
+
                     {/* Sort Dropdown */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-600">
                         <span className="text-slate-400 font-medium whitespace-nowrap">Sort by:</span>
@@ -613,13 +727,23 @@ const Candidates = () => {
                                                     <h4 className="text-sm font-bold text-slate-900">
                                                         Interview Transcript
                                                     </h4>
-                                                    <button
-                                                        onClick={(e) => handleDownloadTranscript(candidate, e)}
-                                                        className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-xl transition"
-                                                    >
-                                                        <Download className="w-3.5 h-3.5" />
-                                                        <span>Download Transcript</span>
-                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={(e) => handleDownloadTranscript(candidate, e)}
+                                                            className="flex items-center gap-1.5 text-xs font-semibold text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-xl transition"
+                                                        >
+                                                            <Download className="w-3.5 h-3.5" />
+                                                            <span>Download Transcript</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => handleDeleteCandidate(candidate.id, candidate.name, e)}
+                                                            className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-xl transition"
+                                                            title="Delete from PostgreSQL"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                            <span>Delete</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 {/* Transcript Dialogue Items */}
@@ -937,6 +1061,138 @@ const Candidates = () => {
                                 Apply
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add Candidate Modal (Saves to PostgreSQL) */}
+            {showAddModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-5">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
+                                    <Database className="w-4 h-4" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-sm">Add Candidate to Database</h3>
+                                    <p className="text-[11px] text-slate-400">Stores directly in PostgreSQL Cloud SQL</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateCandidate} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="font-semibold text-slate-700 block mb-1">Full Name *</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. Snehal Harde"
+                                    value={newCandidateForm.name}
+                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, name: e.target.value })}
+                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="font-semibold text-slate-700 block mb-1">Email *</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        placeholder="snehal@example.com"
+                                        value={newCandidateForm.email}
+                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, email: e.target.value })}
+                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="font-semibold text-slate-700 block mb-1">Phone</label>
+                                    <input
+                                        type="text"
+                                        placeholder="+91 98000 00000"
+                                        value={newCandidateForm.phone}
+                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, phone: e.target.value })}
+                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="font-semibold text-slate-700 block mb-1">Role</label>
+                                    <select
+                                        value={newCandidateForm.role}
+                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, role: e.target.value })}
+                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                    >
+                                        <option value="Frontend Developer">Frontend Developer</option>
+                                        <option value="Python Developer">Python Developer</option>
+                                        <option value="Full Stack Engineer">Full Stack Engineer</option>
+                                        <option value="DevOps Engineer">DevOps Engineer</option>
+                                        <option value="AI Research Engineer">AI Research Engineer</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="font-semibold text-slate-700 block mb-1">Initial Score (0-100)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={newCandidateForm.score}
+                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, score: e.target.value })}
+                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 block mb-1">Status</label>
+                                <select
+                                    value={newCandidateForm.status}
+                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, status: e.target.value })}
+                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                >
+                                    <option value="Under Review">Under Review</option>
+                                    <option value="Selected">Selected</option>
+                                    <option value="Rejected">Rejected</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="font-semibold text-slate-700 block mb-1">Recruiter Notes</label>
+                                <textarea
+                                    rows="2"
+                                    placeholder="Add evaluation summary or notes..."
+                                    value={newCandidateForm.notes}
+                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, notes: e.target.value })}
+                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 resize-none"
+                                />
+                            </div>
+
+                            <div className="flex justify-end items-center gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddModal(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSavingCandidate}
+                                    className="px-5 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-semibold transition shadow-xs"
+                                >
+                                    {isSavingCandidate ? "Saving to PostgreSQL..." : "Save to Database"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

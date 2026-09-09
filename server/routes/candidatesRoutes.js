@@ -3,10 +3,10 @@ const router = express.Router();
 const candidatesDb = require("../db/candidatesDb");
 
 // GET /api/candidates - list candidate evaluations
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { status, role, search } = req.query;
-    const list = candidatesDb.getAll({ status, role, search });
+    const list = await candidatesDb.getAll({ status, role, search });
     res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -14,9 +14,9 @@ router.get("/", (req, res) => {
 });
 
 // GET /api/candidates/:id - get single candidate evaluation
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const cand = candidatesDb.getById(req.params.id);
+    const cand = await candidatesDb.getById(req.params.id);
     if (!cand) {
       return res.status(404).json({ success: false, error: "Candidate evaluation not found" });
     }
@@ -27,9 +27,9 @@ router.get("/:id", (req, res) => {
 });
 
 // POST /api/candidates - create candidate evaluation
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   try {
-    const newCand = candidatesDb.create(req.body);
+    const newCand = await candidatesDb.create(req.body);
     res.status(201).json({ success: true, data: newCand, message: "Candidate evaluation created" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -37,9 +37,9 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/candidates/:id - update candidate evaluation / status / notes
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
-    const updated = candidatesDb.update(req.params.id, req.body);
+    const updated = await candidatesDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate not found" });
     }
@@ -50,9 +50,9 @@ router.put("/:id", (req, res) => {
 });
 
 // DELETE /api/candidates/:id - delete candidate evaluation
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    const deleted = candidatesDb.delete(req.params.id);
+    const deleted = await candidatesDb.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: "Candidate not found" });
     }

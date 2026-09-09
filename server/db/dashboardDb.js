@@ -5,11 +5,11 @@ const candidatesDb = require("./candidatesDb");
 const emailCenterDb = require("./emailCenterDb");
 
 class DashboardDatabase {
-  getStats() {
-    const jobs = jobsDb.getAll();
-    const resumes = resumesDb.getAll();
-    const interviews = interviewsDb.getAll();
-    const candidates = candidatesDb.getAll();
+  async getStats() {
+    const jobs = await Promise.resolve(jobsDb.getAll());
+    const resumes = await Promise.resolve(resumesDb.getAll());
+    const interviews = await Promise.resolve(interviewsDb.getAll());
+    const candidates = await Promise.resolve(candidatesDb.getAll());
 
     const activeJobs = jobs.filter(j => j.status.toLowerCase() === "active").length;
     const selectedCandidates = candidates.filter(c => c.status.toLowerCase() === "selected").length +
