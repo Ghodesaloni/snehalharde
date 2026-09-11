@@ -29,17 +29,9 @@ const EmailCenter = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                let userEmail = "";
-                try {
-                    const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
-                    userEmail = u.email || "";
-                } catch (_e) {
-                    userEmail = "";
-                }
-
                 const [tData, sData, cData] = await Promise.all([
                     emailApi.getTemplates().catch(() => defaultTemplates),
-                    emailApi.getSent(userEmail).catch(() => []),
+                    emailApi.getSent().catch(() => []),
                     resumesApi.getAll().catch(() => [])
                 ]);
                 if (tData && tData.length > 0) setTemplates(tData);
@@ -93,21 +85,8 @@ const EmailCenter = () => {
         }
 
         setSending(true);
-        let userEmail = "";
         try {
-            const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
-            userEmail = u.email || "";
-        } catch (_e) {
-            userEmail = "";
-        }
-
-        try {
-            const payload = {
-                ...composeForm,
-                senderEmail: userEmail,
-                userEmail: userEmail,
-            };
-            const result = await emailApi.send(payload);
+            const result = await emailApi.send(composeForm);
             setSentEmails(prev => [result, ...prev]);
             toast.success(`Email dispatched to ${composeForm.recipient}!`);
             setShowComposeModal(false);
@@ -121,8 +100,6 @@ const EmailCenter = () => {
             const localSent = {
                 id: `sent-${Date.now()}`,
                 ...composeForm,
-                senderEmail: userEmail,
-                userEmail: userEmail,
                 opened: false,
                 sentAt: "Just now",
                 status: "Delivered"

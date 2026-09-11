@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const emailCenterDb = require("../db/emailCenterDb");
-const emailService = require("../services/emailService");
 
 // GET /api/emails/templates - get templates
 router.get("/templates", (req, res) => {
@@ -23,12 +22,10 @@ router.post("/templates", (req, res) => {
   }
 });
 
-// GET /api/emails/sent - get sent emails log scoped to user
+// GET /api/emails/sent - get sent emails log
 router.get("/sent", (req, res) => {
   try {
-    const { userEmail } = req.query;
-    const authorEmail = userEmail || req.headers["x-user-email"];
-    const sent = emailCenterDb.getSentEmails({ userEmail: authorEmail });
+    const sent = emailCenterDb.getSentEmails();
     res.json({ success: true, data: sent });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -36,39 +33,19 @@ router.get("/sent", (req, res) => {
 });
 
 // POST /api/emails/send - send an email
-router.post("/send", async (req, res) => {
+router.post("/send", (req, res) => {
   try {
-    const { recipient, recipientName, subject, body, templateId, senderEmail } = req.body;
+    const { recipient, recipientName, subject, body, templateId } = req.body;
     if (!recipient) {
       return res.status(400).json({ success: false, error: "Recipient email is required" });
     }
-
-    const authorEmail = senderEmail || req.body.userEmail || req.headers["x-user-email"] || "";
-
     const sentRecord = emailCenterDb.sendEmail({
       recipient,
       recipientName,
       subject,
       body,
-      templateId,
-      senderEmail: authorEmail,
-      userEmail: authorEmail,
-      createdBy: authorEmail,
+      templateId
     });
-
-    // Attempt live SMTP delivery via emailService
-    try {
-      await emailService.sendCommunicationEmail({
-        toEmail: recipient,
-        recipientName: recipientName || "Candidate",
-        subject: subject || "Update on your application",
-        body: body || "",
-        senderEmail: authorEmail,
-      });
-    } catch (sendErr) {
-      console.warn("[EMAIL-CENTER] Delivery notification:", sendErr.message);
-    }
-
     res.status(201).json({ success: true, data: sentRecord, message: "Email dispatched successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

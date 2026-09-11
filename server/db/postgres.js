@@ -190,7 +190,7 @@ initTables().catch((err) => {
 
 // Save or update user
 async function saveUser(userData) {
-  const { email, fullName, passwordHash, company, website, designation, phone } = userData;
+  const { email, fullName, passwordHash, company, website, designation, phone, isVerified } = userData;
 
   // Always persist to local mirror for full availability
   const usersList = readJson(USERS_FILE);
@@ -202,10 +202,12 @@ async function saveUser(userData) {
     userRecord = {
       ...usersList[existingIdx],
       fullName: fullName || usersList[existingIdx].fullName,
-      company: company || usersList[existingIdx].company,
-      website: website || usersList[existingIdx].website,
-      designation: designation || usersList[existingIdx].designation,
-      phone: phone || usersList[existingIdx].phone,
+      company: company !== undefined ? company : usersList[existingIdx].company,
+      website: website !== undefined ? website : usersList[existingIdx].website,
+      designation: designation !== undefined ? designation : usersList[existingIdx].designation,
+      phone: phone !== undefined ? phone : usersList[existingIdx].phone,
+      passwordHash: passwordHash || usersList[existingIdx].passwordHash,
+      isVerified: isVerified !== undefined ? Boolean(isVerified) : Boolean(usersList[existingIdx].isVerified),
       updatedAt: now,
     };
     usersList[existingIdx] = userRecord;
@@ -213,13 +215,13 @@ async function saveUser(userData) {
     userRecord = {
       id: usersList.length + 1,
       email: email.toLowerCase(),
-      fullName,
+      fullName: fullName || email.split("@")[0],
       passwordHash,
       company: company || "",
       website: website || "",
       designation: designation || "",
       phone: phone || "",
-      isVerified: false,
+      isVerified: isVerified !== undefined ? Boolean(isVerified) : false,
       createdAt: now,
       updatedAt: now,
     };
@@ -232,24 +234,27 @@ async function saveUser(userData) {
     const p = getPool();
     const query = `
       INSERT INTO users (email, full_name, password_hash, company, website, designation, phone, is_verified)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (email) DO UPDATE
       SET full_name = EXCLUDED.full_name,
+          password_hash = COALESCE(EXCLUDED.password_hash, public.users.password_hash),
           company = EXCLUDED.company,
           website = EXCLUDED.website,
           designation = EXCLUDED.designation,
           phone = EXCLUDED.phone,
+          is_verified = COALESCE(EXCLUDED.is_verified, public.users.is_verified),
           updated_at = CURRENT_TIMESTAMP
       RETURNING id, email, full_name, company, designation, is_verified, created_at;
     `;
     const res = await p.query(query, [
       email.toLowerCase(),
-      fullName,
+      fullName || email.split("@")[0],
       passwordHash || null,
       company || "",
       website || "",
       designation || "",
       phone || "",
+      userRecord.isVerified,
     ]);
     if (res.rows && res.rows[0]) {
       return res.rows[0];
@@ -259,6 +264,52 @@ async function saveUser(userData) {
   }
 
   return userRecord;
+}
+
+// Reset password for an account
+async function resetPassword(email, newPassword) {
+  if (!email || !newPassword) return false;
+  const crypto = require("crypto");
+  const cleanEmail = email.trim().toLowerCase();
+  const passwordHash = crypto.createHash("sha256").update(newPassword).digest("hex");
+  const now = new Date().toISOString();
+
+  const usersList = readJson(USERS_FILE);
+  const idx = usersList.findIndex((u) => u.email?.toLowerCase() === cleanEmail);
+  if (idx >= 0) {
+    usersList[idx].passwordHash = passwordHash;
+    usersList[idx].isVerified = true;
+    usersList[idx].updatedAt = now;
+    writeJson(USERS_FILE, usersList);
+  } else {
+    usersList.push({
+      id: usersList.length + 1,
+      email: cleanEmail,
+      fullName: cleanEmail.split("@")[0],
+      passwordHash,
+      company: "AvaHire Tech",
+      website: "",
+      designation: "HR Manager",
+      phone: "",
+      isVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+    writeJson(USERS_FILE, usersList);
+  }
+
+  try {
+    const p = getPool();
+    if (p) {
+      await p.query(
+        `UPDATE public.users SET password_hash = $1, is_verified = TRUE, updated_at = NOW() WHERE LOWER(email) = $2`,
+        [passwordHash, cleanEmail]
+      );
+    }
+  } catch (err) {
+    console.warn("PostgreSQL resetPassword fallback:", err.message);
+  }
+  return true;
 }
 
 // Save one-time verification token
@@ -439,22 +490,51 @@ async function getUserByEmail(email) {
       createdAt: found.createdAt,
     };
   }
+
+  // Also check default users store
+  const defaultUsersFile = path.join(DATA_DIR, "users.json");
+  const fallbackUsers = readJson(defaultUsersFile);
+  const fallbackFound = fallbackUsers.find((u) => u.email?.toLowerCase() === cleanEmail);
+  if (fallbackFound) {
+    return {
+      id: fallbackFound.id,
+      uid: fallbackFound.uid || `usr_${fallbackFound.id}`,
+      email: fallbackFound.email,
+      fullName: fallbackFound.name,
+      name: fallbackFound.name,
+      company: fallbackFound.company || "AvaHire",
+      website: "",
+      designation: fallbackFound.designation || "HR Administrator",
+      phone: fallbackFound.phone || "+91 98000 00000",
+      password_hash: fallbackFound.password_hash || "password123",
+      passwordHash: fallbackFound.password_hash || "password123",
+      isVerified: true,
+      createdAt: fallbackFound.created_at,
+    };
+  }
+
   return null;
 }
 
 // Generic query runner
 async function query(text, params) {
-  const p = getPool();
-  if (!p) {
+  try {
+    const p = getPool();
+    if (!p) {
+      return { rows: [] };
+    }
+    return await p.query(text, params);
+  } catch (err) {
+    console.warn("PostgreSQL query fallback:", err.message);
     return { rows: [] };
   }
-  return p.query(text, params);
 }
 
 module.exports = {
   getPool,
   initTables,
   saveUser,
+  resetPassword,
   saveVerificationToken,
   findVerificationToken,
   consumeVerificationToken,

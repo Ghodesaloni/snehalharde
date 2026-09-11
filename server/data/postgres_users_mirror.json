@@ -28,15 +28,15 @@
   {
     "id": 3,
     "email": "snehal.harde2935@gmail.com",
-    "fullName": "snehal harde",
-    "passwordHash": "eaf4ec3008d5ca632242fdfcfb9946afed7e516cdbe9fd376d1f0a886cec719c",
-    "company": "tcs",
+    "fullName": "Snehal Harde",
+    "passwordHash": "23c5d5143d64e7d108af914801233b7dfdbcb0cc478586abf4d376a389431df8",
+    "company": "tsc",
     "website": "",
-    "designation": "hr",
-    "phone": "9146980039",
-    "isVerified": false,
+    "designation": "HR",
+    "phone": "sahgsyu",
+    "isVerified": true,
     "createdAt": "2026-09-11T06:43:06.697Z",
-    "updatedAt": "2026-09-11T06:43:06.697Z"
+    "updatedAt": "2026-09-11T14:53:46.658Z"
   },
   {
     "id": 4,
@@ -63,5 +63,18 @@
     "isVerified": false,
     "createdAt": "2026-09-11T08:33:50.548Z",
     "updatedAt": "2026-09-11T08:33:50.548Z"
+  },
+  {
+    "id": 6,
+    "email": "snehalharde09@gmail.com",
+    "fullName": "Snehal Harde",
+    "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
+    "company": "ttc",
+    "website": "",
+    "designation": "HR",
+    "phone": "548941325461",
+    "isVerified": true,
+    "createdAt": "2026-09-11T14:43:26.673Z",
+    "updatedAt": "2026-09-11T14:53:40.216Z"
   }
 ]

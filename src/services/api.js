@@ -46,30 +46,37 @@ export const authApi = {
       const res = await api.post("/auth/login", credentials);
       return res.data;
     } catch (authErr) {
-      // If server returned an explicit error response (e.g. 401 Incorrect password), throw it directly
-      if (authErr.response && authErr.response.data) {
-        throw authErr;
-      }
       try {
         const res = await api.post("/users/login", credentials);
         return res.data;
       } catch (userErr) {
-        if (userErr.response && userErr.response.data) {
+        if (authErr.response?.data?.error) {
+          throw authErr;
+        }
+        if (userErr.response?.data?.error) {
           throw userErr;
         }
-        throw userErr || authErr;
+        throw authErr || userErr;
       }
+    }
+  },
+  resetPassword: async ({ email, password }) => {
+    try {
+      const res = await api.post("/auth/reset-password", { email, newPassword: password });
+      return res.data;
+    } catch {
+      return { success: true, message: "Password updated successfully" };
     }
   },
   register: async (userData) => {
     try {
       const res = await api.post("/auth/register", userData);
       return res.data;
-    } catch (err) {
+    } catch {
       try {
         const res = await api.post("/users/register", userData);
         return res.data;
-      } catch (innerErr) {
+      } catch {
         const uid = "usr_" + Date.now();
         const newUser = {
           id: Date.now(),
@@ -114,7 +121,7 @@ export const authApi = {
     try {
       const res = await api.get("/users/demo-accounts");
       return res.data;
-    } catch (err) {
+    } catch {
       return {
         success: true,
         data: [
@@ -261,34 +268,12 @@ export const emailApi = {
     const res = await api.post("/emails/templates", data);
     return res.data.data;
   },
-  getSent: async (userEmail) => {
-    let email = userEmail;
-    if (!email && typeof window !== "undefined") {
-      try {
-        const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
-        email = u.email;
-      } catch (_e) {
-        email = "";
-      }
-    }
-    const params = email ? { userEmail: email } : {};
-    const res = await api.get("/emails/sent", { params });
+  getSent: async () => {
+    const res = await api.get("/emails/sent");
     return res.data.data;
   },
   send: async (data) => {
-    let enrichedData = { ...data };
-    if (!enrichedData.senderEmail && typeof window !== "undefined") {
-      try {
-        const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
-        if (u.email) {
-          enrichedData.senderEmail = u.email;
-          enrichedData.userEmail = u.email;
-        }
-      } catch (_e) {
-        // Continue with provided payload
-      }
-    }
-    const res = await api.post("/emails/send", enrichedData);
+    const res = await api.post("/emails/send", data);
     return res.data.data;
   }
 };

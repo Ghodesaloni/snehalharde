@@ -77,25 +77,12 @@ class EmailCenterDatabase {
     return templates[idx];
   }
 
-  getSentEmails(filters = {}) {
-    let list = readData(SENT_COLLECTION, []);
-    if (filters.userEmail) {
-      const emailLower = filters.userEmail.toLowerCase().trim();
-      const isDemo = emailLower === "hr@avahire.ai" || emailLower === "admin@avahire.ai";
-      if (!isDemo) {
-        list = list.filter(e =>
-          (e.senderEmail && e.senderEmail.toLowerCase() === emailLower) ||
-          (e.userEmail && e.userEmail.toLowerCase() === emailLower) ||
-          (e.createdBy && e.createdBy.toLowerCase() === emailLower)
-        );
-      }
-    }
-    return list;
+  getSentEmails() {
+    return readData(SENT_COLLECTION, []);
   }
 
   sendEmail(emailData) {
-    const sentList = readData(SENT_COLLECTION, []);
-    const sender = emailData.senderEmail || emailData.userEmail || emailData.createdBy || "";
+    const sentList = this.getSentEmails();
     const newSent = {
       id: `sent-${Date.now()}`,
       recipient: emailData.recipient || emailData.to,
@@ -103,9 +90,6 @@ class EmailCenterDatabase {
       subject: emailData.subject || "Update from AvaHire",
       body: emailData.body || "",
       templateId: emailData.templateId || null,
-      senderEmail: sender,
-      userEmail: sender,
-      createdBy: sender,
       opened: false,
       openedAt: null,
       sentAt: new Date().toLocaleDateString("en-GB", {
