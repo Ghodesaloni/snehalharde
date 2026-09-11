@@ -58,19 +58,51 @@ router.post("/register", async (req, res) => {
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const loginUrl = `${baseUrl}/login`;
 
-    // 3. Send "Successfully Registered" welcome email via SMTP
-    const emailDispatch = await emailService.sendRegistrationSuccessEmail({
-      toEmail: trimmedEmail,
-      fullName: fullName.trim(),
-      loginUrl,
+    // 3. Generate one-time secure verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await postgresDb.saveVerificationToken({
+      email: trimmedEmail,
+      token: verificationToken,
+      expiresAt,
     });
+    const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
 
-    console.log(`[AUTH-REGISTER] New user registered: ${trimmedEmail}. Registration confirmation dispatched.`);
+    // 4. Send verification email and welcome confirmation via SMTP
+    try {
+      await emailService.sendVerificationEmail({
+        toEmail: trimmedEmail,
+        fullName: fullName.trim(),
+        verificationLink,
+        token: verificationToken,
+      });
+    } catch (verErr) {
+      console.warn("[AUTH-REGISTER] Verification email notice:", verErr.message);
+    }
+
+    try {
+      await emailService.sendRegistrationSuccessEmail({
+        toEmail: trimmedEmail,
+        fullName: fullName.trim(),
+        loginUrl,
+      });
+    } catch (regErr) {
+      console.warn("[AUTH-REGISTER] Welcome email notice:", regErr.message);
+    }
+
+    console.log(`[AUTH-REGISTER] New user registered: ${trimmedEmail}. Verification token & emails dispatched.`);
 
     return res.status(201).json({
       success: true,
-      message: "Successfully registered!",
+      message: "Successfully registered! Verification email sent.",
       email: trimmedEmail,
+      data: {
+        email: trimmedEmail,
+        fullName: fullName.trim(),
+        token: verificationToken,
+        verificationLink,
+        loginUrl,
+      },
     });
   } catch (err) {
     console.error("Registration route error:", err);
@@ -164,16 +196,36 @@ router.post("/resend-verification", async (req, res) => {
     const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const loginUrl = `${baseUrl}/login`;
+    const verificationLink = `${baseUrl}/api/auth/verify-email?token=${verificationToken}`;
 
-    const emailDispatch = await emailService.sendRegistrationSuccessEmail({
-      toEmail: trimmedEmail,
-      fullName: user ? (user.full_name || user.fullName) : "Valued Recruiter",
-      loginUrl,
-    });
+    const userName = user ? (user.full_name || user.fullName || user.name) : "Valued Recruiter";
+
+    try {
+      await emailService.sendVerificationEmail({
+        toEmail: trimmedEmail,
+        fullName: userName,
+        verificationLink,
+        token: verificationToken,
+      });
+    } catch (vErr) {
+      console.warn("[RESEND-VERIFICATION] Verification dispatch notice:", vErr.message);
+    }
+
+    try {
+      await emailService.sendRegistrationSuccessEmail({
+        toEmail: trimmedEmail,
+        fullName: userName,
+        loginUrl,
+      });
+    } catch (rErr) {
+      console.warn("[RESEND-VERIFICATION] Registration notice:", rErr.message);
+    }
 
     return res.json({
       success: true,
-      message: `Registration confirmation email has been resent to ${trimmedEmail}.`,
+      message: `Verification email and token have been resent to ${trimmedEmail}.`,
+      token: verificationToken,
+      verificationLink,
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
@@ -362,6 +414,15 @@ router.post("/login", async (req, res) => {
       designation: user.designation || "HR Administrator",
       phone: user.phone || "+91 98000 00000",
     };
+
+    // Dispatch login security email notification to the logged-in user
+    emailService.sendLoginAlertEmail({
+      toEmail: cleanEmail,
+      fullName: sessionUser.name,
+      loginTime: new Date().toLocaleString("en-US", { timeZoneName: "short" }),
+      ipAddress: req.headers["x-forwarded-for"] || req.ip || "Active Session",
+      userAgent: req.headers["user-agent"] || "Web Browser",
+    }).catch(err => console.warn("[LOGIN-ALERT] Email dispatch notice:", err.message));
 
     return res.json({
       success: true,

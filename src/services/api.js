@@ -261,12 +261,34 @@ export const emailApi = {
     const res = await api.post("/emails/templates", data);
     return res.data.data;
   },
-  getSent: async () => {
-    const res = await api.get("/emails/sent");
+  getSent: async (userEmail) => {
+    let email = userEmail;
+    if (!email && typeof window !== "undefined") {
+      try {
+        const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+        email = u.email;
+      } catch (_e) {
+        email = "";
+      }
+    }
+    const params = email ? { userEmail: email } : {};
+    const res = await api.get("/emails/sent", { params });
     return res.data.data;
   },
   send: async (data) => {
-    const res = await api.post("/emails/send", data);
+    let enrichedData = { ...data };
+    if (!enrichedData.senderEmail && typeof window !== "undefined") {
+      try {
+        const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+        if (u.email) {
+          enrichedData.senderEmail = u.email;
+          enrichedData.userEmail = u.email;
+        }
+      } catch (_e) {
+        // Continue with provided payload
+      }
+    }
+    const res = await api.post("/emails/send", enrichedData);
     return res.data.data;
   }
 };

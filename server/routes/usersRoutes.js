@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require("crypto");
 const { query, getUserByEmail } = require("../db/postgres");
 const { readData, writeData } = require("../db/dbEngine");
+const emailService = require("../services/emailService");
 
 const USERS_COLLECTION = "users";
 
@@ -253,6 +254,15 @@ router.post("/login", async (req, res) => {
 
     const token = sessionUser.uid;
 
+    // Dispatch login security email notification to the logged-in user
+    emailService.sendLoginAlertEmail({
+      toEmail: cleanEmail,
+      fullName: sessionUser.name,
+      loginTime: new Date().toLocaleString("en-US", { timeZoneName: "short" }),
+      ipAddress: req.headers["x-forwarded-for"] || req.ip || "Active Session",
+      userAgent: req.headers["user-agent"] || "Web Browser",
+    }).catch(err => console.warn("[LOGIN-ALERT] Email dispatch notice:", err.message));
+
     res.json({
       success: true,
       data: sessionUser,
@@ -331,6 +341,22 @@ router.post("/register", async (req, res) => {
       ]);
     } catch (e) {
       // PostgreSQL not active; local storage handled it perfectly
+    }
+
+    // Dispatch welcome email confirmation
+    try {
+      const host = req.get("x-forwarded-host") || req.get("host") || "localhost:3000";
+      const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const loginUrl = `${baseUrl}/login`;
+
+      await emailService.sendRegistrationSuccessEmail({
+        toEmail: cleanEmail,
+        fullName: displayName,
+        loginUrl,
+      });
+    } catch (regErr) {
+      console.warn("[USERS-REGISTER] Registration email notice:", regErr.message);
     }
 
     res.status(201).json({
