@@ -8,6 +8,18 @@
     <meta property="og:title" content="AvaHire - AI Recruitment System" />
     <meta property="og:description" content="AI-powered recruitment and candidate interviewing platform with live interview rooms, automated assessment, and recruiter dashboard." />
     <title>AvaHire - AI Recruitment System</title>
+    <script>
+      window.addEventListener("error", function (e) {
+        if (e.error instanceof DOMException && e.error.name === "DataCloneError" && e.message && e.message.includes("PerformanceServerTiming")) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+        if (e.message && (e.message.includes("Failed to construct 'WebSocket'") || e.message.includes(":NaN/ws"))) {
+          e.stopImmediatePropagation();
+          e.preventDefault();
+        }
+      }, true);
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">

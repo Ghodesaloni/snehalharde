@@ -31,9 +31,9 @@ const CandidateSystemCheck = () => {
         return {
             id: "iv-default",
             name: "Candidate",
-            role: "Frontend Developer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            linkCode: code || "akc123"
+            role: "Job Assessment",
+            company: "AvaHire Recruiter",
+            linkCode: code || ""
         };
     });
 
@@ -151,7 +151,13 @@ const CandidateSystemCheck = () => {
                 {/* Leave Room Button */}
                 <button
                     onClick={() => {
-                        if (window.confirm("Are you sure you want to leave the interview room?")) {
+                        let confirmed = true;
+                        try {
+                            confirmed = window.confirm("Are you sure you want to leave the interview room?");
+                        } catch (e) {
+                            confirmed = true;
+                        }
+                        if (confirmed) {
                             navigate(`/i/${interviewData.linkCode || code || "akc123"}`);
                         }
                     }}

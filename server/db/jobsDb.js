@@ -7,13 +7,10 @@ class JobsDatabase {
     let jobs = readData(COLLECTION, []);
     if (filters.userEmail) {
       const emailLower = filters.userEmail.toLowerCase().trim();
-      const isDemo = emailLower === "hr@avahire.ai" || emailLower === "admin@avahire.ai";
-      if (!isDemo) {
-        jobs = jobs.filter(j =>
-          (j.createdBy && j.createdBy.toLowerCase() === emailLower) ||
-          (j.userEmail && j.userEmail.toLowerCase() === emailLower)
-        );
-      }
+      jobs = jobs.filter(j =>
+        (j.createdBy && j.createdBy.toLowerCase() === emailLower) ||
+        (j.userEmail && j.userEmail.toLowerCase() === emailLower)
+      );
     }
     if (filters.status && filters.status !== "All") {
       jobs = jobs.filter(j => j.status.toLowerCase() === filters.status.toLowerCase());

@@ -11,16 +11,7 @@ class DashboardDatabase {
     let interviews = await Promise.resolve(interviewsDb.getAll());
     let candidates = await Promise.resolve(candidatesDb.getAll());
 
-    const isDemoAccount = userEmail && (
-      userEmail.toLowerCase() === "hr@avahire.ai" ||
-      userEmail.toLowerCase() === "admin@avahire.ai"
-    );
-
-    // If userEmail is provided and it is NOT a pre-seeded demo account:
-    // Filter to only items created by this specific user.
-    // New users who have not created any jobs, interviews, or candidates yet will have empty lists,
-    // ensuring their dashboard starts cleanly static at 0.
-    if (userEmail && !isDemoAccount) {
+    if (userEmail) {
       const emailLower = userEmail.toLowerCase().trim();
       jobs = jobs.filter(j =>
         (j.createdBy && j.createdBy.toLowerCase() === emailLower) ||
@@ -38,8 +29,7 @@ class DashboardDatabase {
         (c.createdBy && c.createdBy.toLowerCase() === emailLower) ||
         (c.userEmail && c.userEmail.toLowerCase() === emailLower)
       );
-    } else if (!userEmail) {
-      // If no user context is provided, return empty static state for safety
+    } else {
       jobs = [];
       resumes = [];
       interviews = [];

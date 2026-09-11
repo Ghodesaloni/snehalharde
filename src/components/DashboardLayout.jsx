@@ -135,9 +135,9 @@ const DashboardLayout = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="text-sm font-semibold text-white truncate group-hover:text-violet-300 transition-colors">
-                                {user.company || "TechCorp Solutions"}
+                                {user.company || user.name || "My Account"}
                             </div>
-                            <div className="text-xs text-slate-400 truncate">{user.designation || "HR Admin"}</div>
+                            <div className="text-xs text-slate-400 truncate">{user.designation || user.email || ""}</div>
                         </div>
                         <button
                             data-testid="logout-btn"
@@ -199,9 +199,9 @@ const DashboardLayout = () => {
                             </div>
                             <div className="pr-1">
                                 <div className="text-sm font-semibold text-slate-900 group-hover:text-violet-600 transition-colors leading-tight">
-                                    {user.name?.split(" ")[0] || "Priya Mehta"}
+                                    {user.name || user.email?.split("@")[0] || "My Account"}
                                 </div>
-                                <div className="text-[11px] text-slate-500">{user.designation || "HR Admin"}</div>
+                                <div className="text-[11px] text-slate-500">{user.designation || user.company || user.email || ""}</div>
                             </div>
                         </div>
                     </div>

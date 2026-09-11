@@ -1,0 +1,18 @@
+{
+  "companyName": "",
+  "companyWebsite": "",
+  "companyLocation": "",
+  "industry": "",
+  "aiStrictness": "Moderate",
+  "defaultInterviewDuration": 45,
+  "minShortlistAtsScore": 80,
+  "autoSendInviteOnShortlist": true,
+  "emailNotifications": {
+    "candidateApplied": true,
+    "interviewCompleted": true,
+    "weeklyReport": true
+  },
+  "aiAvatar": "Ava (Technical Evaluator)",
+  "timeZone": "Asia/Kolkata (IST)",
+  "updatedAt": "2026-09-11T16:33:53.285Z"
+}

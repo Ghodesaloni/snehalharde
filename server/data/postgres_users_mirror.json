@@ -29,27 +29,27 @@
     "id": 3,
     "email": "snehal.harde2935@gmail.com",
     "fullName": "Snehal Harde",
-    "passwordHash": "23c5d5143d64e7d108af914801233b7dfdbcb0cc478586abf4d376a389431df8",
-    "company": "tsc",
+    "passwordHash": "88ed3f820b6ddedc7171f4a2a96e5527f9e2e01f5859fbb5b70af795e1cceb7e",
+    "company": "tcs",
     "website": "",
-    "designation": "HR",
-    "phone": "sahgsyu",
+    "designation": "hr",
+    "phone": "9146980039",
     "isVerified": true,
     "createdAt": "2026-09-11T06:43:06.697Z",
-    "updatedAt": "2026-09-11T14:53:46.658Z"
+    "updatedAt": "2026-09-11T16:53:02.760Z"
   },
   {
     "id": 4,
     "email": "salonighode@gmail.com",
     "fullName": "Saloni Ghode",
     "passwordHash": "88ed3f820b6ddedc7171f4a2a96e5527f9e2e01f5859fbb5b70af795e1cceb7e",
-    "company": "tcs",
+    "company": "jkb",
     "website": "",
     "designation": "hr",
-    "phone": "9146980039",
-    "isVerified": false,
+    "phone": "9876543210",
+    "isVerified": true,
     "createdAt": "2026-09-11T06:54:26.034Z",
-    "updatedAt": "2026-09-11T06:54:26.034Z"
+    "updatedAt": "2026-09-11T16:36:29.277Z"
   },
   {
     "id": 5,
@@ -72,9 +72,48 @@
     "company": "ttc",
     "website": "",
     "designation": "HR",
-    "phone": "548941325461",
+    "phone": "9876543210",
     "isVerified": true,
     "createdAt": "2026-09-11T14:43:26.673Z",
     "updatedAt": "2026-09-11T14:53:40.216Z"
+  },
+  {
+    "id": 7,
+    "email": "test_strict_auth@example.com",
+    "fullName": "Alpha Test",
+    "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
+    "company": "TestCo",
+    "website": "",
+    "designation": "HR",
+    "phone": "98765432",
+    "isVerified": true,
+    "createdAt": "2026-09-11T17:00:48.303Z",
+    "updatedAt": "2026-09-11T17:00:52.742Z"
+  },
+  {
+    "id": 8,
+    "email": "test_strict_1789146056337@example.com",
+    "fullName": "Strict HR User",
+    "passwordHash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
+    "company": "Strict Solutions",
+    "website": "",
+    "designation": "Head of Talent",
+    "phone": "9876543210",
+    "isVerified": true,
+    "createdAt": "2026-09-11T17:00:56.339Z",
+    "updatedAt": "2026-09-11T17:00:56.339Z"
+  },
+  {
+    "id": 9,
+    "email": "test_strict_1789146070103@example.com",
+    "fullName": "Strict HR User",
+    "passwordHash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
+    "company": "Acme Talent Corp",
+    "website": "",
+    "designation": "Head of Talent",
+    "phone": "9876543210",
+    "isVerified": true,
+    "createdAt": "2026-09-11T17:01:11.501Z",
+    "updatedAt": "2026-09-11T17:01:11.501Z"
   }
 ]

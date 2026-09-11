@@ -28,13 +28,13 @@ const CandidateWaitingRoom = () => {
         if (found) return found;
         return {
             id: "iv-default",
-            name: "Sneha Harde",
+            name: "Candidate",
             role: "Software Developer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            date: "01 Sep 2026",
-            time: "9:30 AM",
+            company: "AvaHire Recruiter",
+            date: "Today",
+            time: "Scheduled Time",
             duration: "30 Minutes",
-            linkCode: code || "akc123"
+            linkCode: code || ""
         };
     });
 
@@ -88,7 +88,13 @@ const CandidateWaitingRoom = () => {
                 {/* Leave Room Button */}
                 <button
                     onClick={() => {
-                        if (window.confirm("Are you sure you want to leave the interview waiting room?")) {
+                        let confirmed = true;
+                        try {
+                            confirmed = window.confirm("Are you sure you want to leave the interview waiting room?");
+                        } catch (e) {
+                            confirmed = true;
+                        }
+                        if (confirmed) {
                             navigate(`/i/${interviewData.linkCode || code || "akc123"}`);
                         }
                     }}

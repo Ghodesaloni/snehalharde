@@ -228,7 +228,13 @@ const Candidates = () => {
 
     const handleDeleteCandidate = async (id, name, e) => {
         e?.stopPropagation();
-        if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
+        let confirmed = true;
+        try {
+            confirmed = window.confirm(`Are you sure you want to delete ${name}?`);
+        } catch (err) {
+            confirmed = true;
+        }
+        if (!confirmed) return;
         try {
             await candidatesApi.delete(id);
             setCandidates((prev) => prev.filter((c) => c.id !== id));

@@ -268,7 +268,7 @@ async function saveUser(userData) {
           phone = EXCLUDED.phone,
           is_verified = COALESCE(EXCLUDED.is_verified, public.users.is_verified),
           updated_at = CURRENT_TIMESTAMP
-      RETURNING id, email, full_name, company, designation, is_verified, created_at;
+      RETURNING id, email, full_name, company, website, designation, phone, is_verified, created_at;
     `;
     const res = await p.query(query, [
       email.toLowerCase(),

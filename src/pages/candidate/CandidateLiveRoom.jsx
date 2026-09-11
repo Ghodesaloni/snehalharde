@@ -36,10 +36,10 @@ const CandidateLiveRoom = () => {
         if (found) return found;
         return {
             id: "iv-default",
-            name: "Sneha Harde",
-            role: "Senior Full Stack Engineer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            linkCode: code || "akc123"
+            name: "Candidate",
+            role: "Role Assessment",
+            company: "AvaHire Recruiter",
+            linkCode: code || ""
         };
     });
 
@@ -48,7 +48,7 @@ const CandidateLiveRoom = () => {
     const [isCameraOn, setIsCameraOn] = useState(true);
     const [showCaptions, setShowCaptions] = useState(true);
     const [showTranscript, setShowTranscript] = useState(false);
-    const [elapsedSeconds, setElapsedSeconds] = useState(504); // Default to around 00:08:24 matching reference
+    const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
     // Transcript Search & Auto-scroll
     const [transcriptSearch, setTranscriptSearch] = useState("");
@@ -77,42 +77,13 @@ const CandidateLiveRoom = () => {
     const [interviewEnded, setInterviewEnded] = useState(false);
 
     // Initial Historic Transcript
-    const [transcripts, setTranscripts] = useState([
-        {
-            id: "stt-0",
-            speaker: "Ava",
-            roleTag: "AI Interviewer",
-            time: "00:00:15",
-            text: "Hello! Welcome to your technical assessment at AvaHire. Today we will evaluate your engineering background, system design strategies, and production troubleshooting experience."
-        },
-        {
-            id: "stt-1",
-            speaker: "Candidate",
-            roleTag: "Candidate",
-            time: "00:00:34",
-            text: "Hi Ava, thanks for having me! I'm glad to be here and excited to discuss my background and technical projects."
-        },
-        {
-            id: "stt-2",
-            speaker: "Ava",
-            roleTag: "AI Interviewer",
-            time: "00:00:58",
-            text: "Let's dive into Question 1: Welcome! Could you please introduce yourself and walk us through your most significant technical project?"
-        },
-        {
-            id: "stt-3",
-            speaker: "Candidate",
-            roleTag: "Candidate",
-            time: "00:01:45",
-            text: "Over the last four years, I've worked primarily across React, Node.js, and PostgreSQL. One of my flagship achievements was re-architecting our real-time notification engine with distributed workers."
-        }
-    ]);
+    const [transcripts, setTranscripts] = useState([]);
 
     // Live Streaming Utterance (Speech-to-text in progress)
     const [liveUtterance, setLiveUtterance] = useState({
         speaker: "Ava",
         roleTag: "AI Interviewer",
-        time: "00:08:24",
+        time: "00:00:00",
         text: questions[0]
     });
 
@@ -459,7 +430,13 @@ const CandidateLiveRoom = () => {
 
                     <button
                         onClick={() => {
-                            if (window.confirm("Are you sure you want to exit and submit your interview?")) {
+                            let confirmed = true;
+                            try {
+                                confirmed = window.confirm("Are you sure you want to exit and submit your interview?");
+                            } catch (e) {
+                                confirmed = true;
+                            }
+                            if (confirmed) {
                                 navigate(`/i/${interviewData.linkCode || code || "akc123"}/thank-you`);
                             }
                         }}

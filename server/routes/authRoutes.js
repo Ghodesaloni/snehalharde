@@ -23,6 +23,13 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: "Password is required for registration.",
+      });
+    }
+
     const trimmedEmail = email.trim().toLowerCase();
 
     // Basic email format check
@@ -34,11 +41,33 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Hash password with salt (for basic security)
-    let passwordHash = null;
-    if (password) {
-      passwordHash = crypto.createHash("sha256").update(password).digest("hex");
+    // Strict 10-digit numeric phone validation: no words, no letters, no alphanumeric characters allowed
+    const rawPhone = String(phone || "").trim();
+    if (!rawPhone) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number is required.",
+      });
     }
+
+    if (!/^\d{10}$/.test(rawPhone)) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number must be exactly 10 digits containing numbers only. Words, letters, and alphanumeric characters are not allowed.",
+      });
+    }
+
+    // Check if user with this email already exists
+    const existingUser = await postgresDb.getUserByEmail(trimmedEmail);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: "An account with this email address already exists. Please login instead.",
+      });
+    }
+
+    // Hash password with SHA-256 for secure verification
+    const passwordHash = crypto.createHash("sha256").update(password).digest("hex");
 
     // 1. Save user to PostgreSQL database
     const user = await postgresDb.saveUser({
@@ -48,7 +77,7 @@ router.post("/register", async (req, res) => {
       company: company ? company.trim() : "",
       website: website ? website.trim() : "",
       designation: designation ? designation.trim() : "",
-      phone: phone ? phone.trim() : "",
+      phone: rawPhone,
       isVerified: true,
     });
 
@@ -346,39 +375,6 @@ router.post("/login", async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     let user = await postgresDb.getUserByEmail(cleanEmail);
 
-    // If not in database/mirror, check standard demo accounts
-    if (!user) {
-      if (cleanEmail === "hr@avahire.ai") {
-        user = {
-          id: 101,
-          uid: "usr_hr_lead_01",
-          email: "hr@avahire.ai",
-          fullName: "Priya Mehta",
-          name: "Priya Mehta",
-          role: "Lead HR Administrator",
-          company: "TechCorp Solutions Pvt. Ltd.",
-          designation: "Head of Talent Acquisition",
-          phone: "+91 98765 43210",
-          passwordHash: "password123",
-          isVerified: true,
-        };
-      } else if (cleanEmail === "admin@avahire.ai") {
-        user = {
-          id: 102,
-          uid: "usr_admin_02",
-          email: "admin@avahire.ai",
-          fullName: "AvaHire Admin",
-          name: "AvaHire Admin",
-          role: "Director of People Ops",
-          company: "AvaHire Talent Intelligence",
-          designation: "VP of People & Culture",
-          phone: "+91 98123 45678",
-          passwordHash: "password123",
-          isVerified: true,
-        };
-      }
-    }
-
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -387,37 +383,12 @@ router.post("/login", async (req, res) => {
     }
 
     const storedHash = user.password_hash || user.passwordHash;
-    let isMatch = verifyPassword(password, storedHash);
-
-    // Primary owner / registered user resilience:
-    // If the registered user (e.g. snehal.harde2935@gmail.com, snehalharde09@gmail.com, or salonighode@gmail.com)
-    // attempts login, ensure they are seamlessly authenticated and update the hash to what they just entered
-    // so stale/unsynced hashes from previous failed updates never block them.
-    const isOwnerAccount = [
-      "snehal.harde2935@gmail.com",
-      "snehalharde09@gmail.com",
-      "salonighode@gmail.com",
-      "salonighode3@gmail.com",
-    ].includes(cleanEmail);
-
-    if (!isMatch && isOwnerAccount && password && password.length >= 3) {
-      const newHash = crypto.createHash("sha256").update(password).digest("hex");
-      await postgresDb.saveUser({
-        email: cleanEmail,
-        fullName: user.fullName || user.name || "Snehal Harde",
-        passwordHash: newHash,
-        company: user.company || "AvaHire",
-        designation: user.designation || "HR Administrator",
-        phone: user.phone || "+91 98000 00000",
-        isVerified: true,
-      });
-      isMatch = true;
-    }
+    const isMatch = verifyPassword(password, storedHash);
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        error: "Incorrect password. Please enter the exact password you registered with.",
+        error: "Incorrect password. Please enter the correct password.",
       });
     }
 
@@ -426,16 +397,23 @@ router.post("/login", async (req, res) => {
       await postgresDb.query("UPDATE public.users SET updated_at = NOW() WHERE LOWER(email) = $1", [cleanEmail]);
     } catch (e) {}
 
+    const userFullName = user.fullName || user.full_name || user.name || cleanEmail.split("@")[0];
+
+    // Only extract and return details belonging to this particular user email
     const sessionUser = {
       id: user.id,
       uid: user.uid || `usr_${user.id || Date.now()}`,
       email: user.email,
-      name: user.fullName || user.name || cleanEmail.split("@")[0],
-      avatar: user.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+      name: userFullName,
+      fullName: userFullName,
+      avatar: user.avatar || "",
       role: user.role || "recruiter",
-      company: user.company || "AvaHire Tech Solutions",
-      designation: user.designation || "HR Administrator",
-      phone: user.phone || "+91 98000 00000",
+      company: user.company || "",
+      website: user.website || "",
+      designation: user.designation || "",
+      phone: user.phone || "",
+      isVerified: Boolean(user.isVerified || user.is_verified),
+      createdAt: user.createdAt || user.created_at || new Date().toISOString(),
     };
 
     return res.json({

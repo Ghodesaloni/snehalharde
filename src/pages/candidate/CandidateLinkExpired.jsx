@@ -26,12 +26,12 @@ const CandidateLinkExpired = () => {
         if (found) return found;
         return {
             id: "iv-default",
-            name: "Sarah Jenkins",
-            role: "Senior Full Stack Engineer",
-            company: "TechNova Systems",
-            date: "Today",
-            time: "10:00 AM PST",
-            linkCode: code || "akc123"
+            name: "Candidate",
+            role: "Candidate Assessment",
+            company: "AvaHire Recruiter",
+            date: "Scheduled Date",
+            time: "Scheduled Time",
+            linkCode: code || ""
         };
     });
 

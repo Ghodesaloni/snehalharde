@@ -28,32 +28,37 @@ const Profile = () => {
 
     // Profile Data State
     const [profile, setProfile] = useState(() => {
-        const saved = localStorage.getItem("avahire_hr_profile");
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {}
-        }
         const savedUser = localStorage.getItem("avahire_user");
         let parsedUser = null;
         if (savedUser) {
             try { parsedUser = JSON.parse(savedUser); } catch (e) {}
         }
+
+        const saved = localStorage.getItem("avahire_hr_profile");
+        if (saved && parsedUser && parsedUser.email) {
+            try {
+                const parsedProfile = JSON.parse(saved);
+                if (parsedProfile && parsedProfile.email && parsedProfile.email.toLowerCase() === parsedUser.email.toLowerCase()) {
+                    return parsedProfile;
+                }
+            } catch (e) {}
+        }
+
         return {
-            fullName: parsedUser?.name || "",
+            fullName: parsedUser?.fullName || parsedUser?.name || "",
             dob: "",
             displayDob: "",
             email: parsedUser?.email || "",
             gender: "",
-            phone: "",
+            phone: parsedUser?.phone || "",
             location: "",
             jobTitle: parsedUser?.designation || "HR Administrator",
             linkedin: "",
             department: "Human Resources",
             bio: "",
-            avatar: "",
+            avatar: parsedUser?.avatar || "",
             companyName: parsedUser?.company || "",
-            companyWebsite: "",
+            companyWebsite: parsedUser?.website || "",
             companySize: "",
             industry: ""
         };

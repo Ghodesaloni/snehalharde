@@ -28,10 +28,10 @@ const CandidateThankYou = () => {
         if (found) return found;
         return {
             id: "iv-default",
-            name: "Sarah Jenkins",
-            role: "Senior Full Stack Engineer",
-            company: "TechNova Systems",
-            linkCode: code || "akc123"
+            name: "Candidate",
+            role: "Candidate Assessment",
+            company: "AvaHire Recruiter",
+            linkCode: code || ""
         };
     });
 
@@ -89,7 +89,6 @@ const CandidateThankYou = () => {
     const handleCloseSession = () => {
         toast.success("Interview session concluded. You may safely close this browser window.");
         try {
-            window.open("", "_self", "");
             window.close();
         } catch (e) {}
         setIsSessionClosed(true);

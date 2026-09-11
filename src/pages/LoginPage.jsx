@@ -1,15 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Loader2, Sparkles, UserCheck } from "lucide-react";
+import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
 import AvaHireLogo from "@/components/AvaHireLogo";
 import { toast } from "sonner";
 import { authApi } from "@/services/api";
-
-const DEMO_PRESETS = [
-  { label: "Snehal Harde", email: "snehal.harde2935@gmail.com", role: "HR Administrator", pass: "password123" },
-  { label: "Lead HR (Priya)", email: "hr@avahire.ai", role: "Recruiter Admin", pass: "password123" },
-  { label: "Director Admin", email: "admin@avahire.ai", role: "People Ops", pass: "password123" },
-];
 
 const Login = () => {
   const navigate = useNavigate();
@@ -29,37 +23,14 @@ const Login = () => {
         if (u && u.email) {
           setForm((prev) => ({ ...prev, email: u.email }));
         }
-      } else {
-        setForm((prev) => ({ ...prev, email: "snehal.harde2935@gmail.com", password: "password123" }));
       }
     } catch {
       // ignore JSON parse error
     }
   }, []);
 
-  const handleQuickFill = (preset) => {
-    setForm({
-      email: preset.email,
-      password: preset.pass,
-      remember: true,
-    });
-    toast.info(`Selected ${preset.label} credentials`);
-  };
-
   const handleGoogleLogin = () => {
-    const activeEmail = form.email.trim() || "snehal.harde2935@gmail.com";
-    const displayName = activeEmail.includes("snehal") ? "Snehal Harde" : "HR Administrator";
-    const googleUser = {
-      name: displayName,
-      email: activeEmail,
-      role: "recruiter",
-      designation: "HR Administrator",
-      company: "AvaHire Tech Solutions",
-    };
-    localStorage.setItem("avahire_user", JSON.stringify(googleUser));
-    localStorage.setItem("avahire_token", `usr_google_${Date.now()}`);
-    toast.success(`Signed in via Google as ${displayName} 👋`);
-    setTimeout(() => navigate("/app/dashboard"), 250);
+    toast.info("Strict authentication enabled. Please log in using your registered work email and password.");
   };
 
   const submit = async (e) => {
@@ -76,28 +47,35 @@ const Login = () => {
         password: form.password,
       });
 
-      if (response && (response.success || response.token || response.data)) {
-        const userData = response.data || {
-          name: form.email.split("@")[0],
-          email: form.email.trim(),
-          designation: "HR Administrator",
-        };
+      // Strictly verify response indicates success and has user data
+      if (response && response.success === true && response.data) {
+        const userData = response.data;
 
-        localStorage.setItem("avahire_user", JSON.stringify(userData));
-        if (response.token) {
-          localStorage.setItem("avahire_token", response.token);
-        } else {
-          localStorage.setItem("avahire_token", `usr_${Date.now()}`);
+        // Clean up previous cached profile if switching between different email accounts
+        try {
+          const prevProfile = localStorage.getItem("avahire_hr_profile");
+          if (prevProfile) {
+            const parsed = JSON.parse(prevProfile);
+            if (parsed && parsed.email && parsed.email.toLowerCase() !== userData.email.toLowerCase()) {
+              localStorage.removeItem("avahire_hr_profile");
+            }
+          }
+        } catch {
+          localStorage.removeItem("avahire_hr_profile");
         }
 
-        toast.success(response.message || `Welcome back, ${userData.name || "HR User"} 👋`);
+        // Store ONLY this specific logged-in user's details
+        localStorage.setItem("avahire_user", JSON.stringify(userData));
+        localStorage.setItem("avahire_token", response.token || userData.uid || `usr_${Date.now()}`);
+
+        toast.success(response.message || `Welcome back, ${userData.name}! 👋`);
         setTimeout(() => navigate("/app/dashboard"), 300);
       } else {
         toast.error(response?.error || "Incorrect password. Please check your credentials.");
       }
     } catch (err) {
-      console.warn("Login attempt status:", err?.response?.status);
-      const errMsg = err.response?.data?.error || err.message || "Login failed. Please check your credentials.";
+      console.warn("Login attempt rejected:", err?.response?.status);
+      const errMsg = err.response?.data?.error || "Incorrect password or account not found. Please verify your credentials.";
       toast.error(errMsg);
     } finally {
       setLoading(false);
@@ -150,31 +128,6 @@ const Login = () => {
             </div>
             <h2 className="mt-5 text-3xl font-extrabold text-slate-900">Welcome Back!</h2>
             <p className="text-slate-500 mt-1">Login to your HR account</p>
-          </div>
-
-          {/* Quick Demo Access Badges */}
-          <div className="mt-6 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl">
-            <div className="text-xs font-semibold text-slate-500 mb-2 flex items-center gap-1.5">
-              <Sparkles size={13} className="text-violet-500" />
-              <span>Quick Login / Demo Credentials:</span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {DEMO_PRESETS.map((p) => (
-                <button
-                  key={p.email}
-                  type="button"
-                  onClick={() => handleQuickFill(p)}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer ${
-                    form.email === p.email
-                      ? "bg-violet-600 text-white border-violet-600 font-semibold"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-violet-300"
-                  }`}
-                >
-                  <UserCheck size={12} />
-                  <span>{p.label}</span>
-                </button>
-              ))}
-            </div>
           </div>
 
           <div className="mt-6 space-y-5">

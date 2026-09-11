@@ -31,11 +31,11 @@ const CandidateLogin = () => {
         return {
             id: "iv-default",
             name: "Candidate",
-            email: "candidate@example.com",
-            phone: "+91 98765 43210",
-            role: "Frontend Developer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            linkCode: code || "akc123"
+            email: "",
+            phone: "",
+            role: "Job Assessment",
+            company: "AvaHire Recruiter",
+            linkCode: code || ""
         };
     });
 
@@ -48,7 +48,7 @@ const CandidateLogin = () => {
         if (found) {
             setInterviewData(found);
             setEmail(found.email || "");
-            setPhone(found.phone || "+91 98765 43210");
+            setPhone(found.phone || "");
         }
     }, [code]);
 

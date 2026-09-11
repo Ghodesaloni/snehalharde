@@ -77,7 +77,14 @@ const Interviews = () => {
     };
 
     const handleOpenCandidatePortal = (linkCode) => {
-        window.open(`/i/${linkCode}`, "_blank");
+        try {
+            const win = window.open(`/i/${linkCode}`, "_blank");
+            if (!win) {
+                window.location.href = `/i/${linkCode}`;
+            }
+        } catch (e) {
+            window.location.href = `/i/${linkCode}`;
+        }
     };
 
     const handleRegenerateLink = (id, name) => {
@@ -411,30 +418,19 @@ const Interviews = () => {
                 {/* Footer Controls */}
                 <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
                     <div>
-                        Showing 1 to {filteredInterviews.length} of 24 entries
+                        {filteredInterviews.length === 0
+                            ? "Showing 0 entries"
+                            : `Showing 1 to ${filteredInterviews.length} of ${filteredInterviews.length} entries`}
                     </div>
 
                     <div className="flex items-center gap-1.5 mx-auto sm:mx-0">
-                        <button className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-white text-slate-600 transition">
+                        <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
                             <ChevronLeft className="w-4 h-4" />
                         </button>
                         <button className="w-8 h-8 rounded-xl bg-violet-600 text-white font-bold flex items-center justify-center shadow-xs">
                             1
                         </button>
-                        <button className="w-8 h-8 rounded-xl hover:bg-white text-slate-600 flex items-center justify-center transition">
-                            2
-                        </button>
-                        <button className="w-8 h-8 rounded-xl hover:bg-white text-slate-600 flex items-center justify-center transition">
-                            3
-                        </button>
-                        <button className="w-8 h-8 rounded-xl hover:bg-white text-slate-600 flex items-center justify-center transition">
-                            4
-                        </button>
-                        <button className="w-8 h-8 rounded-xl hover:bg-white text-slate-600 flex items-center justify-center transition">
-                            5
-                        </button>
-                        <span className="px-1 text-slate-400">...</span>
-                        <button className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center hover:bg-white text-slate-600 transition">
+                        <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
                             <ChevronRight className="w-4 h-4" />
                         </button>
                     </div>

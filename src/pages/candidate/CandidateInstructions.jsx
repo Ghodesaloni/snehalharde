@@ -26,9 +26,9 @@ const CandidateInstructions = () => {
         return {
             id: "iv-default",
             name: "Candidate",
-            role: "Frontend Developer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            linkCode: code || "akc123"
+            role: "Job Assessment",
+            company: "AvaHire Recruiter",
+            linkCode: code || ""
         };
     });
 

@@ -124,22 +124,7 @@ export const authApi = {
     } catch {
       return {
         success: true,
-        data: [
-          {
-            email: "hr@avahire.ai",
-            password: "password123",
-            role: "Lead HR Administrator",
-            name: "Priya Mehta",
-            company: "TechCorp Solutions Pvt. Ltd.",
-          },
-          {
-            email: "admin@avahire.ai",
-            password: "password123",
-            role: "Director of People Ops",
-            name: "AvaHire Admin",
-            company: "AvaHire Talent Intelligence",
-          },
-        ]
+        data: []
       };
     }
   }

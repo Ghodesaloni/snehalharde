@@ -7,13 +7,10 @@ class InterviewsDatabase {
     let list = readData(COLLECTION, []);
     if (filters.userEmail) {
       const emailLower = filters.userEmail.toLowerCase().trim();
-      const isDemo = emailLower === "hr@avahire.ai" || emailLower === "admin@avahire.ai";
-      if (!isDemo) {
-        list = list.filter(iv =>
-          (iv.createdBy && iv.createdBy.toLowerCase() === emailLower) ||
-          (iv.userEmail && iv.userEmail.toLowerCase() === emailLower)
-        );
-      }
+      list = list.filter(iv =>
+        (iv.createdBy && iv.createdBy.toLowerCase() === emailLower) ||
+        (iv.userEmail && iv.userEmail.toLowerCase() === emailLower)
+      );
     }
     if (filters.status && filters.status !== "All") {
       list = list.filter(iv => iv.status.toLowerCase() === filters.status.toLowerCase());

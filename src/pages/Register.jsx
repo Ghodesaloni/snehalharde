@@ -83,12 +83,57 @@ const Register = () => {
     setForm({ ...form, [k]: v });
   };
 
+  // Strictly allow ONLY 10 digits (0-9) - prevent any words, letters, spaces, or alphanumeric chars
+  const handlePhoneChange = (e) => {
+    const numericOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setForm((prev) => ({ ...prev, phone: numericOnly }));
+  };
+
+  const handlePhoneKeyDown = (e) => {
+    // Allow control/navigation keys
+    if (
+      ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"].includes(e.key) ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
+      return;
+    }
+    // Disallow non-numeric keys
+    if (!/^\d$/.test(e.key)) {
+      e.preventDefault();
+    }
+  };
+
+  const handlePhonePaste = (e) => {
+    e.preventDefault();
+    const pasteText = e.clipboardData ? e.clipboardData.getData("text") : "";
+    const numericOnly = pasteText.replace(/\D/g, "").slice(0, 10);
+    setForm((prev) => ({ ...prev, phone: numericOnly }));
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     if (!form.fullName || !form.email || !form.password) {
       toast.error("Please fill all required fields");
       return;
     }
+
+    // Strict 10-digit validation
+    if (!form.phone) {
+      toast.error("Please enter your 10-digit phone number");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(form.phone)) {
+      toast.error("Phone number must be exactly 10 digits containing numbers only (no words or letters allowed).");
+      return;
+    }
+
+    if (form.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
+      return;
+    }
+
     if (form.password !== form.confirm) {
       toast.error("Passwords do not match");
       return;
@@ -100,27 +145,19 @@ const Register = () => {
 
     setLoading(true);
     try {
-      // Call server-side registration route
+      // Call server-side registration route to store in PostgreSQL backend
       const response = await authApi.register({
-        fullName: form.fullName,
-        email: form.email,
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
         password: form.password,
-        company: form.company,
-        website: form.website,
-        designation: form.designation,
+        company: form.company.trim(),
+        website: form.website.trim(),
+        designation: form.designation.trim(),
         phone: form.phone,
       });
 
-      // Save user info to local state for convenience
-      localStorage.setItem("avahire_user", JSON.stringify({
-        name: form.fullName,
-        email: form.email,
-        company: form.company,
-        designation: form.designation,
-      }));
-
-      toast.success("Account registered! Verification email sent via SMTP 🎉");
-      setVerificationSentData(response.data);
+      toast.success("Account registered successfully and stored in backend! 🎉");
+      setVerificationSentData(response.data || { email: form.email.trim() });
     } catch (err) {
       console.error("Registration error:", err);
       const msg = err.response?.data?.error || "Registration failed. Please check your details and try again.";
@@ -256,20 +293,41 @@ const Register = () => {
               <Field label="Company Website (Optional)" icon="fa-globe" placeholder="Enter website" value={form.website} onChange={set("website")} testId="reg-website" />
               <Field label="Designation" icon="fa-briefcase" placeholder="Enter your designation" value={form.designation} onChange={set("designation")} testId="reg-designation" />
               <div>
-                <label className="block text-sm font-semibold text-slate-800 mb-2">Phone Number</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-slate-800">Phone Number (10 Digits)</label>
+                  <span className={`text-xs font-semibold ${form.phone.length === 10 ? "text-emerald-600" : form.phone.length > 0 ? "text-amber-600" : "text-slate-400"}`}>
+                    {form.phone.length}/10 digits
+                  </span>
+                </div>
                 <div className="flex gap-2">
-                  <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50">
+                  <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 select-none">
                     <span className="text-base">🇮🇳</span>
                     <span className="text-sm font-medium text-slate-700">+91</span>
                   </div>
                   <input
+                    id="reg-phone"
                     data-testid="reg-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
                     value={form.phone}
-                    onChange={set("phone")}
-                    placeholder="Enter phone number"
-                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
+                    onChange={handlePhoneChange}
+                    onKeyDown={handlePhoneKeyDown}
+                    onPaste={handlePhonePaste}
+                    placeholder="Enter 10-digit mobile number"
+                    className={`flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 text-sm transition ${
+                      form.phone.length === 10
+                        ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-100"
+                        : form.phone.length > 0
+                        ? "border-amber-300 focus:border-amber-400 focus:ring-amber-100"
+                        : "border-slate-200 focus:border-violet-500 focus:ring-violet-100"
+                    }`}
                   />
                 </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Only numbers allowed (0-9). Words, alphabets, or special characters are not allowed.
+                </p>
               </div>
             </div>
 

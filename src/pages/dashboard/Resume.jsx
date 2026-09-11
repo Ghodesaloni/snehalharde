@@ -1537,7 +1537,9 @@ const Resumes = () => {
                     {/* Pagination Footer */}
                     <div className="p-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 bg-slate-50/40">
                         <div>
-                            Showing 1 to {filteredCandidates.length} of {candidates.length} candidates (Tab: {activeTab})
+                            {filteredCandidates.length === 0
+                                ? "Showing 0 candidates"
+                                : `Showing 1 to ${filteredCandidates.length} of ${candidates.length} candidates (Tab: ${activeTab})`}
                         </div>
 
                         <div className="flex items-center gap-1.5">

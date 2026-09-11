@@ -73,7 +73,7 @@
     "zod": "3.24.4"
   },
   "scripts": {
-    "dev": "PORT=3000 HOST=0.0.0.0 DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
+    "dev": "PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
     "start": "node server/server.js",
     "build": "FAST_REFRESH=false BUILD_PATH=dist craco build",
     "lint": "eslint src/ --max-warnings=500",
