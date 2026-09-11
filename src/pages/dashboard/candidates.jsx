@@ -58,7 +58,7 @@ const Candidates = () => {
         const fetchCandidates = async () => {
             try {
                 const data = await candidatesApi.getAll();
-                if (data) {
+                if (Array.isArray(data)) {
                     setCandidates(data);
                 }
             } catch (err) {
@@ -70,8 +70,10 @@ const Candidates = () => {
 
     // Sorting and Filtering
     const filteredCandidates = useMemo(() => {
-        return candidates
+        const list = Array.isArray(candidates) ? candidates : [];
+        return list
             .filter((c) => {
+                if (!c) return false;
                 if (statusFilter !== "All" && c.status !== statusFilter) return false;
                 return true;
             })
@@ -237,7 +239,7 @@ const Candidates = () => {
         if (!confirmed) return;
         try {
             await candidatesApi.delete(id);
-            setCandidates((prev) => prev.filter((c) => c.id !== id));
+            setCandidates((prev) => (Array.isArray(prev) ? prev.filter((c) => c && c.id !== id) : []));
             if (expandedCandidateId === id) {
                 setExpandedCandidateId(null);
             }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
     Check,
     Sparkles,
@@ -13,10 +13,12 @@ import {
     HelpCircle,
     Home,
     X,
-    Lock
+    Lock,
+    ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
+import { candidatePortalApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateThankYou = () => {
@@ -43,6 +45,21 @@ const CandidateThankYou = () => {
         const found = getInterviewByCodeOrId(code);
         if (found) {
             setInterviewData(found);
+        }
+
+        // Also fetch live PostgreSQL portal session if available
+        if (code) {
+            candidatePortalApi.getSession(code).then((session) => {
+                if (session) {
+                    setInterviewData((prev) => ({
+                        ...prev,
+                        name: session.candidateName || prev.name,
+                        role: session.role || prev.role,
+                        company: session.company || prev.company,
+                        score: session.overallScore || prev.score
+                    }));
+                }
+            }).catch(() => {});
         }
 
         // Generate formatted completion timestamp & reference code
@@ -134,6 +151,19 @@ const CandidateThankYou = () => {
             <header className="w-full px-6 sm:px-12 py-4 bg-white/80 backdrop-blur-md border-b border-slate-200/70 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
                 <div className="flex items-center gap-3">
                     <AvaHireLogo size="sm" variant="lightBg" />
+                </div>
+                <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Synced to HR Portal</span>
+                    </div>
+                    <Link
+                        to="/dashboard/interviews"
+                        className="px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 hover:text-violet-900 border border-violet-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                    >
+                        <span>Open HR Recruiter View</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
                 </div>
             </header>
 
@@ -285,23 +315,31 @@ const CandidateThankYou = () => {
 
                     {/* Bottom Action CTAs */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                        
                         <button
                             onClick={() => toast.info("Support inquiry opened. Our HR team has been notified.")}
-                            className="w-full sm:w-auto px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-250 hover:border-slate-300 rounded-2xl text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                            className="w-full sm:w-auto px-5 py-3.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 rounded-2xl text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                         >
                             <HelpCircle className="w-4 h-4 text-slate-500" />
-                            <span>Contact Recruiter / HR</span>
+                            <span>Contact Recruiter</span>
                         </button>
 
-                        <button
-                            onClick={handleCloseSession}
-                            className="w-full sm:w-auto px-7 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/25 transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
-                        >
-                            <X className="w-4 h-4 text-white" />
-                            <span>Close Session</span>
-                        </button>
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                            <Link
+                                to="/dashboard/interviews"
+                                className="flex-1 sm:flex-none px-5 py-3.5 bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 rounded-2xl text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <ExternalLink className="w-4 h-4 text-violet-600" />
+                                <span>HR Evaluation Board</span>
+                            </Link>
 
+                            <button
+                                onClick={handleCloseSession}
+                                className="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/25 transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                <X className="w-4 h-4 text-white" />
+                                <span>Close Session</span>
+                            </button>
+                        </div>
                     </div>
 
                 </div>

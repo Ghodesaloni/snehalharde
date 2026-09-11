@@ -29,6 +29,7 @@ export const getStoredInterviews = () => {
 
 export const saveInterviews = (interviews) => {
     try {
+        if (!Array.isArray(interviews)) return;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(interviews));
     } catch (e) {
         console.error("Error saving interviews", e);

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { resumesApi, jobsApi } from "@/services/api";
+import { resumesApi, jobsApi, interviewsApi } from "@/services/api";
 import {
     Search,
     Filter,
@@ -168,14 +168,14 @@ const Resumes = () => {
                     jobsApi.getAll()
                 ]);
 
-                if (jobsData.status === "fulfilled" && jobsData.value) {
+                if (jobsData.status === "fulfilled" && Array.isArray(jobsData.value)) {
                     setJobs(jobsData.value);
                     if (jobsData.value.length > 0) {
                         setSelectedJobId(jobsData.value[0].id);
                     }
                 }
 
-                if (resumesData.status === "fulfilled" && resumesData.value) {
+                if (resumesData.status === "fulfilled" && Array.isArray(resumesData.value)) {
                     setCandidates(resumesData.value);
                     if (resumesData.value.length > 0) {
                         setSelectedCandidateId(resumesData.value[0].id);
@@ -223,28 +223,30 @@ const Resumes = () => {
         };
     }, [jobs, selectedJobId, customJd]);
 
-    const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0] || null;
+    const safeCandidates = useMemo(() => (Array.isArray(candidates) ? candidates : []), [candidates]);
+    const selectedCandidate = safeCandidates.find((c) => c.id === selectedCandidateId) || safeCandidates[0] || null;
 
     // Status tabs with live counts
     const tabCounts = useMemo(() => {
-        const total = candidates.length;
-        const shortlisted = candidates.filter((c) => c.status === "Shortlisted").length;
-        const review = candidates.filter((c) => c.status === "Review").length;
-        const rejected = candidates.filter((c) => c.status === "Rejected").length;
+        const total = safeCandidates.length;
+        const shortlisted = safeCandidates.filter((c) => c && c.status === "Shortlisted").length;
+        const review = safeCandidates.filter((c) => c && c.status === "Review").length;
+        const rejected = safeCandidates.filter((c) => c && c.status === "Rejected").length;
         return { total, shortlisted, review, rejected };
-    }, [candidates]);
+    }, [safeCandidates]);
 
     // Live counts per professional field
     const fieldCounts = useMemo(() => {
         const counts = {
-            "All": candidates.length,
+            "All": safeCandidates.length,
             "Data Science": 0,
             "Mechanical": 0,
             "Software Engineer": 0,
             "Finance": 0,
             "Analyst": 0
         };
-        candidates.forEach((c) => {
+        safeCandidates.forEach((c) => {
+            if (!c) return;
             const domain = detectCandidateDomain(c);
             if (counts[domain] !== undefined) {
                 counts[domain]++;
@@ -253,13 +255,14 @@ const Resumes = () => {
             }
         });
         return counts;
-    }, [candidates]);
+    }, [safeCandidates]);
 
     // Live counts of candidates related to any created job
     const getJobCandidateCount = (job) => {
         if (!job) return 0;
         const jDomain = detectJobDomain(job);
-        return candidates.filter((c) => {
+        return safeCandidates.filter((c) => {
+            if (!c) return false;
             if (c.jobId === job.id || c.targetJobId === job.id) return true;
             return detectCandidateDomain(c) === jDomain;
         }).length;
@@ -267,8 +270,9 @@ const Resumes = () => {
 
     // Filter and Sort Candidates
     const filteredCandidates = useMemo(() => {
-        return candidates
+        return safeCandidates
             .filter((c) => {
+                if (!c) return false;
                 // Tab filter: separates resumes by Shortlisted vs Review vs Rejected
                 if (activeTab === "Shortlisted" && c.status !== "Shortlisted") return false;
                 if (activeTab === "Review" && c.status !== "Review") return false;
@@ -2270,6 +2274,7 @@ const Resumes = () => {
                                             };
 
                                             addOrUpdateInterview(newIv);
+                                            interviewsApi.create(newIv).catch((err) => console.warn("Failed to persist interview to DB:", err));
                                             setGeneratedLinkData(newIv);
                                             handleStatusChange(selectedCandidate.id, "Shortlisted");
                                             toast.success(`Interview invitation created for ${selectedCandidate.name}!`);

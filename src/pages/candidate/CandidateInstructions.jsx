@@ -14,11 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
+import { useInterviewSettings } from "@/utils/interviewSettingsStore";
+import { candidatePortalApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateInstructions = () => {
     const { code } = useParams();
     const navigate = useNavigate();
+    const { settings } = useInterviewSettings();
 
     const [interviewData, setInterviewData] = useState(() => {
         const found = getInterviewByCodeOrId(code);
@@ -34,27 +37,17 @@ const CandidateInstructions = () => {
 
     const [agreed, setAgreed] = useState(false);
 
-    // Fetch dynamic instructions & guidelines configured in HR Interview Settings
-    const [instructions, setInstructions] = useState(() => {
-        try {
-            const saved = localStorage.getItem("avahire_interview_settings");
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (parsed.guidelines && Array.isArray(parsed.guidelines) && parsed.guidelines.length > 0) {
-                    return parsed.guidelines;
-                }
-            }
-        } catch (e) {
-            console.error("Error reading interview settings:", e);
-        }
-        return [
-            "Ensure a stable internet connection",
-            "Allow camera and microphone access",
-            "Find a quiet place with good lighting",
-            "Do not exit/hide the interview window",
-            "The interview link is valid for 5 minutes"
+    // Dynamic instructions & guidelines configured in HR Interview Settings
+    const instructions = settings.guidelines && settings.guidelines.length > 0
+        ? settings.guidelines
+        : [
+            "Ensure you are in a quiet place with good internet connection.",
+            "Keep your face clearly visible in the camera.",
+            "Do not switch tabs or open other applications.",
+            "Do not take help from others during the interview.",
+            "Be honest and answer confidently.",
+            "Interview will be recorded for evaluation purposes."
         ];
-    });
 
     useEffect(() => {
         const found = getInterviewByCodeOrId(code);
@@ -62,16 +55,19 @@ const CandidateInstructions = () => {
             setInterviewData(found);
         }
 
-        // Re-read settings from localStorage
-        try {
-            const saved = localStorage.getItem("avahire_interview_settings");
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                if (parsed.guidelines && Array.isArray(parsed.guidelines) && parsed.guidelines.length > 0) {
-                    setInstructions(parsed.guidelines);
+        if (code) {
+            candidatePortalApi.getSession(code).then((session) => {
+                if (session) {
+                    setInterviewData((prev) => ({
+                        ...prev,
+                        name: session.candidateName || prev.name,
+                        role: session.role || prev.role,
+                        company: session.company || prev.company,
+                        linkCode: session.linkCode || code
+                    }));
                 }
-            }
-        } catch (e) {}
+            }).catch(() => {});
+        }
     }, [code]);
 
     const handleStartInterview = () => {
@@ -104,19 +100,44 @@ const CandidateInstructions = () => {
             {/* Main Content Area */}
             <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
                 
-                {/* Header Title Section */}
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center shadow-md shadow-violet-500/25">
-                            22.
-                        </span>
-                        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                            Interview Instructions
-                        </h1>
+                {/* Header Title Section with Live Setting Pills */}
+                <div className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center shadow-md shadow-violet-500/25">
+                                22.
+                            </span>
+                            <div>
+                                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                                    Interview Instructions
+                                </h1>
+                                <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                                    Please read the instructions carefully before starting your interview session.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Live Settings Metadata Pills */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-3 py-1 rounded-xl bg-violet-50 border border-violet-200/80 text-violet-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                                <span>⏱ Duration:</span>
+                                <span className="font-extrabold">{settings.duration || "30 Minutes"}</span>
+                            </span>
+                            <span className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                                <span>🤖 AI:</span>
+                                <span className="font-extrabold">{settings.aiAvatar || "Ava"}</span>
+                            </span>
+                            <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                                <span>🌐 {settings.language || "English"}</span>
+                            </span>
+                            {settings.enableProctoring && (
+                                <span className="px-3 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Proctored ({settings.suspiciousThreshold || "3 Actions"})</span>
+                                </span>
+                            )}
+                        </div>
                     </div>
-                    <p className="text-xs sm:text-sm text-slate-500 font-medium pl-11">
-                        Please read the instructions carefully before starting your interview.
-                    </p>
                 </div>
 
                 {/* Content Grid */}
@@ -165,7 +186,7 @@ const CandidateInstructions = () => {
                                     <Info className="w-4 h-4 stroke-[2.5]" />
                                 </div>
                                 <span className="text-xs sm:text-[13px] font-bold text-violet-900 leading-snug">
-                                    Make sure to read and agree to the instructions
+                                    Make sure to read and agree to all guidelines above
                                 </span>
                             </div>
                         </div>
@@ -187,10 +208,10 @@ const CandidateInstructions = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                                            AI-Powered Interview
+                                            {settings.aiAvatar || "Ava"} ({settings.difficulty || "Medium"} Level)
                                         </h4>
                                         <p className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
-                                            You will be interviewed by our AI interviewer.
+                                            You will be evaluated by {settings.aiAvatar || "our AI interviewer"} in {settings.language || "English"}.
                                         </p>
                                     </div>
                                 </div>
@@ -202,10 +223,12 @@ const CandidateInstructions = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                                            Smart Conversations
+                                            {settings.askFollowUps ? "Adaptive Conversations" : "Structured Questions"}
                                         </h4>
                                         <p className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
-                                            Answer questions naturally. The AI will ask follow-ups.
+                                            {settings.askFollowUps
+                                                ? "Answer naturally. The AI will ask smart follow-ups based on your responses."
+                                                : "Answer concisely. The AI will present structured questions."}
                                         </p>
                                     </div>
                                 </div>
@@ -217,10 +240,12 @@ const CandidateInstructions = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                                            Skill Assessment
+                                            {settings.resumeBasedQuestions && settings.roleBasedQuestions
+                                                ? "Resume & Role Evaluation"
+                                                : "Technical Assessment"}
                                         </h4>
                                         <p className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
-                                            Your answers will be evaluated in real-time.
+                                            Answers are evaluated in real-time for technical depth, clarity, and system design.
                                         </p>
                                     </div>
                                 </div>
@@ -232,10 +257,12 @@ const CandidateInstructions = () => {
                                     </div>
                                     <div>
                                         <h4 className="text-xs sm:text-sm font-bold text-slate-900">
-                                            Secure &amp; Fair
+                                            {settings.enableProctoring ? "Active AI Proctoring" : "Secure Session"}
                                         </h4>
                                         <p className="text-xs text-slate-500 font-medium mt-0.5 leading-relaxed">
-                                            Your data and responses are 100% secure.
+                                            {settings.enableProctoring
+                                                ? `Monitored for tab switches (max ${settings.suspiciousThreshold || "3 actions"}) and camera visibility.`
+                                                : "Your responses and assessment data are encrypted and secure."}
                                         </p>
                                     </div>
                                 </div>
@@ -244,8 +271,8 @@ const CandidateInstructions = () => {
 
                         {/* Extra subtle badge */}
                         <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                            <span className="text-[11px] font-semibold text-slate-400">
-                                Proctoring Session • {interviewData.role || "Frontend Developer"}
+                            <span className="text-[11px] font-semibold text-slate-500">
+                                Mode: {settings.interviewMode || "AI Interview"} • {settings.duration || "30 Minutes"}
                             </span>
                         </div>
                     </div>

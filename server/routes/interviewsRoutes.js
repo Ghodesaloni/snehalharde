@@ -3,11 +3,11 @@ const router = express.Router();
 const interviewsDb = require("../db/interviewsDb");
 
 // GET /api/interviews - list interviews
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { status, search, userEmail } = req.query;
     const authorEmail = userEmail || req.headers["x-user-email"];
-    const list = interviewsDb.getAll({ status, search, userEmail: authorEmail });
+    const list = await interviewsDb.getAll({ status, search, userEmail: authorEmail });
     res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -15,9 +15,9 @@ router.get("/", (req, res) => {
 });
 
 // GET /api/interviews/code/:linkCode - get by linkCode (used by candidate portal)
-router.get("/code/:linkCode", (req, res) => {
+router.get("/code/:linkCode", async (req, res) => {
   try {
-    const interview = interviewsDb.getByLinkCode(req.params.linkCode);
+    const interview = await interviewsDb.getByLinkCode(req.params.linkCode);
     if (!interview) {
       return res.status(404).json({ success: false, error: "Interview link is invalid or expired" });
     }
@@ -28,9 +28,9 @@ router.get("/code/:linkCode", (req, res) => {
 });
 
 // GET /api/interviews/:id - get single interview
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   try {
-    const interview = interviewsDb.getById(req.params.id) || interviewsDb.getByLinkCode(req.params.id);
+    const interview = (await interviewsDb.getById(req.params.id)) || (await interviewsDb.getByLinkCode(req.params.id));
     if (!interview) {
       return res.status(404).json({ success: false, error: "Interview not found" });
     }
@@ -41,10 +41,10 @@ router.get("/:id", (req, res) => {
 });
 
 // POST /api/interviews - schedule new interview
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
-    const newInterview = interviewsDb.create({
+    const newInterview = await interviewsDb.create({
       ...req.body,
       createdBy: authorEmail,
       userEmail: authorEmail
@@ -56,9 +56,9 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/interviews/:id - update interview
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
-    const updated = interviewsDb.update(req.params.id, req.body);
+    const updated = await interviewsDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Interview not found" });
     }
@@ -69,9 +69,9 @@ router.put("/:id", (req, res) => {
 });
 
 // DELETE /api/interviews/:id - delete/cancel interview
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
-    const deleted = interviewsDb.delete(req.params.id);
+    const deleted = await interviewsDb.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: "Interview not found" });
     }

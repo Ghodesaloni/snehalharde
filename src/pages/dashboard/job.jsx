@@ -67,7 +67,7 @@ const Jobs = () => {
         const loadJobs = async () => {
             try {
                 const data = await jobsApi.getAll();
-                if (data) {
+                if (Array.isArray(data)) {
                     setJobs(data);
                 }
             } catch (err) {
@@ -77,12 +77,19 @@ const Jobs = () => {
         loadJobs();
     }, []);
 
-    const filtered = jobs.filter((j) =>
-        j.title.toLowerCase().includes(q.toLowerCase()) ||
-        j.dept.toLowerCase().includes(q.toLowerCase()) ||
-        j.loc.toLowerCase().includes(q.toLowerCase()) ||
-        (j.keySkills && j.keySkills.some(skill => skill.toLowerCase().includes(q.toLowerCase())))
-    );
+    const safeJobs = Array.isArray(jobs) ? jobs : [];
+    const filtered = safeJobs.filter((j) => {
+        if (!j) return false;
+        const title = j.title || "";
+        const dept = j.dept || "";
+        const loc = j.loc || "";
+        return (
+            title.toLowerCase().includes(q.toLowerCase()) ||
+            dept.toLowerCase().includes(q.toLowerCase()) ||
+            loc.toLowerCase().includes(q.toLowerCase()) ||
+            (Array.isArray(j.keySkills) && j.keySkills.some(skill => skill && skill.toLowerCase().includes(q.toLowerCase())))
+        );
+    });
 
     const handleAddSkill = (skillToAdd) => {
         const trimmed = (skillToAdd || skillInput).trim();

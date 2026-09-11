@@ -55,6 +55,8 @@ export const candidates = pgTable('candidates', {
   recommendation: text('recommendation'),
   transcript: jsonb('transcript').$type<Array<{ speaker: string; time: string; isAI: boolean; text: string }>>(),
   evaluationBreakdown: jsonb('evaluation_breakdown').$type<Array<{ category: string; score: number; weight: string }>>(),
+  createdBy: text('created_by'),
+  userEmail: text('user_email'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -79,6 +81,8 @@ export const interviews = pgTable('interviews', {
   expiryTime: text('expiry_time'),
   isExpired: boolean('is_expired').default(false),
   score: integer('score'),
+  createdBy: text('created_by'),
+  userEmail: text('user_email'),
   createdAt: timestamp('created_at').defaultNow(),
 });
 
@@ -107,3 +111,44 @@ export const emailTemplates = pgTable('email_templates', {
   category: text('category'),
   createdAt: timestamp('created_at').defaultNow(),
 });
+
+// Candidate Portal Live Sessions & Assessment Submissions table
+export const candidatePortalSessions = pgTable('candidate_portal_sessions', {
+  id: text('id').primaryKey(),
+  linkCode: text('link_code').notNull(),
+  candidateName: text('candidate_name').notNull(),
+  candidateEmail: text('candidate_email').notNull(),
+  candidatePhone: text('candidate_phone'),
+  role: text('role').notNull(),
+  company: text('company'),
+  status: text('status').default('In Progress'), // 'Joined', 'System Check Completed', 'Live Room', 'Completed'
+  systemCheckStatus: jsonb('system_check_status').$type<{
+    camera: boolean;
+    microphone: boolean;
+    audio: boolean;
+    network: string;
+    agreedProctoring: boolean;
+  }>(),
+  overallScore: integer('overall_score'),
+  techDepthScore: text('tech_depth_score'),
+  clarityScore: text('clarity_score'),
+  recommendation: text('recommendation'),
+  elapsedSeconds: integer('elapsed_seconds').default(0),
+  transcripts: jsonb('transcripts').$type<Array<{
+    id?: string;
+    speaker: string;
+    roleTag: string;
+    time: string;
+    text: string;
+  }>>(),
+  evaluationBreakdown: jsonb('evaluation_breakdown').$type<Array<{
+    category: string;
+    score: number;
+    weight: string;
+  }>>(),
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+

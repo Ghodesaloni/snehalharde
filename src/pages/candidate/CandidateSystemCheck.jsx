@@ -19,11 +19,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
+import { useInterviewSettings } from "@/utils/interviewSettingsStore";
+import { candidatePortalApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateSystemCheck = () => {
     const { code } = useParams();
     const navigate = useNavigate();
+    const { settings } = useInterviewSettings();
 
     const [interviewData, setInterviewData] = useState(() => {
         const found = getInterviewByCodeOrId(code);
@@ -44,6 +47,43 @@ const CandidateSystemCheck = () => {
     const [isPlayingTone, setIsPlayingTone] = useState(false);
     const [audioTested, setAudioTested] = useState(false);
     const [latency, setLatency] = useState(24);
+
+    // Load Candidate Authentication & Session Data
+    useEffect(() => {
+        // First check localStorage for authenticated candidate info
+        try {
+            const cachedAuth = localStorage.getItem("avahire_candidate_auth");
+            if (cachedAuth) {
+                const parsed = JSON.parse(cachedAuth);
+                if (parsed.name) {
+                    setInterviewData((prev) => ({
+                        ...prev,
+                        name: parsed.name,
+                        email: parsed.email || prev.email,
+                        phone: parsed.phone || prev.phone,
+                        role: parsed.role || prev.role,
+                        company: parsed.company || prev.company
+                    }));
+                }
+            }
+        } catch (e) {}
+
+        if (code) {
+            candidatePortalApi.getSession(code).then((session) => {
+                if (session) {
+                    setInterviewData((prev) => ({
+                        ...prev,
+                        name: session.candidateName || prev.name,
+                        email: session.candidateEmail || prev.email,
+                        phone: session.candidatePhone || prev.phone,
+                        role: session.role || prev.role,
+                        company: session.company || prev.company,
+                        linkCode: session.linkCode || code
+                    }));
+                }
+            }).catch(() => {});
+        }
+    }, [code]);
 
     // Initialize Camera Feed
     useEffect(() => {
@@ -135,8 +175,19 @@ const CandidateSystemCheck = () => {
         }, 700);
     };
 
-    const handleProceed = () => {
+    const handleProceed = async () => {
         toast.success("Diagnostics verified! Proceeding to instructions.");
+        try {
+            candidatePortalApi.saveSystemCheck({
+                linkCode: interviewData.linkCode || code || "akc123",
+                camera: isCameraActive,
+                microphone: true,
+                audio: audioTested,
+                network: "Optimal",
+                latency: `${latency}ms`,
+                agreedProctoring: true
+            }).catch((err) => console.warn("Background system check sync notice:", err));
+        } catch (e) {}
         navigate(`/i/${interviewData.linkCode || code || "akc123"}/instructions`);
     };
 
@@ -171,6 +222,69 @@ const CandidateSystemCheck = () => {
             {/* Main Content Area */}
             <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
                 
+                {/* Header Title Section with Live Setting Pills */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center shadow-md shadow-violet-500/25">
+                            21.
+                        </span>
+                        <div>
+                            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                                System Check
+                            </h1>
+                            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+                                Verify your camera, microphone, and speakers before proceeding.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Live Settings Metadata Pills */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-3 py-1 rounded-xl bg-violet-50 border border-violet-200/80 text-violet-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                            <span>⏱ Duration:</span>
+                            <span className="font-extrabold">{settings.duration || "30 Minutes"}</span>
+                        </span>
+                        <span className="px-3 py-1 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                            <span>🤖 AI:</span>
+                            <span className="font-extrabold">{settings.aiAvatar || "Ava"}</span>
+                        </span>
+                        {settings.enableProctoring && (
+                            <span className="px-3 py-1 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-800 text-xs font-bold flex items-center gap-1.5 shadow-2xs">
+                                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                                <span>Proctoring Active</span>
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                {/* Candidate Resume Identity Confirmation Banner */}
+                {interviewData.name && interviewData.name !== "Candidate" && (
+                    <div className="bg-white border border-emerald-200/90 rounded-2xl p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-2xs">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                                <Check className="w-4 h-4 text-emerald-700" />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs sm:text-sm font-bold text-slate-900">{interviewData.name}</span>
+                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                        Verified Resume Applicant
+                                    </span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                    {interviewData.email} • {interviewData.role}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                            <span>Room Code:</span>
+                            <span className="font-mono font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-md border border-violet-200/60">
+                                {interviewData.linkCode || code}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 {/* Two-Column Diagnostics Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                     

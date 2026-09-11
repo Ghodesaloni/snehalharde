@@ -133,7 +133,7 @@ export const authApi = {
 export const jobsApi = {
   getAll: async (params = {}) => {
     const res = await api.get("/jobs", { params });
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
   getById: async (id) => {
     const res = await api.get(`/jobs/${id}`);
@@ -156,7 +156,7 @@ export const jobsApi = {
 export const resumesApi = {
   getAll: async (params = {}) => {
     const res = await api.get("/resumes", { params });
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
   getById: async (id) => {
     const res = await api.get(`/resumes/${id}`);
@@ -197,7 +197,7 @@ export const resumesApi = {
 export const interviewsApi = {
   getAll: async (params = {}) => {
     const res = await api.get("/interviews", { params });
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
   getById: async (id) => {
     const res = await api.get(`/interviews/${id}`);
@@ -224,7 +224,7 @@ export const interviewsApi = {
 export const candidatesApi = {
   getAll: async (params = {}) => {
     const res = await api.get("/candidates", { params });
-    return res.data.data;
+    return Array.isArray(res.data?.data) ? res.data.data : [];
   },
   getById: async (id) => {
     const res = await api.get(`/candidates/${id}`);
@@ -291,8 +291,24 @@ export const settingsApi = {
     const res = await api.get("/settings");
     return res.data.data;
   },
+  get: async () => {
+    const res = await api.get("/settings");
+    return res.data.data;
+  },
   updateSettings: async (data) => {
     const res = await api.put("/settings", data);
+    return res.data.data;
+  },
+  updatePreferences: async (preferences) => {
+    const res = await api.put("/settings", { preferences });
+    return res.data.data;
+  },
+  getInterviewSettings: async () => {
+    const res = await api.get("/settings/interview");
+    return res.data.data;
+  },
+  updateInterviewSettings: async (data) => {
+    const res = await api.put("/settings/interview", data);
     return res.data.data;
   },
   getProfile: async () => {
@@ -302,6 +318,49 @@ export const settingsApi = {
   updateProfile: async (data) => {
     const res = await api.put("/settings/profile", data);
     return res.data.data;
+  }
+};
+
+export const candidatePortalApi = {
+  getInterviewSettings: async () => {
+    const res = await api.get("/candidate-portal/interview-settings");
+    return res.data.data;
+  },
+  getSession: async (linkCode) => {
+    const res = await api.get(`/candidate-portal/session/${linkCode}`);
+    return res.data.data;
+  },
+  login: async ({ linkCode, email, phone }) => {
+    const res = await api.post("/candidate-portal/login", { linkCode, email, phone });
+    return res.data;
+  },
+  saveSystemCheck: async (payload) => {
+    const res = await api.post("/candidate-portal/system-check", payload);
+    return res.data;
+  },
+  getQuestions: async (linkCode) => {
+    const res = await api.get(`/candidate-portal/questions/${linkCode}`);
+    return res.data;
+  },
+  streamTranscriptChunk: async (chunk) => {
+    const res = await api.post("/candidate-portal/transcript-chunk", chunk);
+    return res.data;
+  },
+  saveSession: async (sessionData) => {
+    const res = await api.post("/candidate-portal/session", sessionData);
+    return res.data.data;
+  },
+  completeInterview: async (payload) => {
+    const res = await api.post("/candidate-portal/complete", payload);
+    return res.data;
+  },
+  getAllSessions: async (params = {}) => {
+    const res = await api.get("/candidate-portal/sessions", { params });
+    return res.data.data;
+  },
+  getHROverview: async () => {
+    const res = await api.get("/candidate-portal/hr-overview");
+    return res.data;
   }
 };
 

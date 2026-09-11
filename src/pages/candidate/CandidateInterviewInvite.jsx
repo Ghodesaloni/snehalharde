@@ -24,11 +24,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId, getStoredInterviews } from "@/utils/interviewStore";
+import { useInterviewSettings } from "@/utils/interviewSettingsStore";
+import { candidatePortalApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateInterviewInvite = () => {
     const { code } = useParams();
     const navigate = useNavigate();
+    const { settings } = useInterviewSettings();
 
     const [interviewData, setInterviewData] = useState(() => {
         return getInterviewByCodeOrId(code) || null;
@@ -90,6 +93,30 @@ const CandidateInterviewInvite = () => {
             if (found.isExpired || found.status === "Expired") {
                 navigate(`/i/${found.linkCode || code || "akc123"}/expired`);
             }
+        }
+
+        // Also hydrate directly from backend Candidate Portal API
+        if (code) {
+            candidatePortalApi.getSession(code).then((session) => {
+                if (session) {
+                    setInterviewData((prev) => ({
+                        ...(prev || {}),
+                        id: session.id || (prev && prev.id) || `iv-${code}`,
+                        name: session.candidateName || (prev && prev.name) || "Candidate",
+                        email: session.candidateEmail || (prev && prev.email) || "",
+                        phone: session.candidatePhone || (prev && prev.phone) || "",
+                        role: session.role || (prev && prev.role) || "Software Engineer",
+                        company: session.company || (prev && prev.company) || "AvaHire Technologies Pvt. Ltd.",
+                        linkCode: session.linkCode || code,
+                        date: session.interviewSchedule?.date || (prev && prev.date) || "Today",
+                        time: session.interviewSchedule?.time || (prev && prev.time) || "Flexible",
+                        duration: session.interviewSchedule?.duration || (prev && prev.duration) || "45 Minutes",
+                        isExpired: session.interviewSchedule?.isExpired || false
+                    }));
+                }
+            }).catch((err) => {
+                console.warn("Backend candidate session fetch:", err.message);
+            });
         }
     }, [code, navigate]);
 
@@ -331,7 +358,7 @@ const CandidateInterviewInvite = () => {
                                     Interview Duration
                                 </span>
                                 <span className="text-xs sm:text-[13px] font-bold text-slate-900 block truncate">
-                                    {interviewData.duration || "45 Minutes"}
+                                    {interviewData?.duration || settings.duration || "30 Minutes"}
                                 </span>
                             </div>
                         </div>

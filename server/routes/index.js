@@ -10,6 +10,7 @@ const dashboardRoutes = require("./dashboardRoutes");
 const settingsRoutes = require("./settingsRoutes");
 const authRoutes = require("./authRoutes");
 const usersRoutes = require("./usersRoutes");
+const candidatePortalRoutes = require("./candidatePortalRoutes");
 
 router.use("/auth", authRoutes);
 router.use("/users", usersRoutes);
@@ -17,6 +18,7 @@ router.use("/jobs", jobsRoutes);
 router.use("/resumes", resumesRoutes);
 router.use("/interviews", interviewsRoutes);
 router.use("/candidates", candidatesRoutes);
+router.use("/candidate-portal", candidatePortalRoutes);
 router.use("/emails", emailCenterRoutes);
 router.use("/email-center", emailCenterRoutes);
 router.use("/dashboard", dashboardRoutes);

@@ -22,6 +22,26 @@ router.put("/", (req, res) => {
   }
 });
 
+// GET /api/settings/interview - get interview & proctoring settings
+router.get("/interview", (req, res) => {
+  try {
+    const settings = settingsDb.getInterviewSettings();
+    res.json({ success: true, data: settings });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/settings/interview - update interview & proctoring settings
+router.put("/interview", (req, res) => {
+  try {
+    const updated = settingsDb.updateInterviewSettings(req.body);
+    res.json({ success: true, data: updated, message: "Interview settings updated successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /api/settings/profile - get recruiter profile
 router.get("/profile", (req, res) => {
   try {

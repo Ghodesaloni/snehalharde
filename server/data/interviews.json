@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": "iv-1789139317187",
+    "candidateId": "cand-1789139317187",
+    "name": "hina",
+    "email": "hina@gmail.com",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    "role": "",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "date": "11 September 2026",
+    "dayOfWeek": "Friday",
+    "time": "11:00 AM",
+    "timeZone": "IST",
+    "duration": "5 Mins",
+    "durationMins": 45,
+    "linkCode": "ava505",
+    "status": "Active",
+    "expiry": "04:59 Remaining",
+    "expiryTime": "11 September 2026, ",
+    "isExpired": false,
+    "score": 96,
+    "createdBy": "snehal.harde2935@gmail.com",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "createdAt": "2026-09-11T15:08:37.187Z",
+    "updatedAt": "2026-09-11T16:28:54.030Z",
+    "phone": "+91 98765 43210"
+  }
+]

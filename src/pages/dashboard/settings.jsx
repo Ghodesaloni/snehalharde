@@ -37,6 +37,7 @@ import {
     Info,
     Edit3,
     Sparkles,
+    ExternalLink,
     Settings as SettingsIcon
 } from "lucide-react";
 
@@ -134,15 +135,19 @@ const Settings = () => {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const data = await settingsApi.get();
-                if (data) {
-                    if (data.preferences) setPreferences(data.preferences);
-                    if (data.interviewSettings) {
-                        setInterviewSettings(data.interviewSettings);
-                        if (data.interviewSettings.guidelines) {
-                            setTempGuidelines(data.interviewSettings.guidelines);
-                        }
+                const [generalData, interviewData] = await Promise.allSettled([
+                    settingsApi.get(),
+                    settingsApi.getInterviewSettings()
+                ]);
+                if (generalData.status === "fulfilled" && generalData.value) {
+                    if (generalData.value.preferences) setPreferences(generalData.value.preferences);
+                }
+                if (interviewData.status === "fulfilled" && interviewData.value) {
+                    setInterviewSettings(interviewData.value);
+                    if (interviewData.value.guidelines) {
+                        setTempGuidelines(interviewData.value.guidelines);
                     }
+                    localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewData.value));
                 }
             } catch (err) {
                 console.error("Failed to load settings from database:", err);
@@ -194,7 +199,8 @@ const Settings = () => {
 
     const saveInterviewSettings = async () => {
         localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewSettings));
-        toast.success("Interview settings & proctoring configuration saved!");
+        window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: interviewSettings }));
+        toast.success("Interview settings saved! Changes are now live on the Candidate Portal.");
         try {
             await settingsApi.updateInterviewSettings(interviewSettings);
         } catch (err) {
@@ -219,8 +225,9 @@ const Settings = () => {
         const updated = { ...interviewSettings, guidelines: tempGuidelines };
         setInterviewSettings(updated);
         localStorage.setItem("avahire_interview_settings", JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: updated }));
         setShowEditInstructionsModal(false);
-        toast.success("Interview guidelines updated!");
+        toast.success("Interview guidelines updated! New instructions are now live on Candidate Portal.");
         try {
             await settingsApi.updateInterviewSettings(updated);
         } catch (err) {
@@ -278,20 +285,37 @@ const Settings = () => {
                     {/* Header Bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
-                            <h2 className="text-xl sm:text-2xl font-bold text-violet-700 tracking-tight">
-                                Interview Settings
-                            </h2>
+                            <div className="flex items-center gap-2.5">
+                                <h2 className="text-xl sm:text-2xl font-bold text-violet-700 tracking-tight">
+                                    Interview Settings
+                                </h2>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Live Synced to Candidate Portal
+                                </span>
+                            </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                                Configure interview experience, timing, AI behavior and proctoring preferences.
+                                Configure interview experience, timing, AI behavior and proctoring preferences. All modifications take immediate effect in candidate interview sessions.
                             </p>
                         </div>
-                        <button
-                            onClick={saveInterviewSettings}
-                            className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98] self-start sm:self-auto"
-                        >
-                            <Save className="w-4 h-4" />
-                            <span>Save Changes</span>
-                        </button>
+                        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                            <a
+                                href="/i/akc123/instructions"
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition"
+                            >
+                                <ExternalLink className="w-4 h-4 text-slate-500" />
+                                <span>Preview Candidate Portal</span>
+                            </a>
+                            <button
+                                onClick={saveInterviewSettings}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98] cursor-pointer"
+                            >
+                                <Save className="w-4 h-4" />
+                                <span>Save Changes</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Top Row: 2 Big Cards (General Interview Settings + AI Interview Settings) */}

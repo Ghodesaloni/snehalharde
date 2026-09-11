@@ -1,1 +1,49 @@
-[]
+[
+  {
+    "id": "cand-1789141858939",
+    "name": "hina",
+    "email": "hina@gmail.com",
+    "phone": "+91 98765 43210",
+    "role": "Frontend Developer",
+    "avatar": "",
+    "interviewDate": "11 Sept 2026, 15:50",
+    "timestamp": 1789141858960,
+    "duration": "8m 40s",
+    "mode": "AI Interview",
+    "score": 96,
+    "status": "Under Review",
+    "notes": "",
+    "summaryPoints": [
+      {
+        "text": "Demonstrated strong proficiency in Frontend Developer domain.",
+        "type": "strength"
+      },
+      {
+        "text": "High communication clarity (9.7 / 10).",
+        "type": "strength"
+      },
+      {
+        "text": "Deep technical problem-solving methodology (9.4 / 10).",
+        "type": "strength"
+      }
+    ],
+    "recommendation": "Strong Hire - Senior Technical Fit",
+    "transcript": [
+      {
+        "text": "Welcome Hina to your AvaHire interview.",
+        "time": "00:01",
+        "roleTag": "AI Interviewer",
+        "speaker": "Ava"
+      },
+      {
+        "text": "Thank you! I have specialized experience in responsive React and state architectures.",
+        "time": "00:09",
+        "roleTag": "Candidate",
+        "speaker": "Candidate"
+      }
+    ],
+    "createdBy": "snehal.harde2935@gmail.com",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "createdAt": "2026-09-11T15:50:58.960Z"
+  }
+]
