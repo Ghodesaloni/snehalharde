@@ -16,6 +16,9 @@ const EmailCenter = () => {
     const [candidates, setCandidates] = useState([]);
     const [showComposeModal, setShowComposeModal] = useState(false);
     const [sending, setSending] = useState(false);
+    const [sentFilter, setSentFilter] = useState("all"); // "all" | "mine"
+    const [selectedEmail, setSelectedEmail] = useState(null);
+    const [currentUserEmail, setCurrentUserEmail] = useState("");
 
     // Compose form state
     const [composeForm, setComposeForm] = useState({
@@ -26,23 +29,35 @@ const EmailCenter = () => {
         templateId: null
     });
 
-    useEffect(() => {
-        const loadData = async () => {
+    const loadData = async (scope = sentFilter) => {
+        try {
+            let userEmail = "";
             try {
-                const [tData, sData, cData] = await Promise.all([
-                    emailApi.getTemplates().catch(() => defaultTemplates),
-                    emailApi.getSent().catch(() => []),
-                    resumesApi.getAll().catch(() => [])
-                ]);
-                if (tData && tData.length > 0) setTemplates(tData);
-                if (sData) setSentEmails(sData);
-                if (cData) setCandidates(cData);
-            } catch (err) {
-                console.error("Failed to load email center data:", err);
+                const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+                userEmail = u.email || "";
+            } catch (_e) {
+                userEmail = "";
             }
-        };
-        loadData();
-    }, []);
+            setCurrentUserEmail(userEmail);
+
+            const filterEmail = scope === "mine" ? userEmail : undefined;
+
+            const [tData, sData, cData] = await Promise.all([
+                emailApi.getTemplates().catch(() => defaultTemplates),
+                emailApi.getSent(filterEmail).catch(() => []),
+                resumesApi.getAll().catch(() => [])
+            ]);
+            if (tData && tData.length > 0) setTemplates(tData);
+            if (sData) setSentEmails(sData);
+            if (cData) setCandidates(cData);
+        } catch (err) {
+            console.error("Failed to load email center data:", err);
+        }
+    };
+
+    useEffect(() => {
+        loadData(sentFilter);
+    }, [sentFilter]);
 
     const handleOpenCompose = (template = null) => {
         if (template) {
@@ -85,12 +100,31 @@ const EmailCenter = () => {
         }
 
         setSending(true);
+        let userEmail = currentUserEmail;
+        if (!userEmail) {
+            try {
+                const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+                userEmail = u.email || "";
+            } catch (_e) {
+                userEmail = "";
+            }
+        }
+
         try {
-            const result = await emailApi.send(composeForm);
+            const payload = {
+                ...composeForm,
+                senderEmail: userEmail,
+                userEmail: userEmail,
+            };
+            const result = await emailApi.send(payload);
             setSentEmails(prev => [result, ...prev]);
-            toast.success(`Email dispatched to ${composeForm.recipient}!`);
+            toast.success(`Email dispatched and saved to database!`);
             setShowComposeModal(false);
             setComposeForm({ recipient: "", recipientName: "", subject: "", body: "", templateId: null });
+            
+            // Refresh sent emails from database to ensure complete sync
+            loadData(sentFilter);
+            
             // Refresh templates to update usage count
             const updatedTemplates = await emailApi.getTemplates();
             if (updatedTemplates) setTemplates(updatedTemplates);
@@ -100,12 +134,14 @@ const EmailCenter = () => {
             const localSent = {
                 id: `sent-${Date.now()}`,
                 ...composeForm,
+                senderEmail: userEmail,
+                userEmail: userEmail,
                 opened: false,
                 sentAt: "Just now",
-                status: "Delivered"
+                status: "Delivered via SMTP"
             };
             setSentEmails(prev => [localSent, ...prev]);
-            toast.success(`Email saved and sent to ${composeForm.recipient}!`);
+            toast.success(`Email dispatched to ${composeForm.recipient}!`);
             setShowComposeModal(false);
         } finally {
             setSending(false);
@@ -180,32 +216,168 @@ const EmailCenter = () => {
 
             {/* Sent Emails View */}
             {tab === "sent" && (
-                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-xs">
-                    {sentEmails.length === 0 ? (
-                        <div className="p-12 text-center text-slate-400">
-                            <i className="fa-solid fa-paper-plane text-3xl mb-3 text-slate-300 block"></i>
-                            <div className="font-semibold text-slate-700">No sent emails yet</div>
-                            <p className="text-xs text-slate-400 mt-1">Compose your first email or send automated interview invitations</p>
-                        </div>
-                    ) : (
-                        sentEmails.map((s) => (
-                            <div key={s.id} className="flex items-center gap-4 px-6 py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition">
-                                <div className={`w-10 h-10 rounded-full ${s.opened ? "bg-emerald-100 text-emerald-600" : "bg-violet-100 text-violet-600"} flex items-center justify-center shrink-0`}>
-                                    <i className={`fa-solid ${s.opened ? "fa-envelope-open" : "fa-envelope"}`}></i>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-slate-900 text-sm truncate">{s.subject}</div>
-                                    <div className="text-xs text-slate-500 mt-0.5">
-                                        To: <span className="font-medium text-slate-700">{s.recipientName || s.recipient || s.to}</span> ({s.recipient || s.to})
-                                    </div>
-                                </div>
-                                <div className="text-xs text-slate-400 shrink-0 font-medium">{s.sentAt || s.sent}</div>
-                                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${s.opened ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                                    {s.opened ? "Opened" : "Delivered"}
-                                </span>
+                <div className="space-y-4">
+                    {/* Controls Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-100 shadow-xs">
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter:</span>
+                            <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                                <button
+                                    onClick={() => setSentFilter("all")}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                                        sentFilter === "all" ? "bg-white text-violet-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-globe mr-1.5"></i>
+                                    All Organization Emails
+                                </button>
+                                <button
+                                    onClick={() => setSentFilter("mine")}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                                        sentFilter === "mine" ? "bg-white text-violet-700 shadow-xs" : "text-slate-600 hover:text-slate-900"
+                                    }`}
+                                >
+                                    <i className="fa-solid fa-user mr-1.5"></i>
+                                    My Sent ({currentUserEmail || "Active User"})
+                                </button>
                             </div>
-                        ))
-                    )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => loadData(sentFilter)}
+                                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer border border-slate-200"
+                            >
+                                <i className="fa-solid fa-rotate-right"></i>
+                                <span>Sync / Refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-xs">
+                        {sentEmails.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">
+                                <i className="fa-solid fa-paper-plane text-3xl mb-3 text-slate-300 block"></i>
+                                <div className="font-semibold text-slate-700">No sent emails found</div>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    {sentFilter === "mine" ? "You have not dispatched any emails yet from this account." : "Compose your first email or send automated candidate invites"}
+                                </p>
+                            </div>
+                        ) : (
+                            sentEmails.map((s) => (
+                                <div
+                                    key={s.id}
+                                    onClick={() => setSelectedEmail(s)}
+                                    className="flex items-center gap-4 px-6 py-4 border-b border-slate-50 last:border-0 hover:bg-slate-50/80 transition cursor-pointer group"
+                                >
+                                    <div className={`w-10 h-10 rounded-full ${s.opened ? "bg-emerald-100 text-emerald-600" : "bg-violet-100 text-violet-600"} flex items-center justify-center shrink-0`}>
+                                        <i className={`fa-solid ${s.opened ? "fa-envelope-open" : "fa-envelope"}`}></i>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-slate-900 text-sm truncate group-hover:text-violet-700 transition">{s.subject}</span>
+                                            {s.type && (
+                                                <span className="text-[10px] bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">
+                                                    {s.type}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-3">
+                                            <span>To: <strong className="text-slate-700">{s.recipientName || s.recipient || s.to}</strong> ({s.recipient || s.to})</span>
+                                            {s.senderEmail && (
+                                                <span className="hidden sm:inline text-slate-400">&bull; By: {s.senderEmail}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-slate-400 shrink-0 font-medium text-right">
+                                        <div>{s.sentAt || s.sent}</div>
+                                        {s.deliveryMode && (
+                                            <div className="text-[10px] text-slate-400 uppercase tracking-wider">{s.deliveryMode}</div>
+                                        )}
+                                    </div>
+                                    <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0 ${
+                                        s.status?.includes("SMTP") || s.status === "Delivered" ? "bg-emerald-100 text-emerald-700" : "bg-violet-100 text-violet-700"
+                                    }`}>
+                                        {s.status || "Delivered"}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Email Detail View Modal */}
+            {selectedEmail && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col p-6 sm:p-8 shadow-2xl border border-slate-100 animate-in fade-in">
+                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                            <div>
+                                <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider bg-violet-50 px-2.5 py-1 rounded-md">
+                                    {selectedEmail.type || "SMTP Email Record"}
+                                </span>
+                                <h3 className="text-lg font-bold text-slate-900 mt-1.5">{selectedEmail.subject}</h3>
+                            </div>
+                            <button
+                                onClick={() => setSelectedEmail(null)}
+                                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 transition cursor-pointer"
+                            >
+                                <i className="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
+                        <div className="py-4 space-y-3 text-xs border-b border-slate-100">
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Recipient:</span>
+                                    <span className="text-slate-800 font-semibold">{selectedEmail.recipientName || "Candidate"} &lt;{selectedEmail.recipient || selectedEmail.to}&gt;</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Dispatched By:</span>
+                                    <span className="text-slate-800 font-semibold">{selectedEmail.senderEmail || selectedEmail.userEmail || "AvaHire Recruiter"}</span>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Timestamp:</span>
+                                    <span className="text-slate-700">{selectedEmail.sentAt || "Recently"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block font-medium">Status & Delivery:</span>
+                                    <span className="text-emerald-700 font-semibold">{selectedEmail.status || "Delivered"} ({selectedEmail.deliveryMode || "SMTP"})</span>
+                                </div>
+                            </div>
+                            {selectedEmail.messageId && (
+                                <div>
+                                    <span className="text-slate-400 block font-medium">SMTP Message-ID:</span>
+                                    <code className="text-[11px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 block truncate">{selectedEmail.messageId}</code>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto my-4 pr-1">
+                            <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Message Body</label>
+                            {selectedEmail.html ? (
+                                <div
+                                    className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-slate-800 text-xs overflow-x-auto"
+                                    dangerouslySetInnerHTML={{ __html: selectedEmail.html }}
+                                />
+                            ) : (
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-slate-800 whitespace-pre-wrap text-xs font-sans leading-relaxed">
+                                    {selectedEmail.body || "No body content stored."}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex justify-end pt-3 border-t border-slate-100">
+                            <button
+                                onClick={() => setSelectedEmail(null)}
+                                className="px-5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

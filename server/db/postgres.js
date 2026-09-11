@@ -137,11 +137,35 @@ async function initTables() {
         );
       `);
 
-      // Create indexes for faster token lookups
+      // 3. SMTP sent emails table for permanent email storage
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.smtp_emails (
+          id SERIAL PRIMARY KEY,
+          message_id VARCHAR(255),
+          recipient VARCHAR(255) NOT NULL,
+          recipient_name VARCHAR(255),
+          sender_email VARCHAR(255),
+          user_email VARCHAR(255),
+          subject TEXT NOT NULL,
+          body TEXT,
+          html TEXT,
+          email_type VARCHAR(100) DEFAULT 'general',
+          template_id VARCHAR(100),
+          status VARCHAR(100) DEFAULT 'Delivered',
+          delivery_mode VARCHAR(100) DEFAULT 'smtp',
+          metadata JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create indexes for faster token and email lookups
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON public.verification_tokens(token);
         CREATE INDEX IF NOT EXISTS idx_verification_tokens_email ON public.verification_tokens(email);
         CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
+        CREATE INDEX IF NOT EXISTS idx_smtp_emails_recipient ON public.smtp_emails(recipient);
+        CREATE INDEX IF NOT EXISTS idx_smtp_emails_user_email ON public.smtp_emails(user_email);
+        CREATE INDEX IF NOT EXISTS idx_smtp_emails_type ON public.smtp_emails(email_type);
       `);
 
       // Sync any registered mirror users to PostgreSQL public.users
@@ -516,6 +540,88 @@ async function getUserByEmail(email) {
   return null;
 }
 
+// Save sent SMTP email to PostgreSQL
+async function saveSmtpEmail({
+  messageId,
+  recipient,
+  recipientName,
+  senderEmail,
+  userEmail,
+  subject,
+  body,
+  html,
+  emailType,
+  templateId,
+  status,
+  deliveryMode,
+  metadata,
+}) {
+  const p = getPool();
+  if (!p) return null;
+  try {
+    const res = await p.query(
+      `INSERT INTO public.smtp_emails 
+        (message_id, recipient, recipient_name, sender_email, user_email, subject, body, html, email_type, template_id, status, delivery_mode, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       RETURNING *;`,
+      [
+        messageId || null,
+        (recipient || "").toLowerCase().trim(),
+        recipientName || "",
+        senderEmail || "",
+        (userEmail || recipient || "").toLowerCase().trim(),
+        subject || "No Subject",
+        body || "",
+        html || null,
+        emailType || "general",
+        templateId ? String(templateId) : null,
+        status || "Delivered",
+        deliveryMode || "smtp",
+        metadata ? JSON.stringify(metadata) : null,
+      ]
+    );
+    return res.rows[0] || null;
+  } catch (err) {
+    console.warn("PostgreSQL saveSmtpEmail notice:", err.message);
+    return null;
+  }
+}
+
+// Retrieve stored SMTP emails from PostgreSQL
+async function getSmtpEmails({ userEmail, recipient, emailType, limit = 100 }) {
+  const p = getPool();
+  if (!p) return [];
+  try {
+    const conditions = [];
+    const values = [];
+
+    if (userEmail) {
+      values.push(userEmail.toLowerCase().trim());
+      conditions.push(`(LOWER(user_email) = $${values.length} OR LOWER(sender_email) = $${values.length} OR LOWER(recipient) = $${values.length})`);
+    }
+
+    if (recipient) {
+      values.push(recipient.toLowerCase().trim());
+      conditions.push(`LOWER(recipient) = $${values.length}`);
+    }
+
+    if (emailType && emailType !== "all") {
+      values.push(emailType);
+      conditions.push(`email_type = $${values.length}`);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    values.push(limit);
+    const queryStr = `SELECT * FROM public.smtp_emails ${whereClause} ORDER BY created_at DESC LIMIT $${values.length};`;
+
+    const res = await p.query(queryStr, values);
+    return res.rows;
+  } catch (err) {
+    console.warn("PostgreSQL getSmtpEmails notice:", err.message);
+    return [];
+  }
+}
+
 // Generic query runner
 async function query(text, params) {
   try {
@@ -539,5 +645,7 @@ module.exports = {
   findVerificationToken,
   consumeVerificationToken,
   getUserByEmail,
+  saveSmtpEmail,
+  getSmtpEmails,
   query,
 };

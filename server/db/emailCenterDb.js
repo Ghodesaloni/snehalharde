@@ -1,4 +1,5 @@
 const { readData, writeData } = require("./dbEngine");
+const postgresDb = require("./postgres");
 
 const TEMPLATES_COLLECTION = "email_templates";
 const SENT_COLLECTION = "email_sent";
@@ -77,31 +78,76 @@ class EmailCenterDatabase {
     return templates[idx];
   }
 
-  getSentEmails() {
-    return readData(SENT_COLLECTION, []);
+  getSentEmails(filters = {}) {
+    let list = readData(SENT_COLLECTION, []);
+    
+    // If all=true, return full list (system / admin level)
+    if (filters.all === true || filters.all === "true") {
+      if (filters.type && filters.type !== "all") {
+        list = list.filter(e => (e.type || "").toLowerCase() === filters.type.toLowerCase());
+      }
+      return list;
+    }
+
+    if (filters.userEmail) {
+      const emailLower = filters.userEmail.toLowerCase().trim();
+      const isDemo = emailLower === "hr@avahire.ai" || emailLower === "admin@avahire.ai";
+      if (!isDemo) {
+        list = list.filter(e =>
+          (e.senderEmail && e.senderEmail.toLowerCase() === emailLower) ||
+          (e.userEmail && e.userEmail.toLowerCase() === emailLower) ||
+          (e.createdBy && e.createdBy.toLowerCase() === emailLower) ||
+          (e.recipient && e.recipient.toLowerCase() === emailLower)
+        );
+      }
+    }
+
+    if (filters.type && filters.type !== "all") {
+      list = list.filter(e => (e.type || "").toLowerCase() === filters.type.toLowerCase());
+    }
+
+    return list;
   }
 
-  sendEmail(emailData) {
-    const sentList = this.getSentEmails();
+  storeSmtpEmail(emailData) {
+    const sentList = readData(SENT_COLLECTION, []);
+    const sender = emailData.senderEmail || emailData.userEmail || emailData.createdBy || process.env.SMTP_USER || "AvaHire Security";
+    const recipient = (emailData.recipient || emailData.to || "").trim();
+
+    // Prevent duplicate storage of same message within short window
+    if (emailData.messageId) {
+      const existing = sentList.find(e => e.messageId === emailData.messageId);
+      if (existing) return existing;
+    }
+
     const newSent = {
-      id: `sent-${Date.now()}`,
-      recipient: emailData.recipient || emailData.to,
-      recipientName: emailData.recipientName || emailData.name || "Candidate",
+      id: emailData.id || `smtp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      recipient,
+      recipientName: emailData.recipientName || emailData.name || recipient.split("@")[0] || "Recipient",
       subject: emailData.subject || "Update from AvaHire",
       body: emailData.body || "",
+      html: emailData.html || null,
+      type: emailData.type || emailData.emailType || "Candidate Communication",
       templateId: emailData.templateId || null,
+      senderEmail: sender,
+      userEmail: (emailData.userEmail || sender || recipient).trim(),
+      createdBy: sender,
       opened: false,
       openedAt: null,
-      sentAt: new Date().toLocaleDateString("en-GB", {
+      sentAt: emailData.sentAt || new Date().toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit"
       }),
-      status: "Delivered",
+      status: emailData.status || "Delivered",
+      deliveryMode: emailData.deliveryMode || "live_smtp",
+      messageId: emailData.messageId || null,
+      metadata: emailData.metadata || null,
       createdAt: new Date().toISOString()
     };
+
     sentList.unshift(newSent);
     writeData(SENT_COLLECTION, sentList);
 
@@ -115,7 +161,36 @@ class EmailCenterDatabase {
       }
     }
 
+    // Persist to PostgreSQL database
+    try {
+      postgresDb.saveSmtpEmail({
+        messageId: newSent.messageId,
+        recipient: newSent.recipient,
+        recipientName: newSent.recipientName,
+        senderEmail: newSent.senderEmail,
+        userEmail: newSent.userEmail,
+        subject: newSent.subject,
+        body: newSent.body,
+        html: newSent.html,
+        emailType: newSent.type,
+        templateId: newSent.templateId,
+        status: newSent.status,
+        deliveryMode: newSent.deliveryMode,
+        metadata: newSent.metadata,
+      }).catch(err => console.warn("PostgreSQL saveSmtpEmail async warning:", err.message));
+    } catch (_pgErr) {
+      // JSON storage succeeded
+    }
+
     return newSent;
+  }
+
+  sendEmail(emailData) {
+    return this.storeSmtpEmail({
+      ...emailData,
+      type: emailData.type || "Candidate Communication",
+      deliveryMode: "smtp"
+    });
   }
 }
 
