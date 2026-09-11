@@ -1,341 +1,413 @@
 [
   {
-    "id": "c1",
-    "name": "Snehal Harde",
-    "email": "snehal@email.com",
-    "phone": "+91 98765 43210",
-    "location": "Nagpur, Maharashtra, India",
-    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    "role": "Python Developer",
+    "id": "c-1789031387136",
+    "name": "Resumeds",
+    "email": "resumeds@example.com",
+    "phone": "+91 9820901817",
+    "location": "Bangalore, India",
+    "avatar": "",
+    "role": "Data Scientist",
+    "field": "Data Science",
+    "domain": "Data Science",
     "experience": "2 Years",
     "expYears": 2,
     "skills": [
       "Python",
-      "Flask",
-      "SQL"
+      "NLP",
+      "Pandas"
     ],
-    "extraSkillsCount": 3,
+    "extraSkillsCount": 2,
     "allSkills": [
       "Python",
-      "Flask",
-      "SQL",
-      "REST API",
-      "HTML",
-      "CSS"
+      "NLP",
+      "Pandas",
+      "Machine Learning",
+      "SQL"
     ],
-    "atsScore": 57,
-    "matchScore": 50,
-    "skillsMatchPct": 40,
-    "status": "Rejected",
-    "uploadedDate": "20 May 2025",
-    "jobId": "job-2",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "Python Developer Intern at ABC Pvt. Ltd.",
-    "education": "B.Tech in Computer Science",
-    "matchedSkills": [
-      "Python",
-      "PostgreSQL"
-    ],
-    "missingSkills": [
-      "FastAPI",
-      "Django",
-      "Docker"
-    ],
-    "keyPoints": {
-      "strengths": [
-        "Direct alignment in required competencies: Python, PostgreSQL.",
-        "Meets required experience threshold with 2 Years.",
-        "Education: B.Tech in Computer Science."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: FastAPI, Django, Docker."
-      ],
-      "experienceMatch": "Candidate possesses 2 years of experience, meeting the required 2 years threshold.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 3 essential skills with an ATS score of 57/100."
-    },
-    "summary": "Snehal Harde scored 57/100 ATS match for the Python Developer position (Rejected). Matches 2 out of 5 required skills (40% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:25.762Z"
+    "atsScore": 88,
+    "matchScore": 85,
+    "skillsMatchPct": 85,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-1789031092832",
+    "targetJobId": "job-1789031092832",
+    "targetJobTitle": "data science",
+    "resumeFileName": "resumeds.pdf",
+    "createdAt": "2026-09-10T09:09:47.136Z",
+    "updatedAt": "2026-09-10T09:10:38.622Z"
   },
   {
-    "id": "c2",
-    "name": "Rohan Verma",
-    "email": "rohanv@email.com",
-    "phone": "+91 98123 45678",
-    "location": "Bangalore, Karnataka, India",
-    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    "role": "Full Stack Developer",
+    "id": "c-ds-001",
+    "name": "Aryan Sharma",
+    "email": "aryan.sharma@example.com",
+    "phone": "+91 9845123049",
+    "location": "Bangalore, India",
+    "avatar": "",
+    "role": "Senior Data Scientist",
+    "field": "Data Science",
+    "domain": "Data Science",
     "experience": "4 Years",
     "expYears": 4,
     "skills": [
-      "React",
-      "Node.js",
-      "MongoDB"
-    ],
-    "extraSkillsCount": 2,
-    "allSkills": [
-      "React",
-      "Node.js",
-      "MongoDB",
-      "TypeScript",
-      "Tailwind"
-    ],
-    "atsScore": 35,
-    "matchScore": 21,
-    "skillsMatchPct": 0,
-    "status": "Rejected",
-    "uploadedDate": "19 May 2025",
-    "jobId": "job-1",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "Backend Software Engineer at Infosys",
-    "education": "B.Tech in Computer Science",
-    "matchedSkills": [],
-    "missingSkills": [
+      "Machine Learning",
       "Python",
-      "FastAPI",
-      "Django",
-      "PostgreSQL",
-      "Docker"
+      "TensorFlow"
     ],
-    "keyPoints": {
-      "strengths": [
-        "Meets required experience threshold with 4 Years.",
-        "Education: B.Tech in Computer Science."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker."
-      ],
-      "experienceMatch": "Candidate has 4 years of experience, comfortably exceeding the required 2+ years.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
-    },
-    "summary": "Rohan Verma scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:30.065Z"
+    "extraSkillsCount": 4,
+    "allSkills": [
+      "Machine Learning",
+      "Python",
+      "TensorFlow",
+      "PyTorch",
+      "Pandas",
+      "SQL",
+      "Deep Learning"
+    ],
+    "atsScore": 92,
+    "matchScore": 90,
+    "skillsMatchPct": 94,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-1789031092832",
+    "targetJobId": "job-1789031092832",
+    "targetJobTitle": "data science",
+    "resumeFileName": "aryan_sharma_ds_resume.pdf",
+    "createdAt": "2026-09-10T09:12:00.000Z"
   },
   {
-    "id": "c3",
-    "name": "Aisha Khan",
-    "email": "aisha.k@email.com",
-    "phone": "+91 97234 56789",
-    "location": "Mumbai, Maharashtra, India",
-    "avatar": "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-    "role": "UI/UX Product Designer",
-    "experience": "3 Years",
+    "id": "c-ds-002",
+    "name": "Sneha Patel",
+    "email": "sneha.patel@example.com",
+    "phone": "+91 9712348501",
+    "location": "Hyderabad, India",
+    "avatar": "",
+    "role": "Machine Learning Engineer",
+    "field": "Data Science",
+    "domain": "Data Science",
+    "experience": "2.5 Years",
     "expYears": 3,
     "skills": [
-      "Figma",
-      "Design Systems",
-      "Prototyping"
-    ],
-    "extraSkillsCount": 2,
-    "allSkills": [
-      "Figma",
-      "Design Systems",
-      "Prototyping",
-      "User Research",
-      "Wireframing"
-    ],
-    "atsScore": 35,
-    "matchScore": 21,
-    "skillsMatchPct": 0,
-    "status": "Rejected",
-    "uploadedDate": "18 May 2025",
-    "jobId": "job-3",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "UI/UX Designer at Design Studio",
-    "education": "B.Des in Visual Communication",
-    "matchedSkills": [],
-    "missingSkills": [
       "Python",
-      "FastAPI",
-      "Django",
-      "PostgreSQL",
-      "Docker"
-    ],
-    "keyPoints": {
-      "strengths": [
-        "Meets required experience threshold with 3 Years.",
-        "Education: B.Des in Visual Communication."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker."
-      ],
-      "experienceMatch": "Candidate has 3 years of experience, comfortably exceeding the required 2+ years.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
-    },
-    "summary": "Aisha Khan scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:30.282Z"
-  },
-  {
-    "id": "c4",
-    "name": "Vikram Malhotra",
-    "email": "vikram.m@email.com",
-    "phone": "+91 96345 67890",
-    "location": "Hyderabad, Telangana, India",
-    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
-    "role": "DevOps Engineer",
-    "experience": "5 Years",
-    "expYears": 5,
-    "skills": [
-      "Kubernetes",
-      "AWS",
-      "Docker"
+      "Scikit-Learn",
+      "NLP"
     ],
     "extraSkillsCount": 3,
     "allSkills": [
-      "Kubernetes",
-      "AWS",
-      "Docker",
-      "Terraform",
-      "CI/CD",
-      "Linux"
-    ],
-    "atsScore": 37,
-    "matchScore": 30,
-    "skillsMatchPct": 20,
-    "status": "Rejected",
-    "uploadedDate": "17 May 2025",
-    "jobId": "job-4",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "Senior Cloud & DevOps Engineer at TCS",
-    "education": "M.Tech in Software Systems",
-    "matchedSkills": [
-      "Docker"
-    ],
-    "missingSkills": [
       "Python",
-      "FastAPI",
-      "Django",
-      "PostgreSQL"
+      "Scikit-Learn",
+      "NLP",
+      "Generative AI",
+      "Pandas",
+      "SQL"
     ],
-    "keyPoints": {
-      "strengths": [
-        "Direct alignment in required competencies: Docker.",
-        "Meets required experience threshold with 5 Years.",
-        "Education: M.Tech in Software Systems."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL."
-      ],
-      "experienceMatch": "Candidate has 5 years of experience, comfortably exceeding the required 2+ years.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 4 essential skills with an ATS score of 37/100."
-    },
-    "summary": "Vikram Malhotra scored 37/100 ATS match for the Python Developer position (Rejected). Matches 1 out of 5 required skills (20% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:30.497Z"
+    "atsScore": 79,
+    "matchScore": 75,
+    "skillsMatchPct": 78,
+    "status": "Review",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-1789031092832",
+    "targetJobId": "job-1789031092832",
+    "targetJobTitle": "data science",
+    "resumeFileName": "sneha_patel_ml_resume.pdf",
+    "createdAt": "2026-09-10T09:14:00.000Z"
   },
   {
-    "id": "c5",
-    "name": "Pooja Hegde",
-    "email": "pooja.h@email.com",
-    "phone": "+91 95456 78901",
-    "location": "Pune, Maharashtra, India",
-    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    "role": "HR Talent Acquisition Specialist",
+    "id": "c-mech-001",
+    "name": "Vikram Deshmukh",
+    "email": "vikram.deshmukh@example.com",
+    "phone": "+91 9823156701",
+    "location": "Pune, India",
+    "avatar": "",
+    "role": "Mechanical Design Engineer",
+    "field": "Mechanical",
+    "domain": "Mechanical",
+    "experience": "4 Years",
+    "expYears": 4,
+    "skills": [
+      "SolidWorks",
+      "AutoCAD",
+      "CATIA"
+    ],
+    "extraSkillsCount": 4,
+    "allSkills": [
+      "SolidWorks",
+      "AutoCAD",
+      "CATIA",
+      "ANSYS",
+      "FEA",
+      "GD&T",
+      "Thermodynamics"
+    ],
+    "atsScore": 91,
+    "matchScore": 88,
+    "skillsMatchPct": 92,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-mech-001",
+    "targetJobId": "job-mech-001",
+    "targetJobTitle": "Mechanical Design Engineer",
+    "resumeFileName": "vikram_deshmukh_mechanical_resume.pdf",
+    "createdAt": "2026-09-10T09:16:00.000Z"
+  },
+  {
+    "id": "c-mech-002",
+    "name": "Rahul Mehta",
+    "email": "rahul.mehta@example.com",
+    "phone": "+91 9876543210",
+    "location": "Chennai, India",
+    "avatar": "",
+    "role": "Thermal & Manufacturing Engineer",
+    "field": "Mechanical",
+    "domain": "Mechanical",
     "experience": "2 Years",
     "expYears": 2,
     "skills": [
-      "Sourcing",
-      "Screening",
-      "ATS"
+      "AutoCAD",
+      "GD&T",
+      "CNC"
     ],
-    "extraSkillsCount": 1,
+    "extraSkillsCount": 3,
     "allSkills": [
-      "Sourcing",
-      "Screening",
-      "ATS",
-      "Talent Engagement"
+      "AutoCAD",
+      "GD&T",
+      "CNC",
+      "Manufacturing",
+      "Fluid Mechanics",
+      "SolidWorks"
     ],
-    "atsScore": 35,
-    "matchScore": 21,
-    "skillsMatchPct": 0,
-    "status": "Rejected",
-    "uploadedDate": "16 May 2025",
-    "jobId": "job-5",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "HR Specialist at Global Tech",
-    "education": "MBA in Human Resources",
-    "matchedSkills": [],
-    "missingSkills": [
-      "Python",
-      "FastAPI",
-      "Django",
-      "PostgreSQL",
-      "Docker"
-    ],
-    "keyPoints": {
-      "strengths": [
-        "Meets required experience threshold with 2 Years.",
-        "Education: MBA in Human Resources."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: Python, FastAPI, Django, PostgreSQL, Docker.",
-        "Severe domain mismatch: candidate background (HR Talent Acquisition Specialist) differs from target role (Python Developer)."
-      ],
-      "experienceMatch": "Candidate possesses 2 years of experience, meeting the required 2 years threshold.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 5 essential skills with an ATS score of 35/100."
-    },
-    "summary": "Pooja Hegde scored 35/100 ATS match for the Python Developer position (Rejected). Matches 0 out of 5 required skills (0% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:30.706Z"
+    "atsScore": 76,
+    "matchScore": 72,
+    "skillsMatchPct": 75,
+    "status": "Review",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-mech-001",
+    "targetJobId": "job-mech-001",
+    "targetJobTitle": "Mechanical Design Engineer",
+    "resumeFileName": "rahul_mehta_mech_resume.pdf",
+    "createdAt": "2026-09-10T09:17:00.000Z"
   },
   {
-    "id": "c6",
-    "name": "Ananya Iyer",
-    "email": "ananya.i@email.com",
-    "phone": "+91 94567 89012",
-    "location": "Chennai, Tamil Nadu, India",
-    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    "role": "Java Backend Engineer",
-    "experience": "6 Years",
-    "expYears": 6,
+    "id": "c-se-001",
+    "name": "Rohan Gupta",
+    "email": "rohan.gupta@example.com",
+    "phone": "+91 9988776655",
+    "location": "Bangalore, India",
+    "avatar": "",
+    "role": "Senior Full Stack Engineer",
+    "field": "Software Engineer",
+    "domain": "Software Engineer",
+    "experience": "5 Years",
+    "expYears": 5,
+    "skills": [
+      "React",
+      "Node.js",
+      "TypeScript"
+    ],
+    "extraSkillsCount": 4,
+    "allSkills": [
+      "React",
+      "Node.js",
+      "TypeScript",
+      "PostgreSQL",
+      "Docker",
+      "AWS",
+      "Next.js"
+    ],
+    "atsScore": 94,
+    "matchScore": 92,
+    "skillsMatchPct": 96,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-se-001",
+    "targetJobId": "job-se-001",
+    "targetJobTitle": "Senior Full Stack Software Engineer",
+    "resumeFileName": "rohan_gupta_fullstack_resume.pdf",
+    "createdAt": "2026-09-10T09:18:00.000Z"
+  },
+  {
+    "id": "c-se-002",
+    "name": "Priya Nair",
+    "email": "priya.nair@example.com",
+    "phone": "+91 9745612345",
+    "location": "Kochi, India",
+    "avatar": "",
+    "role": "Backend Software Engineer",
+    "field": "Software Engineer",
+    "domain": "Software Engineer",
+    "experience": "3 Years",
+    "expYears": 3,
     "skills": [
       "Java",
       "Spring Boot",
       "Microservices"
     ],
-    "extraSkillsCount": 4,
+    "extraSkillsCount": 3,
     "allSkills": [
       "Java",
       "Spring Boot",
       "Microservices",
-      "Kafka",
       "PostgreSQL",
-      "Docker"
+      "Docker",
+      "Kafka"
     ],
-    "atsScore": 50,
-    "matchScore": 46,
-    "skillsMatchPct": 40,
-    "status": "Rejected",
-    "uploadedDate": "15 May 2025",
-    "jobId": "job-1",
-    "targetJobId": "job-2",
-    "targetJobTitle": "Python Developer",
-    "currentRole": "Senior Java Developer at Wipro",
-    "education": "B.Tech in Computer Science",
-    "matchedSkills": [
-      "PostgreSQL",
-      "Docker"
+    "atsScore": 82,
+    "matchScore": 80,
+    "skillsMatchPct": 84,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-se-001",
+    "targetJobId": "job-se-001",
+    "targetJobTitle": "Senior Full Stack Software Engineer",
+    "resumeFileName": "priya_nair_backend_resume.pdf",
+    "createdAt": "2026-09-10T09:19:00.000Z"
+  },
+  {
+    "id": "c-fin-001",
+    "name": "Ananya Sengupta",
+    "email": "ananya.sengupta@example.com",
+    "phone": "+91 9811223344",
+    "location": "Mumbai, India",
+    "avatar": "",
+    "role": "Corporate Financial Analyst",
+    "field": "Finance",
+    "domain": "Finance",
+    "experience": "3.5 Years",
+    "expYears": 4,
+    "skills": [
+      "Financial Modeling",
+      "Valuation",
+      "Corporate Finance"
     ],
-    "missingSkills": [
-      "Python",
-      "FastAPI",
-      "Django"
+    "extraSkillsCount": 4,
+    "allSkills": [
+      "Financial Modeling",
+      "Valuation",
+      "Corporate Finance",
+      "Accounting",
+      "SAP FICO",
+      "CFA",
+      "Budgeting"
     ],
-    "keyPoints": {
-      "strengths": [
-        "Direct alignment in required competencies: PostgreSQL, Docker.",
-        "Meets required experience threshold with 6 Years.",
-        "Education: B.Tech in Computer Science."
-      ],
-      "missingSkills": [
-        "Missing required skills for this JD: Python, FastAPI, Django."
-      ],
-      "experienceMatch": "Candidate has 6 years of experience, comfortably exceeding the required 2+ years.",
-      "verdict": "Rejected: Candidate does not meet the minimum criteria for Python Developer. Missing 3 essential skills with an ATS score of 50/100."
-    },
-    "summary": "Ananya Iyer scored 50/100 ATS match for the Python Developer position (Rejected). Matches 2 out of 5 required skills (40% skill overlap).",
-    "updatedAt": "2026-09-08T19:06:31.018Z"
+    "atsScore": 89,
+    "matchScore": 87,
+    "skillsMatchPct": 90,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-fin-001",
+    "targetJobId": "job-fin-001",
+    "targetJobTitle": "Financial Analyst - Corporate FP&A",
+    "resumeFileName": "ananya_sengupta_finance_resume.pdf",
+    "createdAt": "2026-09-10T09:20:00.000Z"
+  },
+  {
+    "id": "c-fin-002",
+    "name": "Rajesh Kumar",
+    "email": "rajesh.kumar@example.com",
+    "phone": "+91 9833445566",
+    "location": "Delhi, India",
+    "avatar": "",
+    "role": "Senior Accountant & Auditor",
+    "field": "Finance",
+    "domain": "Finance",
+    "experience": "5 Years",
+    "expYears": 5,
+    "skills": [
+      "Accounting",
+      "Auditing",
+      "Taxation"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "Accounting",
+      "Auditing",
+      "Taxation",
+      "Tally",
+      "Balance Sheet",
+      "P&L"
+    ],
+    "atsScore": 75,
+    "matchScore": 70,
+    "skillsMatchPct": 74,
+    "status": "Review",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-fin-001",
+    "targetJobId": "job-fin-001",
+    "targetJobTitle": "Financial Analyst - Corporate FP&A",
+    "resumeFileName": "rajesh_kumar_accounting_resume.pdf",
+    "createdAt": "2026-09-10T09:21:00.000Z"
+  },
+  {
+    "id": "c-ana-001",
+    "name": "Meera Iyer",
+    "email": "meera.iyer@example.com",
+    "phone": "+91 9900112233",
+    "location": "Hyderabad, India",
+    "avatar": "",
+    "role": "Lead Business & Data Analyst",
+    "field": "Analyst",
+    "domain": "Analyst",
+    "experience": "4 Years",
+    "expYears": 4,
+    "skills": [
+      "Tableau",
+      "Power BI",
+      "SQL"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "Tableau",
+      "Power BI",
+      "SQL",
+      "Data Analysis",
+      "KPI Dashboards",
+      "ETL"
+    ],
+    "atsScore": 93,
+    "matchScore": 91,
+    "skillsMatchPct": 95,
+    "status": "Shortlisted",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-ana-001",
+    "targetJobId": "job-ana-001",
+    "targetJobTitle": "Lead Business & Data Analyst",
+    "resumeFileName": "meera_iyer_bi_analyst_resume.pdf",
+    "createdAt": "2026-09-10T09:22:00.000Z"
+  },
+  {
+    "id": "c-ana-002",
+    "name": "Karan Varma",
+    "email": "karan.varma@example.com",
+    "phone": "+91 9812345678",
+    "location": "Gurgaon, India",
+    "avatar": "",
+    "role": "Operations & BI Analyst",
+    "field": "Analyst",
+    "domain": "Analyst",
+    "experience": "2 Years",
+    "expYears": 2,
+    "skills": [
+      "SQL",
+      "Data Analysis",
+      "Reporting"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "SQL",
+      "Data Analysis",
+      "Reporting",
+      "Excel",
+      "Business Intelligence",
+      "Tableau"
+    ],
+    "atsScore": 78,
+    "matchScore": 74,
+    "skillsMatchPct": 76,
+    "status": "Review",
+    "uploadedDate": "10 Sept 2026",
+    "jobId": "job-ana-001",
+    "targetJobId": "job-ana-001",
+    "targetJobTitle": "Lead Business & Data Analyst",
+    "resumeFileName": "karan_varma_operations_analyst_resume.pdf",
+    "createdAt": "2026-09-10T09:23:00.000Z"
   }
 ]

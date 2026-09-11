@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, Database } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, CheckCircle2, ShieldCheck, ExternalLink, Loader2 } from "lucide-react";
 import AvaHireLogo from "@/components/AvaHireLogo";
 import { toast } from "sonner";
 import { authApi } from "@/services/api";
@@ -64,6 +64,8 @@ const Register = () => {
   const [show, setShow] = useState(false);
   const [show2, setShow2] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [verificationSentData, setVerificationSentData] = useState(null);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -92,44 +94,60 @@ const Register = () => {
       return;
     }
     if (!form.agree) {
-      toast.error("Please accept the terms and conditions");
+      toast.error("Please accept the terms & conditions");
       return;
     }
 
     setLoading(true);
     try {
+      // Call server-side registration route
       const response = await authApi.register({
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
+        fullName: form.fullName,
+        email: form.email,
         password: form.password,
-        company: form.company.trim() || "TechCorp Solutions",
-        designation: form.designation.trim() || "HR Administrator",
-        phone: form.phone.trim() || "+91 98000 00000",
+        company: form.company,
+        website: form.website,
+        designation: form.designation,
+        phone: form.phone,
       });
 
-      if (response && response.success) {
-        const userData = response.data;
-        const authToken = response.token || userData.uid;
+      // Save user info to local state for convenience
+      localStorage.setItem("avahire_user", JSON.stringify({
+        name: form.fullName,
+        email: form.email,
+        company: form.company,
+        designation: form.designation,
+      }));
 
-        localStorage.setItem("avahire_user", JSON.stringify(userData));
-        localStorage.setItem("avahire_token", authToken);
-        localStorage.setItem("avahire_remember_email", form.email.trim());
-
-        toast.success("HR Account registered successfully! 🎉", {
-          description: `Welcome, ${userData.name}! Your workspace is ready.`,
-        });
-
-        setTimeout(() => navigate("/app/dashboard"), 350);
-      } else {
-        const err = response?.error || "Registration failed. Please check your details.";
-        toast.error(err);
-      }
+      toast.success("Account registered! Verification email sent via SMTP 🎉");
+      setVerificationSentData(response.data);
     } catch (err) {
       console.error("Registration error:", err);
-      const msg = err.response?.data?.error || "Failed to create account in database. Please try again.";
+      const msg = err.response?.data?.error || "Registration failed. Please check your details and try again.";
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!form.email && (!verificationSentData || !verificationSentData.email)) return;
+    const targetEmail = verificationSentData?.email || form.email;
+    setResending(true);
+    try {
+      const res = await authApi.resendVerification(targetEmail);
+      toast.success("New verification email dispatched via SMTP!");
+      if (res.verificationLink) {
+        setVerificationSentData((prev) => ({
+          ...prev,
+          verificationLink: res.verificationLink,
+          token: res.token,
+        }));
+      }
+    } catch (err) {
+      toast.error("Could not resend email: " + (err.response?.data?.error || err.message));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -146,76 +164,146 @@ const Register = () => {
           ]}
         />
 
-        <form
-          onSubmit={submit}
-          data-testid="register-form"
-          className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12"
-        >
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-extrabold text-slate-900">Create Your HR Account</h2>
-            <p className="text-slate-500 mt-1">Fill in the details below to get started</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Field label="Full Name" icon="fa-user" placeholder="Enter full name" value={form.fullName} onChange={set("fullName")} testId="reg-fullname" />
-            <Field label="Work Email" icon="fa-envelope" placeholder="Enter work email" type="email" value={form.email} onChange={set("email")} testId="reg-email" />
-            <Field label="Company Name" icon="fa-building" placeholder="Enter company name" value={form.company} onChange={set("company")} testId="reg-company" />
-            <Field label="Company Website (Optional)" icon="fa-globe" placeholder="Enter website" value={form.website} onChange={set("website")} testId="reg-website" />
-            <Field label="Designation" icon="fa-briefcase" placeholder="Enter your designation" value={form.designation} onChange={set("designation")} testId="reg-designation" />
+        {verificationSentData ? (
+          <div
+            data-testid="verification-sent-card"
+            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12 flex flex-col justify-between"
+          >
             <div>
-              <label className="block text-sm font-semibold text-slate-800 mb-2">Phone Number</label>
-              <div className="flex gap-2">
-                <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50">
-                  <span className="text-base">🇮🇳</span>
-                  <span className="text-sm font-medium text-slate-700">+91</span>
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-6 border border-emerald-200">
+                <CheckCircle2 size={36} />
+              </div>
+
+              <div className="text-center mb-6">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 mb-3">
+                  <ShieldCheck size={14} /> One-Time Token Stored in PostgreSQL
+                </span>
+                <h2 className="text-2xl lg:text-3xl font-extrabold text-slate-900">Check Your Gmail Inbox</h2>
+                <p className="text-slate-600 mt-2 text-sm max-w-md mx-auto">
+                  A one-time secure verification token has been generated and sent via SMTP to:
+                </p>
+                <div className="mt-2 inline-block px-4 py-1.5 bg-slate-100 rounded-lg text-slate-800 font-bold text-sm">
+                  {verificationSentData.email}
                 </div>
-                <input
-                  data-testid="reg-phone"
-                  value={form.phone}
-                  onChange={set("phone")}
-                  placeholder="Enter phone number"
-                  className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
-                />
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 space-y-3">
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-semibold text-slate-700">Security Details:</span>
+                  <span className="text-emerald-600 font-medium">Valid for 24 Hours &bull; Single-Use</span>
+                </div>
+                <div className="text-xs text-slate-500">
+                  <strong>Secure Verification Token:</strong>
+                  <div className="mt-1 font-mono text-xs bg-white p-2.5 rounded-lg border border-slate-200 text-slate-700 break-all select-all">
+                    {verificationSentData.token}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {verificationSentData.verificationLink && (
+                  <a
+                    href={verificationSentData.verificationLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 transition"
+                  >
+                    <span>Click to Test Verification Link</span>
+                    <ExternalLink size={16} />
+                  </a>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="w-full py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+                >
+                  {resending ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Mail size={16} />}
+                  <span>{resending ? "Resending via SMTP..." : "Resend Verification Email via SMTP"}</span>
+                </button>
               </div>
             </div>
+
+            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-sm">
+              <button
+                type="button"
+                onClick={() => setVerificationSentData(null)}
+                className="text-slate-500 hover:text-slate-800 font-medium"
+              >
+                &larr; Back to Register
+              </button>
+              <Link to="/login" className="text-violet-600 font-semibold hover:underline">
+                Proceed to Login &rarr;
+              </Link>
+            </div>
           </div>
-
-          <PasswordField label="Password" icon={<Lock size={16} />} value={form.password} onChange={set("password")} show={show} setShow={setShow} testId="reg-password" placeholder="Create a password" />
-          <PasswordField label="Confirm Password" icon={<Lock size={16} />} value={form.confirm} onChange={set("confirm")} show={show2} setShow={setShow2} testId="reg-confirm" placeholder="Confirm your password" />
-
-          <label className="mt-5 flex items-center gap-2 text-sm text-slate-600">
-            <input type="checkbox" checked={form.agree} onChange={set("agree")} data-testid="reg-agree" className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
-            I agree to the <a href="#" className="text-violet-600 font-semibold">Terms & Conditions</a> and <a href="#" className="text-violet-600 font-semibold">Privacy Policy</a>
-          </label>
-
-          <button
-            type="submit"
-            disabled={loading}
-            data-testid="reg-submit"
-            className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-75"
+        ) : (
+          <form
+            onSubmit={submit}
+            data-testid="register-form"
+            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12"
           >
-            {loading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                <span>Creating Account...</span>
-              </>
-            ) : (
-              <span>Create HR Account</span>
-            )}
-          </button>
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-extrabold text-slate-900">Create Your HR Account</h2>
+              <p className="text-slate-500 mt-1">Fill in the details below to get started</p>
+            </div>
 
-          <div className="my-5 flex items-center gap-3 text-sm text-slate-400">
-            <div className="flex-1 h-px bg-slate-200" />or<div className="flex-1 h-px bg-slate-200" />
-          </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <Field label="Full Name" icon="fa-user" placeholder="Enter full name" value={form.fullName} onChange={set("fullName")} testId="reg-fullname" />
+              <Field label="Work Email (Gmail Address)" icon="fa-envelope" placeholder="e.g. yourname@gmail.com" type="email" value={form.email} onChange={set("email")} testId="reg-email" />
+              <Field label="Company Name" icon="fa-building" placeholder="Enter company name" value={form.company} onChange={set("company")} testId="reg-company" />
+              <Field label="Company Website (Optional)" icon="fa-globe" placeholder="Enter website" value={form.website} onChange={set("website")} testId="reg-website" />
+              <Field label="Designation" icon="fa-briefcase" placeholder="Enter your designation" value={form.designation} onChange={set("designation")} testId="reg-designation" />
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-2">Phone Number</label>
+                <div className="flex gap-2">
+                  <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50">
+                    <span className="text-base">🇮🇳</span>
+                    <span className="text-sm font-medium text-slate-700">+91</span>
+                  </div>
+                  <input
+                    data-testid="reg-phone"
+                    value={form.phone}
+                    onChange={set("phone")}
+                    placeholder="Enter phone number"
+                    className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
 
-          <button type="button" className="w-full py-3.5 rounded-xl border border-slate-200 font-semibold text-slate-800 flex items-center justify-center gap-3 hover:border-violet-400 transition">
-            <GoogleIcon /> Register with Google
-          </button>
+            <PasswordField label="Password" icon={<Lock size={16} />} value={form.password} onChange={set("password")} show={show} setShow={setShow} testId="reg-password" placeholder="Create a password" />
+            <PasswordField label="Confirm Password" icon={<Lock size={16} />} value={form.confirm} onChange={set("confirm")} show={show2} setShow={setShow2} testId="reg-confirm" placeholder="Confirm your password" />
 
-          <div className="mt-5 text-center text-sm text-slate-600">
-            Already have an account? <Link to="/login" className="text-violet-600 font-semibold">Login</Link>
-          </div>
-        </form>
+            <label className="mt-5 flex items-center gap-2 text-sm text-slate-600">
+              <input type="checkbox" checked={form.agree} onChange={set("agree")} data-testid="reg-agree" className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+              I agree to the <a href="#" className="text-violet-600 font-semibold">Terms & Conditions</a> and <a href="#" className="text-violet-600 font-semibold">Privacy Policy</a>
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              data-testid="reg-submit"
+              className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+            >
+              {loading && <Loader2 size={18} className="animate-spin" />}
+              <span>{loading ? "Generating Secure Token & Sending Email..." : "Register"}</span>
+            </button>
+
+            <div className="my-5 flex items-center gap-3 text-sm text-slate-400">
+              <div className="flex-1 h-px bg-slate-200" />or<div className="flex-1 h-px bg-slate-200" />
+            </div>
+
+            <button type="button" className="w-full py-3.5 rounded-xl border border-slate-200 font-semibold text-slate-800 flex items-center justify-center gap-3 hover:border-violet-400 transition">
+              <GoogleIcon /> Register with Google
+            </button>
+
+            <div className="mt-5 text-center text-sm text-slate-600">
+              Already have an account? <Link to="/login" className="text-violet-600 font-semibold">Login</Link>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );

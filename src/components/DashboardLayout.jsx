@@ -32,74 +32,7 @@ const menu = [
     { to: "/app/settings", label: "Settings", icon: "fa-gear" },
 ];
 
-const initialNotifications = [
-    {
-        id: 1,
-        title: "AI Interview Completed",
-        desc: "Snehal Harde achieved an overall match score of 92% for Python Developer.",
-        time: "10 mins ago",
-        unread: true,
-        type: "interviews",
-        icon: Video,
-        iconBg: "bg-emerald-50 text-emerald-600 border border-emerald-100",
-        link: "/app/resumes"
-    },
-    {
-        id: 2,
-        title: "14 Resumes Screened",
-        desc: "AI has screened 14 applicants for Senior Software Engineer.",
-        time: "45 mins ago",
-        unread: true,
-        type: "resumes",
-        icon: FileText,
-        iconBg: "bg-blue-50 text-blue-600 border border-blue-100",
-        link: "/app/resumes"
-    },
-    {
-        id: 3,
-        title: "Upcoming Technical Round",
-        desc: "Round 2 with Rohan Verma scheduled tomorrow at 2:00 PM IST.",
-        time: "2 hours ago",
-        unread: true,
-        type: "interviews",
-        icon: Calendar,
-        iconBg: "bg-violet-50 text-violet-600 border border-violet-100",
-        link: "/app/interviews"
-    },
-    {
-        id: 4,
-        title: "Proctoring Flag Detected",
-        desc: "Candidate tab-switch event recorded during assessment session #402.",
-        time: "3 hours ago",
-        unread: true,
-        type: "interviews",
-        icon: AlertTriangle,
-        iconBg: "bg-amber-50 text-amber-600 border border-amber-100",
-        link: "/app/interviews"
-    },
-    {
-        id: 5,
-        title: "Job Post Active",
-        desc: "Python Developer opening is now live and accepting applications.",
-        time: "5 hours ago",
-        unread: true,
-        type: "jobs",
-        icon: Briefcase,
-        iconBg: "bg-purple-50 text-purple-600 border border-purple-100",
-        link: "/app/jobs"
-    },
-    {
-        id: 6,
-        title: "AvaHire AI 2.0 Enabled",
-        desc: "Enhanced resume parsing accuracy and new voice avatars are now live.",
-        time: "1 day ago",
-        unread: false,
-        type: "system",
-        icon: Sparkles,
-        iconBg: "bg-slate-50 text-slate-600 border border-slate-200",
-        link: "/app/settings"
-    }
-];
+const initialNotifications = [];
 
 const DashboardLayout = () => {
     const navigate = useNavigate();
@@ -116,7 +49,7 @@ const DashboardLayout = () => {
         navigate("/login");
     };
 
-    const initials = (user.name || "Priya Mehta")
+    const initials = (user.name || "HR User")
         .split(" ")
         .map((n) => n[0])
         .join("")
@@ -226,7 +159,7 @@ const DashboardLayout = () => {
                 {/* Top bar */}
                 <div className="sticky top-0 z-20 bg-slate-50/80 backdrop-blur-md px-8 py-5 flex items-center justify-between border-b border-slate-200/60">
                     <div>
-                        <h1 className="text-2xl font-extrabold text-slate-900">Welcome back, {user.name?.split(" ")[0] || "Priya"}! <span className="inline-block animate-wave">👋</span></h1>
+                        <h1 className="text-2xl font-extrabold text-slate-900">Welcome back, {user.name?.split(" ")[0] || "HR Admin"}! <span className="inline-block animate-wave">👋</span></h1>
                         <p className="text-sm text-slate-500 mt-0.5">Here's what's happening with your recruitment today.</p>
                     </div>
                     <div className="flex items-center gap-4">

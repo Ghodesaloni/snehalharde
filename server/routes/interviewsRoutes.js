@@ -5,8 +5,9 @@ const interviewsDb = require("../db/interviewsDb");
 // GET /api/interviews - list interviews
 router.get("/", (req, res) => {
   try {
-    const { status, search } = req.query;
-    const list = interviewsDb.getAll({ status, search });
+    const { status, search, userEmail } = req.query;
+    const authorEmail = userEmail || req.headers["x-user-email"];
+    const list = interviewsDb.getAll({ status, search, userEmail: authorEmail });
     res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -42,7 +43,12 @@ router.get("/:id", (req, res) => {
 // POST /api/interviews - schedule new interview
 router.post("/", (req, res) => {
   try {
-    const newInterview = interviewsDb.create(req.body);
+    const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
+    const newInterview = interviewsDb.create({
+      ...req.body,
+      createdBy: authorEmail,
+      userEmail: authorEmail
+    });
     res.status(201).json({ success: true, data: newInterview, message: "Interview scheduled successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

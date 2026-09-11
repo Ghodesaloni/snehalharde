@@ -19,76 +19,7 @@ import {
     Sparkles
 } from "lucide-react";
 
-const seedJobs = [
-    {
-        id: "job-1",
-        title: "Senior Software Engineer",
-        dept: "Engineering",
-        jobLevel: "Senior Level",
-        reportsTo: "Engineering Manager",
-        loc: "Bangalore, India",
-        isRemotePosition: false,
-        workMode: "Hybrid",
-        type: "Full-time",
-        expLevel: "4-7 Years",
-        description: "Looking for an experienced Senior Software Engineer to design scalable microservices, lead frontend architecture in React/Next.js, and mentor engineering teams.",
-        keySkills: ["React", "Node.js", "TypeScript", "AWS", "System Design"],
-        candidates: 18,
-        status: "Active",
-        posted: "20 May 2025"
-    },
-    {
-        id: "job-2",
-        title: "Python Developer",
-        dept: "Engineering",
-        jobLevel: "Mid Level",
-        reportsTo: "Engineering Manager",
-        loc: "Bangalore, India",
-        isRemotePosition: false,
-        workMode: "On-site",
-        type: "Full-time",
-        expLevel: "2-4 Years",
-        description: "Join our backend platform team to build robust APIs, ETL pipelines, and high-performance services using FastAPI, Django, and PostgreSQL.",
-        keySkills: ["Python", "FastAPI", "Django", "PostgreSQL", "Docker"],
-        candidates: 24,
-        status: "Active",
-        posted: "18 May 2025"
-    },
-    {
-        id: "job-3",
-        title: "UI/UX Product Designer",
-        dept: "Design",
-        jobLevel: "Mid Level",
-        reportsTo: "Design Lead",
-        loc: "Mumbai, India",
-        isRemotePosition: true,
-        workMode: "Remote",
-        type: "Full-time",
-        expLevel: "3-5 Years",
-        description: "Craft modern, intuitive design systems and end-to-end user experiences for our recruitment intelligence platform across web and mobile.",
-        keySkills: ["Figma", "Design Systems", "User Research", "Wireframing", "Prototyping"],
-        candidates: 12,
-        status: "Active",
-        posted: "15 May 2025"
-    },
-    {
-        id: "job-4",
-        title: "Data Analyst",
-        dept: "Product",
-        jobLevel: "Mid Level",
-        reportsTo: "Director of Product",
-        loc: "Hyderabad, India",
-        isRemotePosition: false,
-        workMode: "Hybrid",
-        type: "Full-time",
-        expLevel: "2-4 Years",
-        description: "Analyze user behaviors, hiring funnels, and recruitment metrics to uncover actionable insights and drive product strategy with data visualizations.",
-        keySkills: ["SQL", "Python", "Tableau", "Power BI", "Data Modeling"],
-        candidates: 9,
-        status: "Active",
-        posted: "12 May 2025"
-    }
-];
+const seedJobs = [];
 
 const SUGGESTED_SKILLS = [
     "React",
@@ -136,7 +67,7 @@ const Jobs = () => {
         const loadJobs = async () => {
             try {
                 const data = await jobsApi.getAll();
-                if (data && data.length > 0) {
+                if (data) {
                     setJobs(data);
                 }
             } catch (err) {
@@ -184,33 +115,60 @@ const Jobs = () => {
 
     const submit = async (e) => {
         e?.preventDefault();
-        if (!form.title.trim() || !form.dept.trim()) {
-            return toast.error("Please fill in the required fields");
+        const title = form.title?.trim();
+        if (!title) {
+            return toast.error("Please enter a job title");
         }
 
         setIsSubmitting(true);
+        let currentUserEmail = "";
+        try {
+            const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+            currentUserEmail = user?.email || "";
+        } catch {
+            // ignore
+        }
+
         const jobPayload = {
             ...form,
+            title,
+            dept: form.dept?.trim() || "Engineering",
+            loc: form.loc?.trim() || "Karnataka",
+            expLevel: form.expLevel?.trim() || "3-5 Years",
+            jobLevel: form.jobLevel?.trim() || "Mid Level",
+            reportsTo: form.reportsTo?.trim() || "Engineering Manager",
+            workMode: form.workMode || (form.isRemotePosition ? "Remote" : "On-site"),
+            type: form.type || "Full-time",
             keySkills: form.keySkills.length > 0 ? form.keySkills : (skillInput.trim() ? [skillInput.trim()] : []),
             candidates: 0,
             status: "Active",
-            posted: "Just now"
+            posted: "Just now",
+            createdBy: currentUserEmail,
+            userEmail: currentUserEmail
         };
 
         try {
             const savedJob = await jobsApi.create(jobPayload);
-            setJobs([savedJob, ...jobs]);
-            toast.success("Job posting created and saved to database!");
-        } catch (err) {
-            console.error("Backend error, adding locally:", err);
-            const localJob = { id: `job-${Date.now()}`, ...jobPayload };
-            setJobs([localJob, ...jobs]);
-            toast.success("Job posting created!");
-        } finally {
-            setIsSubmitting(false);
+            if (savedJob) {
+                setJobs(prev => [savedJob, ...prev]);
+            } else {
+                const localJob = { id: `job-${Date.now()}`, ...jobPayload };
+                setJobs(prev => [localJob, ...prev]);
+            }
+            toast.success("Job posting created successfully!");
             setModal(false);
             setForm(defaultFormState);
             setSkillInput("");
+        } catch (err) {
+            console.error("Backend error, adding locally:", err);
+            const localJob = { id: `job-${Date.now()}`, ...jobPayload };
+            setJobs(prev => [localJob, ...prev]);
+            toast.success("Job posting created!");
+            setModal(false);
+            setForm(defaultFormState);
+            setSkillInput("");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -799,10 +757,12 @@ const Jobs = () => {
                                 </button>
                                 <button
                                     type="submit"
+                                    disabled={isSubmitting}
                                     data-testid="job-form-submit"
-                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/25 transition active:scale-[0.98] cursor-pointer"
+                                    className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-semibold shadow-md shadow-blue-500/25 transition active:scale-[0.98] cursor-pointer flex items-center gap-2"
                                 >
-                                    Create Job
+                                    {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                    {isSubmitting ? "Creating..." : "Create Job"}
                                 </button>
                             </div>
                         </form>

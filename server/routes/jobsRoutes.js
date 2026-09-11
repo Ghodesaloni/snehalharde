@@ -5,8 +5,9 @@ const jobsDb = require("../db/jobsDb");
 // GET /api/jobs - list all jobs with optional query filters
 router.get("/", (req, res) => {
   try {
-    const { status, dept, workMode, search } = req.query;
-    const jobs = jobsDb.getAll({ status, dept, workMode, search });
+    const { status, dept, workMode, search, userEmail } = req.query;
+    const authorEmail = userEmail || req.headers["x-user-email"];
+    const jobs = jobsDb.getAll({ status, dept, workMode, search, userEmail: authorEmail });
     res.json({ success: true, count: jobs.length, data: jobs });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -29,10 +30,11 @@ router.get("/:id", (req, res) => {
 // POST /api/jobs - create new job
 router.post("/", (req, res) => {
   try {
-    const { title, dept, jobLevel, reportsTo, loc, isRemotePosition, workMode, type, expLevel, description, keySkills, status } = req.body;
+    const { title, dept, jobLevel, reportsTo, loc, isRemotePosition, workMode, type, expLevel, description, keySkills, status, createdBy, userEmail } = req.body;
     if (!title) {
       return res.status(400).json({ success: false, error: "Job title is required" });
     }
+    const authorEmail = createdBy || userEmail || req.headers["x-user-email"] || "";
     const newJob = jobsDb.create({
       title,
       dept,
@@ -45,7 +47,9 @@ router.post("/", (req, res) => {
       expLevel,
       description,
       keySkills,
-      status
+      status,
+      createdBy: authorEmail,
+      userEmail: authorEmail
     });
     res.status(201).json({ success: true, data: newJob, message: "Job created successfully" });
   } catch (err) {

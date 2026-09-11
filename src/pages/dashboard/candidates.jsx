@@ -29,284 +29,13 @@ import {
     AlertCircle,
     Bot,
     User,
+    Users,
     Database,
     Plus,
     Trash2
 } from "lucide-react";
 
-const initialCandidates = [
-    {
-        id: "cand-1",
-        name: "Rahul Sharma",
-        email: "rahul.sharma@email.com",
-        phone: "+91 98765 43210",
-        role: "Frontend Developer",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
-        interviewDate: "28 May 2025, 11:30 AM",
-        timestamp: new Date("2025-05-28T11:30:00").getTime(),
-        duration: "18m 24s",
-        mode: "AI Interview",
-        score: 85,
-        status: "Under Review",
-        notes: "",
-        summaryPoints: [
-            { text: "Good technical knowledge", type: "good" },
-            { text: "Clear communication", type: "good" },
-            { text: "Confident and composed", type: "good" },
-            { text: "Good problem solving approach", type: "good" },
-            { text: "Can improve in system design", type: "warning" }
-        ],
-        recommendation: "Strong candidate. Meets most of the requirements.",
-        transcript: [
-            {
-                speaker: "AI Interviewer",
-                time: "00:00",
-                isAI: true,
-                text: "Can you introduce yourself and tell me about your background?"
-            },
-            {
-                speaker: "Rahul Sharma",
-                time: "00:18",
-                isAI: false,
-                text: "Yes, sure. I'm Rahul Sharma, a Computer Science graduate with 2+ years of experience in frontend development. I specialize in React.js, JavaScript, HTML, CSS and have worked on various responsive web applications."
-            },
-            {
-                speaker: "AI Interviewer",
-                time: "01:05",
-                isAI: true,
-                text: "What are the key features of React?"
-            },
-            {
-                speaker: "Rahul Sharma",
-                time: "01:28",
-                isAI: false,
-                text: "React is a JavaScript library for building user interfaces. Some key features are component-based architecture, virtual DOM, JSX, unidirectional data flow, and its performance."
-            },
-            {
-                speaker: "AI Interviewer",
-                time: "02:45",
-                isAI: true,
-                text: "How do you handle state management in large applications?"
-            },
-            {
-                speaker: "Rahul Sharma",
-                time: "03:18",
-                isAI: false,
-                text: "I prefer using Redux Toolkit for global state management. It helps in managing complex state logic, improves scalability and makes the code more maintainable."
-            }
-        ],
-        evaluationBreakdown: [
-            { category: "Technical Proficiency", score: 88, weight: "40%" },
-            { category: "Communication & Clarity", score: 85, weight: "25%" },
-            { category: "Problem Solving", score: 82, weight: "20%" },
-            { category: "System Architecture", score: 78, weight: "15%" }
-        ]
-    },
-    {
-        id: "cand-2",
-        name: "Priya Verma",
-        email: "priya.verma@email.com",
-        phone: "+91 91234 56789",
-        role: "Frontend Developer",
-        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-        interviewDate: "28 May 2025, 10:15 AM",
-        timestamp: new Date("2025-05-28T10:15:00").getTime(),
-        duration: "16m 10s",
-        mode: "AI Interview",
-        score: 78,
-        status: "Under Review",
-        notes: "",
-        summaryPoints: [
-            { text: "Strong UI component styling skills", type: "good" },
-            { text: "Well-structured answers", type: "good" },
-            { text: "Understands state reactivity", type: "good" },
-            { text: "Needs deeper knowledge in SSR caching", type: "warning" }
-        ],
-        recommendation: "Promising candidate with solid frontend foundations.",
-        transcript: [
-            {
-                speaker: "AI Interviewer",
-                time: "00:00",
-                isAI: true,
-                text: "Welcome Priya! Tell us about your journey in frontend engineering."
-            },
-            {
-                speaker: "Priya Verma",
-                time: "00:22",
-                isAI: false,
-                text: "Hello! I've been building accessible and high-performance user interfaces for over 2 years, specializing in responsive CSS, Vue.js, and React."
-            },
-            {
-                speaker: "AI Interviewer",
-                time: "01:12",
-                isAI: true,
-                text: "How do you optimize rendering performance in web applications?"
-            },
-            {
-                speaker: "Priya Verma",
-                time: "01:40",
-                isAI: false,
-                text: "I focus on lazy loading assets, utilizing memoization hooks like useMemo/useCallback, and reducing layout thrashing by minimizing DOM repaints."
-            }
-        ],
-        evaluationBreakdown: [
-            { category: "Technical Proficiency", score: 76, weight: "40%" },
-            { category: "Communication & Clarity", score: 82, weight: "25%" },
-            { category: "Problem Solving", score: 78, weight: "20%" },
-            { category: "System Architecture", score: 74, weight: "15%" }
-        ]
-    },
-    {
-        id: "cand-3",
-        name: "Amit Kumar",
-        email: "amit.kumar@email.com",
-        phone: "+91 87654 32109",
-        role: "Frontend Developer",
-        avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=200",
-        interviewDate: "27 May 2025, 04:20 PM",
-        timestamp: new Date("2025-05-27T16:20:00").getTime(),
-        duration: "20m 45s",
-        mode: "AI Interview",
-        score: 62,
-        status: "Rejected",
-        notes: "",
-        summaryPoints: [
-            { text: "Familiar with HTML5 & Bootstrap", type: "good" },
-            { text: "Hesitant in core JavaScript questions", type: "warning" },
-            { text: "Struggled with asynchronous promise chaining", type: "warning" },
-            { text: "Limited experience with modern state managers", type: "warning" }
-        ],
-        recommendation: "Does not meet seniority expectations for this role.",
-        transcript: [
-            {
-                speaker: "AI Interviewer",
-                time: "00:00",
-                isAI: true,
-                text: "Can you explain event bubbling and capturing in JavaScript?"
-            },
-            {
-                speaker: "Amit Kumar",
-                time: "00:35",
-                isAI: false,
-                text: "Event bubbling is when an event triggers on the child element and goes up to the parent element in the DOM tree."
-            },
-            {
-                speaker: "AI Interviewer",
-                time: "01:20",
-                isAI: true,
-                text: "How do you stop event propagation?"
-            },
-            {
-                speaker: "Amit Kumar",
-                time: "01:45",
-                isAI: false,
-                text: "We use event.stopPropagation() to prevent it from propagating further."
-            }
-        ],
-        evaluationBreakdown: [
-            { category: "Technical Proficiency", score: 58, weight: "40%" },
-            { category: "Communication & Clarity", score: 65, weight: "25%" },
-            { category: "Problem Solving", score: 60, weight: "20%" },
-            { category: "System Architecture", score: 62, weight: "15%" }
-        ]
-    },
-    {
-        id: "cand-4",
-        name: "Sneha Patel",
-        email: "sneha.patel@email.com",
-        phone: "+91 99887 66554",
-        role: "Frontend Developer",
-        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-        interviewDate: "28 May 2025, 11:00 AM",
-        timestamp: new Date("2025-05-28T11:00:00").getTime(),
-        duration: "17m 30s",
-        mode: "AI Interview",
-        score: 91,
-        status: "Selected",
-        notes: "",
-        summaryPoints: [
-            { text: "Outstanding technical depth in React & Next.js", type: "good" },
-            { text: "Articulate and structured communication", type: "good" },
-            { text: "Excellent code modularity & testing practices", type: "good" },
-            { text: "Proactive problem solver", type: "good" }
-        ],
-        recommendation: "Top tier candidate. Strongly recommended for hire.",
-        transcript: [
-            {
-                speaker: "AI Interviewer",
-                time: "00:00",
-                isAI: true,
-                text: "Please outline your approach to building a scalable Design System in React."
-            },
-            {
-                speaker: "Sneha Patel",
-                time: "00:25",
-                isAI: false,
-                text: "I start by defining a tokenized foundation for spacing, colors, and typography using Tailwind or CSS variables, then create atomic headless components with Radix or custom hooks for maximum reusability."
-            },
-            {
-                speaker: "AI Interviewer",
-                time: "01:15",
-                isAI: true,
-                text: "How do you handle Server Components vs Client Components in Next.js?"
-            },
-            {
-                speaker: "Sneha Patel",
-                time: "01:42",
-                isAI: false,
-                text: "Server Components should handle data fetching and heavy computations to reduce bundle size, while Client Components are reserved for interactive boundaries requiring state, events, or browser APIs."
-            }
-        ],
-        evaluationBreakdown: [
-            { category: "Technical Proficiency", score: 94, weight: "40%" },
-            { category: "Communication & Clarity", score: 90, weight: "25%" },
-            { category: "Problem Solving", score: 92, weight: "20%" },
-            { category: "System Architecture", score: 88, weight: "15%" }
-        ]
-    },
-    {
-        id: "cand-5",
-        name: "Vikram Singh",
-        email: "vikram.singh@email.com",
-        phone: "+91 77654 88990",
-        role: "Frontend Developer",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-        interviewDate: "26 May 2025, 03:45 PM",
-        timestamp: new Date("2025-05-26T15:45:00").getTime(),
-        duration: "15m 05s",
-        mode: "AI Interview",
-        score: 69,
-        status: "Under Review",
-        notes: "",
-        summaryPoints: [
-            { text: "Good practical understanding of React components", type: "good" },
-            { text: "Moderate communication speed", type: "good" },
-            { text: "Needs improvement in TypeScript type safety", type: "warning" },
-            { text: "Requires guidance on state normalization", type: "warning" }
-        ],
-        recommendation: "Fair performance. Recommend technical review round.",
-        transcript: [
-            {
-                speaker: "AI Interviewer",
-                time: "00:00",
-                isAI: true,
-                text: "What are the benefits of using TypeScript with React?"
-            },
-            {
-                speaker: "Vikram Singh",
-                time: "00:20",
-                isAI: false,
-                text: "TypeScript provides static type checking, better autocomplete in IDEs, and catches common runtime errors before deploying code."
-            }
-        ],
-        evaluationBreakdown: [
-            { category: "Technical Proficiency", score: 68, weight: "40%" },
-            { category: "Communication & Clarity", score: 72, weight: "25%" },
-            { category: "Problem Solving", score: 66, weight: "20%" },
-            { category: "System Architecture", score: 70, weight: "15%" }
-        ]
-    }
-];
+const initialCandidates = [];
 
 const Candidates = () => {
     const [candidates, setCandidates] = useState(initialCandidates);
@@ -316,7 +45,7 @@ const Candidates = () => {
     const [showFilterModal, setShowFilterModal] = useState(false);
 
     // Expanded candidate accordion / downward drawer state
-    const [expandedCandidateId, setExpandedCandidateId] = useState("cand-1");
+    const [expandedCandidateId, setExpandedCandidateId] = useState(null);
     const [drawerTab, setDrawerTab] = useState("transcript"); // "transcript" | "evaluation" | "scores"
 
     // Audio player simulated state
@@ -329,7 +58,7 @@ const Candidates = () => {
         const fetchCandidates = async () => {
             try {
                 const data = await candidatesApi.getAll();
-                if (data && data.length > 0) {
+                if (data) {
                     setCandidates(data);
                 }
             } catch (err) {
@@ -585,7 +314,18 @@ const Candidates = () => {
 
             {/* Candidates Card List with Downward Opening Transcript Drawer */}
             <div className="space-y-4">
-                {filteredCandidates.map((candidate) => {
+                {filteredCandidates.length === 0 ? (
+                    <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 space-y-3 shadow-xs">
+                        <Users className="w-12 h-12 mx-auto text-slate-300" />
+                        <div>
+                            <h3 className="font-bold text-slate-700 text-base">No candidates found</h3>
+                            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                                No candidate records match your criteria. When candidates participate in technical interviews, their evaluations will appear here.
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    filteredCandidates.map((candidate) => {
                     const isExpanded = expandedCandidateId === candidate.id;
 
                     return (
@@ -964,7 +704,7 @@ const Candidates = () => {
                             )}
                         </div>
                     );
-                })}
+                }))}
             </div>
 
             {/* Pagination Footer */}

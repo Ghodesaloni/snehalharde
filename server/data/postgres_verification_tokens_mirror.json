@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1789105857254,
+    "email": "salonighode3@gmail.com",
+    "token": "92537739495e6367b0e3fbf9e3cd63a9818dbfbe0ef5c6f1d29612aefea1b810",
+    "expiresAt": "2026-09-12T05:50:57.254Z",
+    "used": true,
+    "usedAt": "2026-09-11T05:50:57.260Z",
+    "createdAt": "2026-09-11T05:50:57.254Z"
+  },
+  {
+    "id": 1789105877438,
+    "email": "recruiter.test@gmail.com",
+    "token": "762a834e04139ac279eb49b7aa2560304548950417025d1f500c0eda3e399fe2",
+    "expiresAt": "2026-09-12T05:51:17.437Z",
+    "used": true,
+    "usedAt": "2026-09-11T05:51:24.325Z",
+    "createdAt": "2026-09-11T05:51:17.438Z"
+  }
+]

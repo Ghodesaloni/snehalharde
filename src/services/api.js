@@ -21,12 +21,20 @@ const api = axios.create({
   }
 });
 
-// Attach PostgreSQL Auth Token from localStorage if present
+// Attach PostgreSQL Auth Token and user email from localStorage if present
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("avahire_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    try {
+      const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+      if (user && user.email) {
+        config.headers["X-User-Email"] = user.email;
+      }
+    } catch {
+      // ignore JSON parse error
     }
   }
   return config;
@@ -35,68 +43,60 @@ api.interceptors.request.use((config) => {
 export const authApi = {
   login: async (credentials) => {
     try {
-      const res = await api.post("/users/login", credentials);
+      const res = await api.post("/auth/login", credentials);
       return res.data;
-    } catch (err) {
-      // Fallback for offline / static client-side mode
-      const email = credentials.email?.toLowerCase().trim();
-      const demoUsers = [
-        {
-          id: 1,
-          uid: "usr_hr_lead_01",
-          email: "hr@avahire.ai",
-          name: "Priya Mehta",
-          role: "Lead HR Administrator",
-          company: "TechCorp Solutions Pvt. Ltd.",
-          designation: "Head of Talent Acquisition",
-          phone: "+91 98765 43210"
-        },
-        {
-          id: 2,
-          uid: "usr_admin_02",
-          email: "admin@avahire.ai",
-          name: "AvaHire Admin",
-          role: "Director of People Ops",
-          company: "AvaHire Talent Intelligence",
-          designation: "VP of People & Culture",
-          phone: "+91 98123 45678"
-        }
-      ];
-      const match = demoUsers.find(u => u.email === email);
-      if (match) {
-        return {
-          success: true,
-          data: match,
-          token: match.uid,
-          message: `Welcome back, ${match.name}!`
-        };
+    } catch (authErr) {
+      // If server returned an explicit error response (e.g. 401 Incorrect password), throw it directly
+      if (authErr.response && authErr.response.data) {
+        throw authErr;
       }
-      throw err;
+      try {
+        const res = await api.post("/users/login", credentials);
+        return res.data;
+      } catch (userErr) {
+        if (userErr.response && userErr.response.data) {
+          throw userErr;
+        }
+        throw userErr || authErr;
+      }
     }
   },
   register: async (userData) => {
     try {
-      const res = await api.post("/users/register", userData);
+      const res = await api.post("/auth/register", userData);
       return res.data;
     } catch (err) {
-      const uid = "usr_" + Date.now();
-      const newUser = {
-        id: Date.now(),
-        uid,
-        email: userData.email,
-        name: userData.fullName || userData.name || userData.email.split("@")[0],
-        role: userData.role || "hr_admin",
-        company: userData.company || "TechCorp Solutions",
-        designation: userData.designation || "HR Manager",
-        phone: userData.phone || "+91 98000 00000"
-      };
-      return {
-        success: true,
-        data: newUser,
-        token: uid,
-        message: "HR Account registered successfully!"
-      };
+      try {
+        const res = await api.post("/users/register", userData);
+        return res.data;
+      } catch (innerErr) {
+        const uid = "usr_" + Date.now();
+        const newUser = {
+          id: Date.now(),
+          uid,
+          email: userData.email,
+          name: userData.fullName || userData.name || userData.email.split("@")[0],
+          role: userData.role || "hr_admin",
+          company: userData.company || "TechCorp Solutions",
+          designation: userData.designation || "HR Manager",
+          phone: userData.phone || "+91 98000 00000"
+        };
+        return {
+          success: true,
+          data: newUser,
+          token: uid,
+          message: "HR Account registered successfully!"
+        };
+      }
     }
+  },
+  verifyEmail: async (token) => {
+    const res = await api.get(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+    return res.data;
+  },
+  resendVerification: async (email) => {
+    const res = await api.post("/auth/resend-verification", { email });
+    return res.data;
   },
   getMe: async () => {
     try {
@@ -272,9 +272,25 @@ export const emailApi = {
 };
 
 export const dashboardApi = {
-  getStats: async () => {
-    const res = await api.get("/dashboard/stats");
-    return res.data.data;
+  getStats: async (userEmail) => {
+    try {
+      let email = userEmail;
+      if (!email && typeof window !== "undefined") {
+        try {
+          const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+          email = user?.email || "";
+        } catch {
+          // ignore
+        }
+      }
+      const res = await api.get("/dashboard/stats", {
+        params: email ? { userEmail: email } : {}
+      });
+      return res.data?.data || res.data;
+    } catch (err) {
+      console.error("getStats error:", err);
+      return null;
+    }
   }
 };
 

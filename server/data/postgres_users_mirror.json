@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1,
+    "email": "salonighode3@gmail.com",
+    "fullName": "Saloni Ghode",
+    "passwordHash": "88ed3f820b6ddedc7171f4a2a96e5527f9e2e01f5859fbb5b70af795e1cceb7e",
+    "company": "AvaHire Tech",
+    "website": "",
+    "designation": "Lead Recruiter",
+    "phone": "+91 9876543210",
+    "isVerified": true,
+    "createdAt": "2026-09-11T05:50:57.247Z",
+    "updatedAt": "2026-09-11T05:50:57.260Z"
+  },
+  {
+    "id": 2,
+    "email": "recruiter.test@gmail.com",
+    "fullName": "Test Recruiter",
+    "passwordHash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
+    "company": "TalentCorp",
+    "website": "",
+    "designation": "VP of Talent",
+    "phone": "",
+    "isVerified": true,
+    "createdAt": "2026-09-11T05:51:17.435Z",
+    "updatedAt": "2026-09-11T05:51:24.325Z"
+  },
+  {
+    "id": 3,
+    "email": "snehal.harde2935@gmail.com",
+    "fullName": "snehal harde",
+    "passwordHash": "eaf4ec3008d5ca632242fdfcfb9946afed7e516cdbe9fd376d1f0a886cec719c",
+    "company": "tcs",
+    "website": "",
+    "designation": "hr",
+    "phone": "9146980039",
+    "isVerified": false,
+    "createdAt": "2026-09-11T06:43:06.697Z",
+    "updatedAt": "2026-09-11T06:43:06.697Z"
+  },
+  {
+    "id": 4,
+    "email": "salonighode@gmail.com",
+    "fullName": "Saloni Ghode",
+    "passwordHash": "88ed3f820b6ddedc7171f4a2a96e5527f9e2e01f5859fbb5b70af795e1cceb7e",
+    "company": "tcs",
+    "website": "",
+    "designation": "hr",
+    "phone": "9146980039",
+    "isVerified": false,
+    "createdAt": "2026-09-11T06:54:26.034Z",
+    "updatedAt": "2026-09-11T06:54:26.034Z"
+  },
+  {
+    "id": 5,
+    "email": "hr_auth_test_1789115630416@example.com",
+    "fullName": "Test Registered HR",
+    "passwordHash": "e880037d39875be7b0e27a229d2a93b5b5cff1b970cd23e1b7ab705bef8516a4",
+    "company": "Test HR Agency",
+    "website": "",
+    "designation": "Talent Lead",
+    "phone": "+1 555-0199",
+    "isVerified": false,
+    "createdAt": "2026-09-11T08:33:50.548Z",
+    "updatedAt": "2026-09-11T08:33:50.548Z"
+  }
+]

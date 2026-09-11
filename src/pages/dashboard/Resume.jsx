@@ -41,202 +41,89 @@ import {
     Layers,
     ListFilter,
     RefreshCw,
-    PlusCircle
+    PlusCircle,
+    Users,
+    Brain,
+    Cog,
+    Code,
+    DollarSign,
+    BarChart3,
+    Folder,
+    FolderOpen,
+    FolderKanban,
+    Tag
 } from "lucide-react";
 import { addOrUpdateInterview } from "@/utils/interviewStore";
 
-// Fallback initial candidate data with rich ATS fields & key points
-const initialCandidates = [
-    {
-        id: "c1",
-        name: "Snehal Harde",
-        email: "snehal@email.com",
-        phone: "+91 98765 43210",
-        location: "Nagpur, Maharashtra, India",
-        avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-        role: "Python Developer",
-        experience: "2 Years",
-        expYears: 2,
-        skills: ["Python", "Flask", "SQL"],
-        extraSkillsCount: 3,
-        allSkills: ["Python", "Flask", "SQL", "REST API", "HTML", "CSS"],
-        atsScore: 87,
-        matchScore: 92,
-        skillsMatchPct: 95,
-        status: "Shortlisted",
-        uploadedDate: "20 May 2025",
-        currentRole: "Python Developer Intern at ABC Pvt. Ltd.",
-        education: "B.Tech in Computer Science",
-        summary: "Snehal demonstrates strong full-stack Python capabilities with high proficiency in Flask and REST APIs. Good database fundamentals with PostgreSQL and clean code practices.",
-        targetJobTitle: "Python Developer",
-        matchedSkills: ["Python", "Flask", "SQL", "REST API"],
-        missingSkills: ["Docker"],
-        keyPoints: {
-            strengths: [
-                "Strong proficiency in core backend Python, Flask, and RESTful API architecture.",
-                "Solid database fundamentals in SQL schema design and query optimization.",
-                "High code quality standards and proactive problem-solving attitude."
-            ],
-            missingSkills: [
-                "Docker containerization not highlighted in primary projects."
-            ],
-            experienceMatch: "Has 2 years of relevant experience, meeting the mid-level developer requirement.",
-            verdict: "High ATS compatibility (87/100). Auto-shortlisted for technical screening round."
-        }
-    },
-    {
-        id: "c2",
-        name: "Rohan Verma",
-        email: "rohanv@email.com",
-        phone: "+91 98123 45678",
-        location: "Bangalore, Karnataka, India",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-        role: "Full Stack Developer",
-        experience: "4 Years",
-        expYears: 4,
-        skills: ["React", "Node.js", "MongoDB"],
-        extraSkillsCount: 2,
-        allSkills: ["React", "Node.js", "MongoDB", "TypeScript", "Tailwind"],
-        atsScore: 91,
-        matchScore: 88,
-        skillsMatchPct: 90,
-        status: "Shortlisted",
-        uploadedDate: "19 May 2025",
-        currentRole: "Backend Software Engineer at Infosys",
-        education: "B.E. in Information Technology",
-        summary: "Experienced full-stack engineer with robust Node.js and React background. Proficient in microservices architecture and CI/CD pipelines.",
-        targetJobTitle: "Senior Software Engineer",
-        matchedSkills: ["React", "Node.js", "TypeScript"],
-        missingSkills: ["AWS System Design"],
-        keyPoints: {
-            strengths: [
-                "4 years of seasoned hands-on experience building enterprise web applications.",
-                "Deep mastery in TypeScript, modern React frontend, and Node.js microservices.",
-                "Clean architectural modularity and strong test-driven development practices."
-            ],
-            missingSkills: [
-                "Cloud infrastructure orchestration on AWS could be tested further."
-            ],
-            experienceMatch: "Exceeds required minimum experience with 4 solid years.",
-            verdict: "Top-tier ATS score (91/100). Strongly recommended for senior interview loop."
-        }
-    },
-    {
-        id: "c3",
-        name: "Aisha Khan",
-        email: "aisha.k@email.com",
-        phone: "+91 97234 56789",
-        location: "Mumbai, Maharashtra, India",
-        avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-        role: "Python Developer",
-        experience: "1.5 Years",
-        expYears: 1.5,
-        skills: ["Python", "Flask", "MongoDB"],
-        extraSkillsCount: 2,
-        allSkills: ["Python", "Flask", "MongoDB", "Redis", "Git"],
-        atsScore: 72,
-        matchScore: 75,
-        skillsMatchPct: 78,
-        status: "Review",
-        uploadedDate: "18 May 2025",
-        currentRole: "Junior Python Developer at Tech Mahindra",
-        education: "B.Sc. in Computer Science",
-        summary: "Solid foundational knowledge in Python and NoSQL datastores. Shows promising problem-solving speed and strong enthusiasm for backend programming.",
-        targetJobTitle: "Python Developer",
-        matchedSkills: ["Python", "Flask"],
-        missingSkills: ["Django", "PostgreSQL", "Docker"],
-        keyPoints: {
-            strengths: [
-                "Good fundamentals in asynchronous Python scripts and REST endpoints.",
-                "Hands-on experience with MongoDB caching layers using Redis."
-            ],
-            missingSkills: [
-                "Requires deeper experience with relational PostgreSQL schemas.",
-                "Below the 2-year minimum preferred experience."
-            ],
-            experienceMatch: "1.5 years experience vs preferred 2+ years.",
-            verdict: "Placed Under Review (72/100 ATS). Potential candidate for junior-to-mid assessment."
-        }
-    },
-    {
-        id: "c4",
-        name: "Vikram Malhotra",
-        email: "vikram.m@email.com",
-        phone: "+91 96345 67890",
-        location: "Hyderabad, Telangana, India",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
-        role: "DevOps Engineer",
-        experience: "5 Years",
-        expYears: 5,
-        skills: ["Kubernetes", "AWS", "Docker"],
-        extraSkillsCount: 3,
-        allSkills: ["Kubernetes", "AWS", "Docker", "Terraform", "CI/CD", "Linux"],
-        atsScore: 94,
-        matchScore: 90,
-        skillsMatchPct: 92,
-        status: "Shortlisted",
-        uploadedDate: "17 May 2025",
-        currentRole: "Senior Cloud & DevOps Engineer at TCS",
-        education: "M.Tech in Software Systems",
-        summary: "Expert DevOps specialist with 5 years managing high-availability Kubernetes clusters on AWS with automated Terraform provisioning.",
-        targetJobTitle: "DevOps Engineer",
-        matchedSkills: ["Kubernetes", "AWS", "Docker", "CI/CD"],
-        missingSkills: [],
-        keyPoints: {
-            strengths: [
-                "Deep 5-year domain expertise across container orchestration and cloud scale.",
-                "Production experience managing automated multi-region CI/CD pipelines.",
-                "Proven zero-downtime deployment track record."
-            ],
-            missingSkills: [
-                "No notable skill gaps identified for this role."
-            ],
-            experienceMatch: "5 years experience aligns perfectly with senior requirement.",
-            verdict: "Outstanding candidate profile (94/100 ATS). High priority shortlist."
-        }
-    },
-    {
-        id: "c5",
-        name: "Neha Sharma",
-        email: "neha.s@email.com",
-        phone: "+91 98456 78901",
-        location: "Hyderabad, Telangana, India",
-        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-        role: "Data Analyst",
-        experience: "2 Years",
-        expYears: 2,
-        skills: ["Python", "Pandas", "SQL"],
-        extraSkillsCount: 3,
-        allSkills: ["Python", "Pandas", "SQL", "Tableau", "PowerBI", "NumPy"],
-        atsScore: 54,
-        matchScore: 50,
-        skillsMatchPct: 45,
-        status: "Rejected",
-        uploadedDate: "18 May 2025",
-        currentRole: "Data Analyst at Capgemini",
-        education: "B.Tech in Information Technology",
-        summary: "Data analyst with focus on BI reporting and visualization dashboards. Limited experience with core software backend engineering.",
-        targetJobTitle: "Senior Software Engineer",
-        matchedSkills: ["Python", "SQL"],
-        missingSkills: ["React", "Node.js", "TypeScript", "System Design"],
-        keyPoints: {
-            strengths: [
-                "Skilled in exploratory data analysis and SQL reporting queries."
-            ],
-            missingSkills: [
-                "Lacks web engineering foundations (React, Node.js, full-stack architecture).",
-                "Profile geared towards analytics rather than software product engineering."
-            ],
-            experienceMatch: "2 years in BI analytics vs 4-7 years required in software engineering.",
-            verdict: "ATS score (54/100) falls below shortlisting threshold for software engineer role."
-        }
-    }
+// Supported career fields / domains for folder separation
+const FIELDS = [
+    { id: "All", label: "All Fields", icon: Layers, color: "violet" },
+    { id: "Data Science", label: "Data Science", icon: Brain, color: "purple" },
+    { id: "Mechanical", label: "Mechanical", icon: Cog, color: "amber" },
+    { id: "Software Engineer", label: "Software Engineer", icon: Code, color: "blue" },
+    { id: "Finance", label: "Finance", icon: DollarSign, color: "emerald" },
+    { id: "Analyst", label: "Analyst", icon: BarChart3, color: "cyan" }
 ];
+
+// Helper to determine the professional domain / field of any candidate
+const detectCandidateDomain = (candidate) => {
+    if (!candidate) return "Software Engineer";
+    if (candidate.field && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.field)) {
+        return candidate.field;
+    }
+    if (candidate.domain && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.domain)) {
+        return candidate.domain;
+    }
+    const text = `${candidate.name || ""} ${candidate.role || ""} ${candidate.currentRole || ""} ${(candidate.allSkills || candidate.skills || []).join(" ")} ${candidate.summary || ""} ${candidate.resumeFileName || ""}`.toLowerCase();
+    if (/data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b|eda\b/i.test(text)) {
+        return "Data Science";
+    }
+    if (/mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|mechatronics|thermal|creo|machine design|aerospace/i.test(text)) {
+        return "Mechanical";
+    }
+    if (/finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|wealth management|corporate finance|equity research|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|sap fico|balance sheet|p&l|financial modeling|investment banking/i.test(text)) {
+        return "Finance";
+    }
+    if (/data analyst|business analyst|bi analyst|operations analyst|product analyst|market research|tableau|power\s?bi|bi tools|business intelligence|reporting analyst|data analytics|dashboards/i.test(text)) {
+        return "Analyst";
+    }
+    return "Software Engineer";
+};
+
+// Helper to determine the professional domain / field of any job posting
+const detectJobDomain = (job) => {
+    if (!job) return "Software Engineer";
+    if (job.field && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(job.field)) {
+        return job.field;
+    }
+    if (job.domain && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(job.domain)) {
+        return job.domain;
+    }
+    const text = `${job.title || ""} ${job.dept || ""} ${(job.keySkills || []).join(" ")} ${job.description || ""}`.toLowerCase();
+    if (/data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b/i.test(text)) {
+        return "Data Science";
+    }
+    if (/mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|mechatronics|thermal|creo|machine design|aerospace/i.test(text)) {
+        return "Mechanical";
+    }
+    if (/finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|wealth management|corporate finance|equity research|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|sap fico|balance sheet|p&l/i.test(text)) {
+        return "Finance";
+    }
+    if (/data analyst|business analyst|bi analyst|operations analyst|product analyst|market research|tableau|power\s?bi|bi tools|business intelligence|reporting analyst|analytics/i.test(text)) {
+        return "Analyst";
+    }
+    return "Software Engineer";
+};
+
+// Fallback initial candidate data
+const initialCandidates = [];
 
 const Resumes = () => {
     const [candidates, setCandidates] = useState(initialCandidates);
-    const [selectedCandidateId, setSelectedCandidateId] = useState(initialCandidates[0].id);
+    const [selectedCandidateId, setSelectedCandidateId] = useState(null);
     const [activeTab, setActiveTab] = useState("All Resumes");
+    const [selectedField, setSelectedField] = useState("All");
+    const [selectedFolderJobId, setSelectedFolderJobId] = useState("All");
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState("Highest ATS");
     const [selectedRowIds, setSelectedRowIds] = useState([]);
@@ -244,8 +131,8 @@ const Resumes = () => {
     const [showFullProfileModal, setShowFullProfileModal] = useState(false);
     const [showInterviewModal, setShowInterviewModal] = useState(false);
     const [schedRound, setSchedRound] = useState("Technical Screening Round (45 mins)");
-    const [schedDate, setSchedDate] = useState("2026-09-02");
-    const [schedTime, setSchedTime] = useState("11:00");
+    const [schedDate, setSchedDate] = useState("");
+    const [schedTime, setSchedTime] = useState("");
     const [schedDuration, setSchedDuration] = useState("45 Minutes");
     const [generatedLinkData, setGeneratedLinkData] = useState(null);
     const [copiedInterviewLink, setCopiedInterviewLink] = useState(false);
@@ -257,17 +144,17 @@ const Resumes = () => {
 
     // JD Screening States
     const [jobs, setJobs] = useState([]);
-    const [selectedJobId, setSelectedJobId] = useState("job-2"); // Default to Python Developer or first
+    const [selectedJobId, setSelectedJobId] = useState("");
     const [isBatchScreening, setIsBatchScreening] = useState(false);
     const [analyzingCandidateId, setAnalyzingCandidateId] = useState(null);
     const [showCustomJdModal, setShowCustomJdModal] = useState(false);
     const [customJd, setCustomJd] = useState({
-        title: "Python Developer",
-        dept: "Engineering",
-        expLevel: "2-4 Years",
-        workMode: "On-site",
-        keySkills: "Python, FastAPI, Django, PostgreSQL, Docker, REST API",
-        description: "Looking for an experienced Python developer to build high-performance APIs and microservices."
+        title: "",
+        dept: "",
+        expLevel: "",
+        workMode: "Full-time",
+        keySkills: "",
+        description: ""
     });
 
     const fileInputRef = useRef(null);
@@ -281,15 +168,19 @@ const Resumes = () => {
                     jobsApi.getAll()
                 ]);
 
-                if (jobsData.status === "fulfilled" && jobsData.value && jobsData.value.length > 0) {
+                if (jobsData.status === "fulfilled" && jobsData.value) {
                     setJobs(jobsData.value);
-                    setSelectedJobId(jobsData.value[0].id);
+                    if (jobsData.value.length > 0) {
+                        setSelectedJobId(jobsData.value[0].id);
+                    }
                 }
 
-                if (resumesData.status === "fulfilled" && resumesData.value && resumesData.value.length > 0) {
+                if (resumesData.status === "fulfilled" && resumesData.value) {
                     setCandidates(resumesData.value);
-                    if (!resumesData.value.some((c) => c.id === selectedCandidateId)) {
+                    if (resumesData.value.length > 0) {
                         setSelectedCandidateId(resumesData.value[0].id);
+                    } else {
+                        setSelectedCandidateId(null);
                     }
                 }
             } catch (err) {
@@ -309,28 +200,30 @@ const Resumes = () => {
                 id: "custom",
                 title: customJd.title || "Custom Position",
                 dept: customJd.dept || "Engineering",
-                expLevel: customJd.expLevel || "2-5 Years",
+                expLevel: customJd.expLevel || "",
                 workMode: customJd.workMode || "Full-time",
                 keySkills: skillsArr,
-                description: customJd.description
+                description: customJd.description || ""
             };
         }
         const found = jobs.find((j) => j.id === selectedJobId);
         if (found) return found;
 
+        if (jobs.length > 0) return jobs[0];
+
         // Fallback default job
         return {
-            id: "job-2",
-            title: "Python Developer",
-            dept: "Engineering",
-            expLevel: "2-4 Years",
-            workMode: "On-site",
-            keySkills: ["Python", "FastAPI", "Django", "PostgreSQL", "Docker"],
-            description: "Join our backend platform team to build robust APIs, ETL pipelines, and high-performance services."
+            id: "",
+            title: "No Job Selected",
+            dept: "",
+            expLevel: "",
+            workMode: "",
+            keySkills: [],
+            description: "Please select or create a Job Description to screen candidates."
         };
     }, [jobs, selectedJobId, customJd]);
 
-    const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0] || initialCandidates[0];
+    const selectedCandidate = candidates.find((c) => c.id === selectedCandidateId) || candidates[0] || null;
 
     // Status tabs with live counts
     const tabCounts = useMemo(() => {
@@ -341,6 +234,37 @@ const Resumes = () => {
         return { total, shortlisted, review, rejected };
     }, [candidates]);
 
+    // Live counts per professional field
+    const fieldCounts = useMemo(() => {
+        const counts = {
+            "All": candidates.length,
+            "Data Science": 0,
+            "Mechanical": 0,
+            "Software Engineer": 0,
+            "Finance": 0,
+            "Analyst": 0
+        };
+        candidates.forEach((c) => {
+            const domain = detectCandidateDomain(c);
+            if (counts[domain] !== undefined) {
+                counts[domain]++;
+            } else {
+                counts["Software Engineer"]++;
+            }
+        });
+        return counts;
+    }, [candidates]);
+
+    // Live counts of candidates related to any created job
+    const getJobCandidateCount = (job) => {
+        if (!job) return 0;
+        const jDomain = detectJobDomain(job);
+        return candidates.filter((c) => {
+            if (c.jobId === job.id || c.targetJobId === job.id) return true;
+            return detectCandidateDomain(c) === jDomain;
+        }).length;
+    };
+
     // Filter and Sort Candidates
     const filteredCandidates = useMemo(() => {
         return candidates
@@ -350,14 +274,35 @@ const Resumes = () => {
                 if (activeTab === "Review" && c.status !== "Review") return false;
                 if (activeTab === "Rejected" && c.status !== "Rejected") return false;
 
+                const candidateDomain = detectCandidateDomain(c);
+
+                // Field folder filter: separate by Data Science, Mechanical, Software Engineer, Finance, Analyst
+                if (selectedField !== "All" && candidateDomain !== selectedField) {
+                    return false;
+                }
+
+                // Particular job folder filter: show all candidates related to the selected job folder
+                if (selectedFolderJobId !== "All") {
+                    const activeJob = jobs.find((j) => j.id === selectedFolderJobId);
+                    if (activeJob) {
+                        const jobDomain = detectJobDomain(activeJob);
+                        const isAssigned = c.jobId === activeJob.id || c.targetJobId === activeJob.id;
+                        const isDomainMatch = candidateDomain === jobDomain;
+                        if (!isAssigned && !isDomainMatch) {
+                            return false;
+                        }
+                    }
+                }
+
                 // Search query filter
                 if (searchQuery.trim()) {
                     const query = searchQuery.toLowerCase();
-                    const matchesName = c.name.toLowerCase().includes(query);
-                    const matchesEmail = c.email.toLowerCase().includes(query);
-                    const matchesRole = c.role.toLowerCase().includes(query);
-                    const matchesSkills = (c.allSkills || c.skills || []).some((s) => s.toLowerCase().includes(query));
-                    if (!matchesName && !matchesEmail && !matchesRole && !matchesSkills) return false;
+                    const matchesName = (c.name || "").toLowerCase().includes(query);
+                    const matchesEmail = (c.email || "").toLowerCase().includes(query);
+                    const matchesRole = (c.role || "").toLowerCase().includes(query);
+                    const matchesDomain = candidateDomain.toLowerCase().includes(query);
+                    const matchesSkills = (c.allSkills || c.skills || []).some((s) => (s || "").toLowerCase().includes(query));
+                    if (!matchesName && !matchesEmail && !matchesRole && !matchesDomain && !matchesSkills) return false;
                 }
 
                 // Advanced Modal Filters
@@ -373,7 +318,7 @@ const Resumes = () => {
                 // Default Newest
                 return 0;
             });
-    }, [candidates, activeTab, searchQuery, sortBy, filterRole, filterMinScore]);
+    }, [candidates, activeTab, selectedField, selectedFolderJobId, jobs, searchQuery, sortBy, filterRole, filterMinScore]);
 
     // Batch Screen all candidates against current target JD
     const handleScreenAllAgainstJd = async () => {
@@ -437,18 +382,45 @@ const Resumes = () => {
         }
     };
 
-    // Handle Upload with Immediate Screening against current JD
+    // Handle Upload with Immediate Screening against current JD (Strictly Resumes Only)
     const handleFileUpload = async (files) => {
         const fileList = Array.from(files);
         if (!fileList.length) return;
 
+        // User requirement: "in resumes pages only resume should be taken not other docs"
+        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
+        const validFiles = [];
+        const rejectedFiles = [];
+
+        for (const file of fileList) {
+            const extMatch = file.name.match(/\.[^.]+$/);
+            const ext = extMatch ? extMatch[0].toLowerCase() : "";
+            if (ALLOWED_RESUME_EXTS.includes(ext)) {
+                validFiles.push(file);
+            } else {
+                rejectedFiles.push(file.name);
+            }
+        }
+
+        if (rejectedFiles.length > 0) {
+            toast.error(
+                `Non-resume file${rejectedFiles.length > 1 ? "s" : ""} rejected: ${rejectedFiles.join(", ")}. In resumes portal, only resume documents (.pdf, .docx, .doc, .txt) are accepted.`,
+                { duration: 5000 }
+            );
+        }
+
+        if (validFiles.length === 0) {
+            toast.warning("No valid resume documents detected. Please upload only resume documents (.pdf, .docx, .doc, or .txt).");
+            return;
+        }
+
         setIsUploading(true);
-        toast.info(`Uploading & analyzing ${fileList.length} resume${fileList.length > 1 ? "s" : ""} against "${currentJd.title}"...`);
+        toast.info(`Uploading & screening ${validFiles.length} resume document${validFiles.length > 1 ? "s" : ""} against "${currentJd.title}"...`);
 
         try {
             const newlyAdded = [];
-            for (let i = 0; i < fileList.length; i++) {
-                const f = fileList[i];
+            for (let i = 0; i < validFiles.length; i++) {
+                const f = validFiles[i];
                 const formData = new FormData();
                 formData.append("resume", f);
                 formData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
@@ -462,7 +434,7 @@ const Resumes = () => {
                         const candidate = res.data;
                         newlyAdded.push(candidate);
                         if (candidate.status === "Shortlisted") {
-                            toast.success(`${candidate.name}: SHORTLISTED! (ATS: ${candidate.atsScore}/100, ${candidate.skillsMatchPct}% skills match)`);
+                            toast.success(`${candidate.name}: SHORTLISTED! (${candidate.field || "Domain"} · ATS: ${candidate.atsScore}/100, ${candidate.skillsMatchPct}% skills match)`);
                         } else if (candidate.status === "Review") {
                             toast.warning(`${candidate.name}: Placed Under Review (ATS: ${candidate.atsScore}/100 - partial match)`);
                         } else {
@@ -477,16 +449,22 @@ const Resumes = () => {
                         .replace(/[_-]/g, " ")
                         .replace(/\b\w/g, (l) => l.toUpperCase()) || `Applicant ${candidates.length + i + 1}`;
 
+                    const candidateDomain = detectJobDomain(currentJd);
                     const newCandidatePayload = {
                         name: cleanName,
                         email: `${cleanName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
                         phone: "+91 98" + Math.floor(10000000 + Math.random() * 90000000),
                         location: "India",
-                        role: "Candidate",
-                        experience: "1 Year",
-                        expYears: 1,
-                        skills: [],
-                        allSkills: [],
+                        role: currentJd.title || "Candidate",
+                        field: candidateDomain,
+                        domain: candidateDomain,
+                        jobId: selectedJobId === "custom" ? null : selectedJobId,
+                        targetJobId: selectedJobId === "custom" ? null : selectedJobId,
+                        targetJobTitle: currentJd.title,
+                        experience: "2 Years",
+                        expYears: 2,
+                        skills: currentJd.keySkills ? currentJd.keySkills.slice(0, 3) : [],
+                        allSkills: currentJd.keySkills || [],
                         currentRole: "Applicant",
                         education: "Bachelor's Degree",
                         resumeFileName: f.name
@@ -505,7 +483,7 @@ const Resumes = () => {
             if (newlyAdded.length > 0) {
                 setCandidates((prev) => [...newlyAdded, ...prev]);
                 setSelectedCandidateId(newlyAdded[0].id);
-                toast.success(`Completed screening ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""}!`);
+                toast.success(`Screened and organized ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""}!`);
             }
         } catch (err) {
             console.error("Upload screening error:", err);
@@ -558,24 +536,6 @@ const Resumes = () => {
         );
     };
 
-    // Bulk Action: Shortlist or Reject selected
-    const handleBulkStatusChange = async (newStatus) => {
-        if (selectedRowIds.length === 0) return;
-        const count = selectedRowIds.length;
-        setCandidates((prev) =>
-            prev.map((c) => (selectedRowIds.includes(c.id) ? { ...c, status: newStatus } : c))
-        );
-        setSelectedRowIds([]);
-        toast.success(`Marked ${count} candidate${count > 1 ? "s" : ""} as ${newStatus}!`);
-
-        for (const id of selectedRowIds) {
-            try {
-                await resumesApi.updateStatus(id, newStatus);
-            } catch (err) {
-                console.error("Bulk status update error:", err);
-            }
-        }
-    };
 
     // Helper for score badge colors
     const getScoreBadgeClass = (score) => {
@@ -598,6 +558,65 @@ const Resumes = () => {
             return "bg-amber-50 text-amber-700 border border-amber-200/90";
         }
         return "bg-rose-50 text-rose-600 border border-rose-200/90";
+    };
+
+    // Helper for career field styling & icons
+    const getDomainBadge = (domain) => {
+        switch (domain) {
+            case "Data Science":
+                return {
+                    label: "Data Science",
+                    bg: "bg-purple-50 text-purple-700 border-purple-200/80",
+                    icon: Brain
+                };
+            case "Mechanical":
+                return {
+                    label: "Mechanical",
+                    bg: "bg-amber-50 text-amber-700 border-amber-200/80",
+                    icon: Cog
+                };
+            case "Software Engineer":
+                return {
+                    label: "Software Eng",
+                    bg: "bg-blue-50 text-blue-700 border-blue-200/80",
+                    icon: Code
+                };
+            case "Finance":
+                return {
+                    label: "Finance",
+                    bg: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
+                    icon: DollarSign
+                };
+            case "Analyst":
+                return {
+                    label: "Analyst",
+                    bg: "bg-cyan-50 text-cyan-700 border-cyan-200/80",
+                    icon: BarChart3
+                };
+            default:
+                return {
+                    label: domain || "General",
+                    bg: "bg-slate-50 text-slate-700 border-slate-200/80",
+                    icon: Tag
+                };
+        }
+    };
+
+    // Helper to find the matching job folder for any candidate
+    const getCandidateJobFolder = (candidate) => {
+        if (!candidate) return null;
+        if (candidate.jobId) {
+            const found = jobs.find((j) => j.id === candidate.jobId);
+            if (found) return found;
+        }
+        if (candidate.targetJobId) {
+            const found = jobs.find((j) => j.id === candidate.targetJobId);
+            if (found) return found;
+        }
+        const domain = detectCandidateDomain(candidate);
+        const domainJob = jobs.find((j) => detectJobDomain(j) === domain);
+        if (domainJob) return domainJob;
+        return jobs[0] || null;
     };
 
     return (
@@ -628,22 +647,23 @@ const Resumes = () => {
                         <span>Filter Options</span>
                     </button>
 
-                    {/* Upload Resume Button */}
+                    {/* Upload Resume Button (Strictly Resumes Only) */}
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isUploading}
-                        className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-full text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-full text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition-all disabled:opacity-50 cursor-pointer"
+                        title="Only resume documents (.pdf, .docx, .doc, .txt) are accepted"
                     >
                         <Upload className="w-4 h-4" />
                         <span>{isUploading ? "Screening..." : "Upload Resume"}</span>
                     </button>
 
-                    {/* Hidden input */}
+                    {/* Hidden input strictly accepting resume formats */}
                     <input
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.txt"
+                        accept=".pdf,.doc,.docx,.txt,.rtf"
                         className="hidden"
                         onChange={(e) => handleFileUpload(e.target.files)}
                     />
@@ -935,6 +955,173 @@ const Resumes = () => {
                 </div>
             </div>
 
+            {/* Career Fields & Job Folders Navigation Hub (User request: separate fields like Data Science, Mechanical, Software Engineer, Finance, Analyst and show candidates in particular jobs) */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-4">
+                {/* Section Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <FolderKanban className="w-5 h-5 text-violet-600" />
+                            <h2 className="text-base font-bold text-slate-900">Career Fields &amp; Job Folders</h2>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Separate candidates across Data Science, Mechanical, Software Engineer, Finance, and Analyst fields, or view candidates grouped into specific created job folders.
+                        </p>
+                    </div>
+
+                    {(selectedField !== "All" || selectedFolderJobId !== "All") && (
+                        <button
+                            onClick={() => {
+                                setSelectedField("All");
+                                setSelectedFolderJobId("All");
+                            }}
+                            className="self-start sm:self-center px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Reset to All Resumes</span>
+                        </button>
+                    )}
+                </div>
+
+                {/* 1. Field Folders Tabs */}
+                <div>
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+                        <Layers className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Separate By Field:</span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {FIELDS.map((field) => {
+                            const IconComponent = field.icon;
+                            const isSelected = selectedField === field.id && selectedFolderJobId === "All";
+                            const count = fieldCounts[field.id] || 0;
+
+                            const colorClasses = {
+                                violet: isSelected ? "bg-violet-600 text-white shadow-sm shadow-violet-500/20" : "bg-violet-50/70 text-violet-700 hover:bg-violet-100/70 border border-violet-100",
+                                purple: isSelected ? "bg-purple-600 text-white shadow-sm shadow-purple-500/20" : "bg-purple-50/70 text-purple-700 hover:bg-purple-100/70 border border-purple-100",
+                                amber: isSelected ? "bg-amber-600 text-white shadow-sm shadow-amber-500/20" : "bg-amber-50/70 text-amber-700 hover:bg-amber-100/70 border border-amber-100",
+                                blue: isSelected ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20" : "bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 border border-blue-100",
+                                emerald: isSelected ? "bg-emerald-600 text-white shadow-sm shadow-emerald-500/20" : "bg-emerald-50/70 text-emerald-700 hover:bg-emerald-100/70 border border-emerald-100",
+                                cyan: isSelected ? "bg-cyan-600 text-white shadow-sm shadow-cyan-500/20" : "bg-cyan-50/70 text-cyan-700 hover:bg-cyan-100/70 border border-cyan-100"
+                            };
+
+                            return (
+                                <button
+                                    key={field.id}
+                                    onClick={() => {
+                                        setSelectedField(field.id);
+                                        setSelectedFolderJobId("All");
+                                    }}
+                                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                                        colorClasses[field.color]
+                                    }`}
+                                >
+                                    <IconComponent className="w-4 h-4" />
+                                    <span>{field.label}</span>
+                                    <span
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                            isSelected ? "bg-white/25 text-white" : "bg-white/80 text-slate-700 border border-slate-200/50"
+                                        }`}
+                                    >
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* 2. Particular Job Folders List */}
+                <div className="pt-2 border-t border-slate-100">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                            <FolderOpen className="w-3.5 h-3.5 text-violet-500" />
+                            <span>Particular Job Folders (Click to show all candidates in that job):</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-400">
+                            {jobs.length} created job{jobs.length === 1 ? "" : "s"}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* All Jobs Option */}
+                        <button
+                            onClick={() => {
+                                setSelectedFolderJobId("All");
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer ${
+                                selectedFolderJobId === "All"
+                                    ? "bg-slate-900 text-white shadow-xs"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200/70"
+                            }`}
+                        >
+                            <Folder className="w-3.5 h-3.5" />
+                            <span>All Jobs</span>
+                        </button>
+
+                        {/* Individual Job Folders */}
+                        {jobs.map((job) => {
+                            const isJobActive = selectedFolderJobId === job.id;
+                            const jobDomain = detectJobDomain(job);
+                            const count = getJobCandidateCount(job);
+
+                            return (
+                                <button
+                                    key={job.id}
+                                    onClick={() => {
+                                        setSelectedFolderJobId(job.id);
+                                        setSelectedJobId(job.id);
+                                        setSelectedField(jobDomain);
+                                    }}
+                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 border cursor-pointer ${
+                                        isJobActive
+                                            ? "bg-violet-600 text-white border-violet-600 shadow-sm shadow-violet-500/25"
+                                            : "bg-slate-50 hover:bg-violet-50 text-slate-700 hover:text-violet-700 border-slate-200/80"
+                                    }`}
+                                >
+                                    <Folder className={`w-3.5 h-3.5 ${isJobActive ? "text-white" : "text-violet-500"}`} />
+                                    <span className="font-bold truncate max-w-[160px] sm:max-w-[200px]">{job.title}</span>
+                                    <span
+                                        className={`px-2 py-0.2 rounded-full text-[10px] font-extrabold ${
+                                            isJobActive ? "bg-white/20 text-white" : "bg-violet-100 text-violet-700"
+                                        }`}
+                                    >
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Active Folder Filter Notification Banner */}
+                {(selectedField !== "All" || selectedFolderJobId !== "All") && (
+                    <div className="p-3 bg-violet-50 border border-violet-200/70 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs animate-in fade-in">
+                        <div className="flex items-center gap-2 text-violet-950">
+                            <FolderOpen className="w-4 h-4 text-violet-600 shrink-0" />
+                            <span>
+                                Currently viewing folder:{" "}
+                                <strong className="text-violet-900">
+                                    {selectedFolderJobId !== "All"
+                                        ? `Job "${jobs.find((j) => j.id === selectedFolderJobId)?.title || selectedFolderJobId}" (${selectedField})`
+                                        : `Field "${selectedField}"`}
+                                </strong>
+                                {" "}— showing <strong>{filteredCandidates.length}</strong> candidate{filteredCandidates.length === 1 ? "" : "s"}
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setSelectedField("All");
+                                setSelectedFolderJobId("All");
+                            }}
+                            className="text-xs font-bold text-violet-700 hover:text-violet-900 underline cursor-pointer"
+                        >
+                            View All Candidates
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* Main Content Layout: Candidate Table (Left/Center) + Selected Candidate Detail Drawer (Right) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
                 {/* Left Table Section */}
@@ -980,7 +1167,7 @@ const Resumes = () => {
                                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                                 <input
                                     type="text"
-                                    placeholder="Search candidate or skill..."
+                                    placeholder="Search candidate, role or skill..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-violet-500 w-44 sm:w-52"
@@ -1007,25 +1194,47 @@ const Resumes = () => {
                     </div>
 
                     {/* Bulk Action Bar (when rows are checked) */}
+                    {/* Bulk Action Bar (Automated AI Actions Only - No manual shortlisting) */}
                     {selectedRowIds.length > 0 && (
                         <div className="bg-violet-50/90 border-b border-violet-100 px-6 py-2.5 flex items-center justify-between text-xs animate-in fade-in">
-                            <span className="font-semibold text-violet-900">
-                                {selectedRowIds.length} candidate{selectedRowIds.length > 1 ? "s" : ""} selected
+                            <span className="font-semibold text-violet-900 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                                <span>{selectedRowIds.length} candidate{selectedRowIds.length > 1 ? "s" : ""} selected</span>
                             </span>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handleBulkStatusChange("Shortlisted")}
-                                    className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow-xs"
+                                    onClick={async () => {
+                                        const ids = [...selectedRowIds];
+                                        setSelectedRowIds([]);
+                                        toast.loading(`Auto-screening ${ids.length} candidates against ${currentJd.title}...`, { id: "batch-screen" });
+                                        try {
+                                            const res = await resumesApi.analyzeBatch({
+                                                jobId: selectedJobId,
+                                                candidateIds: ids
+                                            });
+                                            if (res.success && res.candidates) {
+                                                setCandidates((prev) =>
+                                                    prev.map((c) => {
+                                                        const updated = res.candidates.find((u) => u.id === c.id);
+                                                        return updated ? { ...c, ...updated } : c;
+                                                    })
+                                                );
+                                                toast.success(`Automated shortlisting completed for ${ids.length} candidates!`, { id: "batch-screen" });
+                                            }
+                                        } catch (err) {
+                                            toast.error("Batch automated screening failed.", { id: "batch-screen" });
+                                        }
+                                    }}
+                                    className="px-3.5 py-1 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                                 >
-                                    <BookmarkCheck className="w-3.5 h-3.5" />
-                                    <span>Shortlist Selected</span>
+                                    <Sparkles className="w-3.5 h-3.5" />
+                                    <span>Run Automated AI Screening</span>
                                 </button>
                                 <button
-                                    onClick={() => handleBulkStatusChange("Rejected")}
-                                    className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow-xs"
+                                    onClick={() => setSelectedRowIds([])}
+                                    className="px-2.5 py-1 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg font-medium transition cursor-pointer"
                                 >
-                                    <XCircle className="w-3.5 h-3.5" />
-                                    <span>Reject Selected</span>
+                                    Clear Selection
                                 </button>
                             </div>
                         </div>
@@ -1048,7 +1257,8 @@ const Resumes = () => {
                                         />
                                     </th>
                                     <th className="py-3 px-4 font-semibold text-slate-700">Candidate</th>
-                                    <th className="py-3 px-3 font-semibold text-slate-700">Current Role</th>
+                                    <th className="py-3 px-3 font-semibold text-slate-700">Field &amp; Role</th>
+                                    <th className="py-3 px-3 font-semibold text-slate-700">Job Folder</th>
                                     <th className="py-3 px-3 font-semibold text-slate-700">Experience</th>
                                     <th className="py-3 px-3 font-semibold text-slate-700">Skills</th>
                                     <th className="py-3 px-3 font-semibold text-slate-700 text-center">ATS Score</th>
@@ -1060,11 +1270,11 @@ const Resumes = () => {
                             <tbody className="divide-y divide-slate-50">
                                 {filteredCandidates.length === 0 ? (
                                     <tr>
-                                        <td colSpan="9" className="py-12 text-center text-slate-400">
+                                        <td colSpan="10" className="py-12 text-center text-slate-400">
                                             <FileText className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                                            <div>No candidates found matching "{activeTab}" filter.</div>
+                                            <div>No candidates found matching active filters.</div>
                                             <div className="text-xs text-slate-400 mt-1">
-                                                Click "Screen All against this JD" or upload new resumes to screen.
+                                                Switch to another career field, select a different job folder, or upload new resumes to screen.
                                             </div>
                                         </td>
                                     </tr>
@@ -1073,6 +1283,11 @@ const Resumes = () => {
                                         const isSelectedRow = selectedCandidateId === candidate.id;
                                         const isChecked = selectedRowIds.includes(candidate.id);
                                         const isAnalyzing = analyzingCandidateId === candidate.id;
+                                        const candidateDomain = detectCandidateDomain(candidate);
+                                        const domainBadge = getDomainBadge(candidateDomain);
+                                        const DomainIcon = domainBadge.icon;
+                                        const jobFolder = getCandidateJobFolder(candidate);
+                                        const isCurrentFolder = selectedFolderJobId === jobFolder?.id;
 
                                         return (
                                             <tr
@@ -1107,8 +1322,9 @@ const Resumes = () => {
                                                         ) : (
                                                             <div className="w-9 h-9 rounded-full bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center shrink-0">
                                                                 {candidate.initials ||
-                                                                    candidate.name
+                                                                    (candidate.name || "Candidate")
                                                                         .split(" ")
+                                                                        .filter(Boolean)
                                                                         .map((n) => n[0])
                                                                         .join("")
                                                                         .slice(0, 2)}
@@ -1125,9 +1341,42 @@ const Resumes = () => {
                                                     </div>
                                                 </td>
 
-                                                {/* Role */}
-                                                <td className="py-3.5 px-3 text-slate-700 font-medium text-xs whitespace-nowrap">
-                                                    {candidate.role}
+                                                {/* Field & Current Role */}
+                                                <td className="py-3.5 px-3">
+                                                    <div className="space-y-1">
+                                                        <div className="font-semibold text-slate-800 text-xs truncate max-w-[130px]">
+                                                            {candidate.role}
+                                                        </div>
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${domainBadge.bg}`}>
+                                                            <DomainIcon className="w-3 h-3" />
+                                                            <span>{domainBadge.label}</span>
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Job Folder */}
+                                                <td className="py-3.5 px-3 whitespace-nowrap">
+                                                    {jobFolder ? (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setSelectedFolderJobId(jobFolder.id);
+                                                                setSelectedJobId(jobFolder.id);
+                                                                setSelectedField(detectJobDomain(jobFolder));
+                                                            }}
+                                                            title={`Click to filter by job folder "${jobFolder.title}"`}
+                                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                                                                isCurrentFolder
+                                                                    ? "bg-violet-600 text-white border-violet-600 shadow-xs"
+                                                                    : "bg-slate-50 hover:bg-violet-50 text-slate-700 hover:text-violet-700 border-slate-200"
+                                                            }`}
+                                                        >
+                                                            <Folder className={`w-3 h-3 ${isCurrentFolder ? "text-white" : "text-violet-500"}`} />
+                                                            <span className="truncate max-w-[120px]">{jobFolder.title}</span>
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400 italic">General</span>
+                                                    )}
                                                 </td>
 
                                                 {/* Experience */}
@@ -1195,7 +1444,7 @@ const Resumes = () => {
                                                         <button
                                                             onClick={() => handleAnalyzeSingleCandidate(candidate.id)}
                                                             disabled={isAnalyzing}
-                                                            className="p-1.5 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition"
+                                                            className="p-1.5 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition cursor-pointer"
                                                             title={`Re-screen against ${currentJd.title}`}
                                                         >
                                                             {isAnalyzing ? (
@@ -1208,7 +1457,7 @@ const Resumes = () => {
                                                         {/* View Details */}
                                                         <button
                                                             onClick={() => setSelectedCandidateId(candidate.id)}
-                                                            className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-violet-600 transition"
+                                                            className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-violet-600 transition cursor-pointer"
                                                             title="View Details & Key Points"
                                                         >
                                                             <Eye className="w-3.5 h-3.5" />
@@ -1221,36 +1470,36 @@ const Resumes = () => {
                                                                     openActionMenuId === candidate.id ? null : candidate.id
                                                                 )
                                                             }
-                                                            className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-700 transition"
+                                                            className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-700 transition cursor-pointer"
                                                             title="Options"
                                                         >
                                                             <MoreVertical className="w-3.5 h-3.5" />
                                                         </button>
                                                     </div>
 
-                                                    {/* Dropdown Action Menu */}
+                                                    {/* Dropdown Action Menu (Automated AI Options - No manual shortlisting) */}
                                                     {openActionMenuId === candidate.id && (
-                                                        <div className="absolute right-4 top-10 w-48 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30 text-left text-xs font-medium text-slate-700 animate-in fade-in-50 zoom-in-95">
+                                                        <div className="absolute right-4 top-10 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30 text-left text-xs font-medium text-slate-700 animate-in fade-in-50 zoom-in-95">
                                                             <button
-                                                                onClick={() => handleStatusChange(candidate.id, "Shortlisted")}
-                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-emerald-600 font-semibold"
+                                                                onClick={() => {
+                                                                    handleAnalyzeSingleCandidate(candidate.id);
+                                                                    setOpenActionMenuId(null);
+                                                                }}
+                                                                className="w-full px-3.5 py-2 hover:bg-violet-50 flex items-center gap-2 text-violet-700 font-semibold cursor-pointer"
                                                             >
-                                                                <BookmarkCheck className="w-3.5 h-3.5" />
-                                                                <span>Shortlist Candidate</span>
+                                                                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                                                                <span>Auto-Screen with AI ATS</span>
                                                             </button>
                                                             <button
-                                                                onClick={() => handleStatusChange(candidate.id, "Review")}
-                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-amber-600 font-semibold"
+                                                                onClick={() => {
+                                                                    setSelectedCandidateId(candidate.id);
+                                                                    setShowFullProfileModal(true);
+                                                                    setOpenActionMenuId(null);
+                                                                }}
+                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
                                                             >
-                                                                <Clock className="w-3.5 h-3.5" />
-                                                                <span>Move to Review</span>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleStatusChange(candidate.id, "Rejected")}
-                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-rose-600 font-semibold"
-                                                            >
-                                                                <XCircle className="w-3.5 h-3.5" />
-                                                                <span>Mark as Rejected</span>
+                                                                <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                                                <span>View Full Breakdown</span>
                                                             </button>
                                                             <div className="border-t border-slate-100 my-1" />
                                                             <button
@@ -1259,10 +1508,20 @@ const Resumes = () => {
                                                                     setShowInterviewModal(true);
                                                                     setOpenActionMenuId(null);
                                                                 }}
-                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2"
+                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
                                                             >
                                                                 <Calendar className="w-3.5 h-3.5 text-slate-500" />
                                                                 <span>Schedule Interview</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    toast.success(`Downloading ${candidate.name}'s resume...`);
+                                                                    setOpenActionMenuId(null);
+                                                                }}
+                                                                className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                                                            >
+                                                                <Download className="w-3.5 h-3.5 text-slate-500" />
+                                                                <span>Download Resume PDF</span>
                                                             </button>
                                                         </div>
                                                     )}
@@ -1297,8 +1556,20 @@ const Resumes = () => {
 
                 {/* Right Candidate Details & Key Points Panel */}
                 <div className="xl:col-span-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6 space-y-5 sticky top-20">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
+                    {!selectedCandidate ? (
+                        <div className="py-24 text-center text-slate-400 space-y-3">
+                            <Users className="w-12 h-12 mx-auto text-slate-300" />
+                            <div>
+                                <h3 className="font-bold text-slate-700 text-base">No Candidate Selected</h3>
+                                <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+                                    Upload real resumes to evaluate ATS scores, skill matches, and key strengths.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Header */}
+                            <div className="flex items-start justify-between">
                         <div>
                             <div className="flex items-center gap-2">
                                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -1323,11 +1594,42 @@ const Resumes = () => {
                         <button
                             onClick={() => handleAnalyzeSingleCandidate(selectedCandidate.id)}
                             disabled={analyzingCandidateId === selectedCandidate.id}
-                            className="p-2 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition"
+                            className="p-2 rounded-xl border border-violet-200 text-violet-600 hover:bg-violet-50 transition cursor-pointer"
                             title={`Re-screen ${selectedCandidate.name} against ${currentJd.title}`}
                         >
                             <Sparkles className={`w-4 h-4 ${analyzingCandidateId === selectedCandidate.id ? "animate-spin" : ""}`} />
                         </button>
+                    </div>
+
+                    {/* Field Domain & Assigned Job Folder Badges */}
+                    <div className="grid grid-cols-2 gap-2">
+                        {(() => {
+                            const domain = detectCandidateDomain(selectedCandidate);
+                            const badge = getDomainBadge(domain);
+                            const DomainIcon = badge.icon;
+                            return (
+                                <div className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs font-semibold ${badge.bg}`}>
+                                    <DomainIcon className="w-4 h-4 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] uppercase tracking-wider opacity-75">Career Field</div>
+                                        <div className="truncate font-bold text-xs">{badge.label}</div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {(() => {
+                            const jobFolder = getCandidateJobFolder(selectedCandidate);
+                            return (
+                                <div className="p-2.5 rounded-xl border border-violet-100 bg-violet-50/70 text-violet-800 flex items-center gap-2 text-xs font-semibold">
+                                    <Folder className="w-4 h-4 text-violet-600 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="text-[9px] uppercase tracking-wider text-violet-500">Job Folder</div>
+                                        <div className="truncate font-bold text-xs">{jobFolder?.title || "General Pool"}</div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Target JD Reference Tag */}
@@ -1471,45 +1773,28 @@ const Resumes = () => {
                         View Full Candidate Profile &amp; JD Breakdown
                     </button>
 
-                    {/* Quick Status Actions: Shortlist / Review / Reject */}
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                        <div className="text-xs font-bold text-slate-800">Status Controls</div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <button
-                                onClick={() => handleStatusChange(selectedCandidate.id, "Shortlisted")}
-                                className={`py-2 px-2 text-xs font-semibold rounded-xl border transition flex items-center justify-center gap-1 ${
-                                    selectedCandidate.status === "Shortlisted"
-                                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                                        : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200/80"
-                                }`}
-                            >
-                                <BookmarkCheck className="w-3.5 h-3.5" />
-                                <span>Shortlist</span>
-                            </button>
+                    {/* Automated ATS Shortlisting Status (Manual Shortlisting Controls Removed) */}
+                    <div className="space-y-3 pt-3 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-slate-800">Automated Shortlisting Verdict</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${getStatusPill(selectedCandidate.status)}`}>
+                                {selectedCandidate.status}
+                            </span>
+                        </div>
 
-                            <button
-                                onClick={() => handleStatusChange(selectedCandidate.id, "Review")}
-                                className={`py-2 px-2 text-xs font-semibold rounded-xl border transition flex items-center justify-center gap-1 ${
-                                    selectedCandidate.status === "Review"
-                                        ? "bg-amber-600 text-white border-amber-600 shadow-sm"
-                                        : "bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200/80"
-                                }`}
-                            >
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>Review</span>
-                            </button>
-
-                            <button
-                                onClick={() => handleStatusChange(selectedCandidate.id, "Rejected")}
-                                className={`py-2 px-2 text-xs font-semibold rounded-xl border transition flex items-center justify-center gap-1 ${
-                                    selectedCandidate.status === "Rejected"
-                                        ? "bg-rose-600 text-white border-rose-600 shadow-sm"
-                                        : "bg-rose-50 hover:bg-rose-100 text-rose-600 border-rose-200/80"
-                                }`}
-                            >
-                                <XCircle className="w-3.5 h-3.5" />
-                                <span>Reject</span>
-                            </button>
+                        <div className="p-3 bg-slate-50 border border-slate-200/70 rounded-xl space-y-1.5 text-xs">
+                            <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
+                                <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                                <span>100% Automated by AI ATS Engine</span>
+                            </div>
+                            <p className="text-slate-500 text-[11px] leading-relaxed">
+                                {selectedCandidate.status === "Shortlisted" &&
+                                    `Candidate successfully shortlisted with an ATS score of ${selectedCandidate.atsScore}/100 and ${selectedCandidate.matchScore}% JD alignment against ${currentJd.title}.`}
+                                {selectedCandidate.status === "Review" &&
+                                    `Candidate placed in Review (ATS score: ${selectedCandidate.atsScore}/100). Meets secondary qualifications.`}
+                                {selectedCandidate.status === "Rejected" &&
+                                    `Candidate filtered out with ATS score of ${selectedCandidate.atsScore}/100, which is below the passing threshold.`}
+                            </p>
                         </div>
 
                         {/* Schedule & Download actions */}
@@ -1519,26 +1804,28 @@ const Resumes = () => {
                                     setGeneratedLinkData(null);
                                     setShowInterviewModal(true);
                                 }}
-                                className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition shadow-xs"
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition shadow-xs cursor-pointer"
                             >
-                                <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                <Calendar className="w-3.5 h-3.5 text-white" />
                                 <span>Schedule</span>
                             </button>
 
                             <button
                                 onClick={() => toast.success(`Downloading ${selectedCandidate.name}'s resume...`)}
-                                className="flex items-center justify-center gap-1.5 py-2 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition shadow-xs"
+                                className="flex items-center justify-center gap-1.5 py-2.5 px-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition shadow-xs cursor-pointer"
                             >
                                 <Download className="w-3.5 h-3.5 text-slate-500" />
                                 <span>PDF</span>
                             </button>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             </div>
 
             {/* Modal: Full Profile & JD ATS Breakdown */}
-            {showFullProfileModal && (
+            {showFullProfileModal && selectedCandidate && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-start justify-between">
@@ -1718,21 +2005,24 @@ const Resumes = () => {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => {
-                                        handleStatusChange(selectedCandidate.id, "Review");
+                                        handleAnalyzeSingleCandidate(selectedCandidate.id);
                                         setShowFullProfileModal(false);
                                     }}
-                                    className="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-sm font-semibold transition"
+                                    className="px-4 py-2.5 bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer"
                                 >
-                                    Move to Review
+                                    <Sparkles className="w-4 h-4 text-violet-600" />
+                                    <span>Re-screen with AI ATS</span>
                                 </button>
                                 <button
                                     onClick={() => {
-                                        handleStatusChange(selectedCandidate.id, "Shortlisted");
                                         setShowFullProfileModal(false);
+                                        setGeneratedLinkData(null);
+                                        setShowInterviewModal(true);
                                     }}
-                                    className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-emerald-500/20"
+                                    className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold shadow-md shadow-violet-500/20 flex items-center gap-1.5 cursor-pointer"
                                 >
-                                    Shortlist Candidate
+                                    <Calendar className="w-4 h-4 text-white" />
+                                    <span>Schedule AI Interview</span>
                                 </button>
                             </div>
                         </div>
@@ -1849,7 +2139,7 @@ const Resumes = () => {
             )}
 
             {/* Modal: Schedule Interview */}
-            {showInterviewModal && (
+            {showInterviewModal && selectedCandidate && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95">
                         <div className="flex items-center justify-between">

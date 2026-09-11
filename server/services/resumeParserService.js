@@ -20,19 +20,72 @@ function getAiClient() {
   return aiClient;
 }
 
-// Dictionary of known technical, design, and management skills for deterministic fallback parsing
+// Dictionary of known technical, engineering, finance, analyst, and management skills
 const KNOWN_SKILLS = [
-  "Python", "Django", "Flask", "FastAPI", "Pandas", "NumPy", "PyTorch", "TensorFlow", "Scikit-Learn",
+  // Data Science & AI
+  "Python", "Data Science", "Machine Learning", "Deep Learning", "NLP", "Computer Vision",
+  "TensorFlow", "PyTorch", "Keras", "Scikit-Learn", "Pandas", "NumPy", "Statistics",
+  "Predictive Modeling", "BigQuery", "Snowflake", "Spark", "ETL", "Jupyter", "Generative AI", "LLM",
+  // Mechanical Engineering
+  "Mechanical Engineering", "SolidWorks", "AutoCAD", "CATIA", "ANSYS", "FEA", "Thermodynamics",
+  "Fluid Mechanics", "GD&T", "CNC", "Manufacturing", "HVAC", "Mechatronics", "Thermal Analysis",
+  "Machine Design", "Creo", "Materials Science", "MATLAB",
+  // Software Engineering
   "JavaScript", "TypeScript", "React", "React Native", "Next.js", "Vue", "Angular", "Node.js", "Express",
-  "HTML", "CSS", "Tailwind", "Bootstrap", "Redux", "GraphQL", "REST API", "RESTful",
-  "Java", "Spring Boot", "Spring", "Hibernate", "Kotlin", "Swift", "C#", ".NET", "C++", "C", "Golang", "Go", "Rust", "PHP", "Laravel",
-  "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "DynamoDB", "Elasticsearch", "Cassandra",
-  "AWS", "Amazon Web Services", "Azure", "GCP", "Google Cloud", "Docker", "Kubernetes", "CI/CD", "Terraform", "Linux", "Git", "GitHub",
-  "Microservices", "System Design", "Distributed Systems", "OOP", "Data Structures", "Algorithms",
-  "Figma", "Adobe XD", "UI/UX", "User Research", "Wireframing", "Prototyping", "Design Systems",
-  "Tableau", "PowerBI", "Data Analysis", "Data Science", "Machine Learning", "NLP", "BigQuery", "Snowflake", "ETL",
-  "HR", "Recruitment", "Talent Acquisition", "Sourcing", "Screening", "Onboarding", "Payroll", "Employee Relations"
+  "HTML", "CSS", "Tailwind", "Redux", "GraphQL", "REST API", "Java", "Spring Boot", "Kotlin", "Swift",
+  "C#", ".NET", "C++", "C", "Golang", "Go", "Rust", "PHP", "SQL", "PostgreSQL", "MySQL", "MongoDB",
+  "Redis", "AWS", "Azure", "GCP", "Docker", "Kubernetes", "CI/CD", "Linux", "Git", "GitHub", "Microservices",
+  // Finance & Accounting
+  "Finance", "Financial Modeling", "Corporate Finance", "Valuation", "Accounting", "Auditing",
+  "Taxation", "Tax", "QuickBooks", "Tally", "SAP FICO", "Financial Reporting", "Budgeting",
+  "Forecasting", "Balance Sheet", "P&L", "Cash Flow", "Equity Research", "CFA", "CPA", "Risk Management",
+  // Analyst
+  "Data Analysis", "Business Analysis", "Tableau", "PowerBI", "Power BI", "Data Visualization",
+  "Reporting", "Dashboards", "KPI", "Market Research", "Business Intelligence",
+  // Design & HR
+  "Figma", "UI/UX", "HR", "Recruitment", "Talent Acquisition"
 ];
+
+function classifyField(text = "", skills = [], role = "", filename = "") {
+  const combined = `${filename} ${role} ${skills.join(" ")} ${text}`.toLowerCase();
+  
+  // 1. Data Science
+  if (
+    /data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b|eda\b/i.test(combined)
+  ) {
+    return "Data Science";
+  }
+  
+  // 2. Mechanical
+  if (
+    /mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|mechatronics|thermal|creo|machine design|aerospace/i.test(combined)
+  ) {
+    return "Mechanical";
+  }
+
+  // 3. Finance
+  if (
+    /finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|wealth management|corporate finance|equity research|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|sap fico|balance sheet|p&l|financial modeling|investment banking/i.test(combined)
+  ) {
+    return "Finance";
+  }
+
+  // 4. Analyst
+  if (
+    /data analyst|business analyst|bi analyst|operations analyst|product analyst|market research|tableau|power\s?bi|bi tools|business intelligence|reporting analyst|data analytics|dashboards/i.test(combined)
+  ) {
+    return "Analyst";
+  }
+
+  // 5. Software Engineer
+  if (
+    /software|developer|frontend|backend|full\s?stack|web dev|react|node|javascript|typescript|angular|vue|next|express|java\b|spring|c\+\+|c#|\.net|golang|\bgo\b|rust|python|django|flask|fastapi|devops|kubernetes|docker|cloud/i.test(combined)
+  ) {
+    return "Software Engineer";
+  }
+
+  return "Software Engineer";
+}
 
 /**
  * Extract raw text from file buffer (PDF or plain text)
@@ -152,12 +205,23 @@ function heuristicExtract(text, filename = "") {
     role = "Software Developer";
   }
 
+  const field = classifyField(text, uniqueSkills, role, filename);
+  if (role === "Candidate" || role === "Software Developer") {
+    if (field === "Data Science") role = "Data Scientist";
+    else if (field === "Mechanical") role = "Mechanical Engineer";
+    else if (field === "Finance") role = "Financial Analyst";
+    else if (field === "Analyst") role = "Data Analyst";
+    else if (field === "Software Engineer") role = "Software Engineer";
+  }
+
   return {
     name,
     email,
     phone,
     location: "India",
     role,
+    field,
+    domain: field,
     experience,
     expYears,
     skills: uniqueSkills.slice(0, 4),
@@ -167,6 +231,8 @@ function heuristicExtract(text, filename = "") {
     rawText: text
   };
 }
+
+let parserQuotaExhaustedUntil = 0;
 
 /**
  * Parse candidate details from resume text using Gemini AI or heuristic fallback
@@ -178,7 +244,7 @@ async function parseResumeText(rawText, filename = "") {
   }
 
   const ai = getAiClient();
-  if (!ai) {
+  if (!ai || Date.now() < parserQuotaExhaustedUntil) {
     return heuristicExtract(rawText, filename);
   }
 
@@ -224,16 +290,21 @@ Return JSON ONLY with this exact schema:
     if (text) {
       const parsed = JSON.parse(text);
       if (parsed && parsed.name) {
+        const skills = Array.isArray(parsed.skills) && parsed.skills.length > 0 ? parsed.skills : (parsed.allSkills || []).slice(0, 3);
+        const allSkills = Array.isArray(parsed.allSkills) ? parsed.allSkills : (parsed.skills || []);
+        const field = classifyField(rawText, allSkills, parsed.role || "", filename);
         return {
           name: parsed.name || "Candidate",
           email: parsed.email || `${(parsed.name || "candidate").toLowerCase().replace(/\s+/g, ".")}@example.com`,
           phone: parsed.phone || "+91 98" + Math.floor(10000000 + Math.random() * 90000000),
           location: parsed.location || "India",
-          role: parsed.role || "Candidate",
+          role: parsed.role || (field === "Data Science" ? "Data Scientist" : field === "Mechanical" ? "Mechanical Engineer" : field === "Finance" ? "Financial Analyst" : field === "Analyst" ? "Data Analyst" : "Software Engineer"),
+          field,
+          domain: field,
           experience: parsed.experience || `${parsed.expYears || 1} Years`,
           expYears: typeof parsed.expYears === "number" ? parsed.expYears : 1,
-          skills: Array.isArray(parsed.skills) && parsed.skills.length > 0 ? parsed.skills : (parsed.allSkills || []).slice(0, 3),
-          allSkills: Array.isArray(parsed.allSkills) ? parsed.allSkills : (parsed.skills || []),
+          skills,
+          allSkills,
           education: parsed.education || "Bachelor's Degree",
           summary: parsed.summary || "",
           rawText
@@ -243,7 +314,12 @@ Return JSON ONLY with this exact schema:
 
     return heuristicExtract(rawText, filename);
   } catch (err) {
-    console.warn("Gemini resume parsing failed, using heuristic fallback:", err.message);
+    if (err.message && (err.message.includes("429") || err.message.includes("RESOURCE_EXHAUSTED") || err.message.includes("quota"))) {
+      parserQuotaExhaustedUntil = Date.now() + 60000;
+      console.warn("Gemini quota reached for parsing. Switching to heuristic resume extractor for next 60s.");
+    } else {
+      console.warn("Gemini resume parsing failed, using heuristic fallback:", err.message);
+    }
     return heuristicExtract(rawText, filename);
   }
 }
@@ -251,5 +327,6 @@ Return JSON ONLY with this exact schema:
 module.exports = {
   extractRawText,
   parseResumeText,
-  heuristicExtract
+  heuristicExtract,
+  classifyField
 };

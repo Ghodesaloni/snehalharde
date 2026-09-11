@@ -2,171 +2,90 @@ const { readData, writeData } = require("./dbEngine");
 
 const COLLECTION = "resumes";
 
-const seedResumes = [
-  {
-    id: "c1",
-    name: "Snehal Harde",
-    email: "snehal@email.com",
-    phone: "+91 98765 43210",
-    location: "Nagpur, Maharashtra, India",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    role: "Python Developer",
-    experience: "2 Years",
-    expYears: 2,
-    skills: ["Python", "Flask", "SQL"],
-    extraSkillsCount: 3,
-    allSkills: ["Python", "Flask", "SQL", "REST API", "HTML", "CSS"],
-    atsScore: 87,
-    matchScore: 92,
-    skillsMatchPct: 95,
-    status: "Shortlisted",
-    uploadedDate: "20 May 2025",
-    jobId: "job-2",
-    createdAt: new Date("2025-05-20").toISOString()
-  },
-  {
-    id: "c2",
-    name: "Rohan Verma",
-    email: "rohanv@email.com",
-    phone: "+91 98123 45678",
-    location: "Bangalore, Karnataka, India",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    role: "Full Stack Developer",
-    experience: "4 Years",
-    expYears: 4,
-    skills: ["React", "Node.js", "MongoDB"],
-    extraSkillsCount: 2,
-    allSkills: ["React", "Node.js", "MongoDB", "TypeScript", "Tailwind"],
-    atsScore: 91,
-    matchScore: 88,
-    skillsMatchPct: 90,
-    status: "Shortlisted",
-    uploadedDate: "19 May 2025",
-    jobId: "job-1",
-    createdAt: new Date("2025-05-19").toISOString()
-  },
-  {
-    id: "c3",
-    name: "Aisha Khan",
-    email: "aisha.k@email.com",
-    phone: "+91 97234 56789",
-    location: "Mumbai, Maharashtra, India",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-    role: "UI/UX Product Designer",
-    experience: "3 Years",
-    expYears: 3,
-    skills: ["Figma", "Design Systems", "Prototyping"],
-    extraSkillsCount: 2,
-    allSkills: ["Figma", "Design Systems", "Prototyping", "User Research", "Wireframing"],
-    atsScore: 84,
-    matchScore: 85,
-    skillsMatchPct: 88,
-    status: "Under Review",
-    uploadedDate: "18 May 2025",
-    jobId: "job-3",
-    createdAt: new Date("2025-05-18").toISOString()
-  },
-  {
-    id: "c4",
-    name: "Vikram Malhotra",
-    email: "vikram.m@email.com",
-    phone: "+91 96345 67890",
-    location: "Hyderabad, Telangana, India",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200",
-    role: "DevOps Engineer",
-    experience: "5 Years",
-    expYears: 5,
-    skills: ["Kubernetes", "AWS", "Docker"],
-    extraSkillsCount: 3,
-    allSkills: ["Kubernetes", "AWS", "Docker", "Terraform", "CI/CD", "Linux"],
-    atsScore: 94,
-    matchScore: 90,
-    skillsMatchPct: 92,
-    status: "Shortlisted",
-    uploadedDate: "17 May 2025",
-    jobId: "job-4",
-    createdAt: new Date("2025-05-17").toISOString()
-  },
-  {
-    id: "c5",
-    name: "Pooja Hegde",
-    email: "pooja.h@email.com",
-    phone: "+91 95456 78901",
-    location: "Pune, Maharashtra, India",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    role: "HR Talent Acquisition Specialist",
-    experience: "2 Years",
-    expYears: 2,
-    skills: ["Sourcing", "Screening", "ATS"],
-    extraSkillsCount: 1,
-    allSkills: ["Sourcing", "Screening", "ATS", "Talent Engagement"],
-    atsScore: 78,
-    matchScore: 80,
-    skillsMatchPct: 82,
-    status: "New",
-    uploadedDate: "16 May 2025",
-    jobId: "job-5",
-    createdAt: new Date("2025-05-16").toISOString()
-  },
-  {
-    id: "c6",
-    name: "Ananya Iyer",
-    email: "ananya.i@email.com",
-    phone: "+91 94567 89012",
-    location: "Chennai, Tamil Nadu, India",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    role: "Senior Software Engineer",
-    experience: "6 Years",
-    expYears: 6,
-    skills: ["Java", "Spring Boot", "Microservices"],
-    extraSkillsCount: 4,
-    allSkills: ["Java", "Spring Boot", "Microservices", "Kafka", "PostgreSQL", "Docker"],
-    atsScore: 92,
-    matchScore: 94,
-    skillsMatchPct: 96,
-    status: "Shortlisted",
-    uploadedDate: "15 May 2025",
-    jobId: "job-1",
-    createdAt: new Date("2025-05-15").toISOString()
-  }
-];
-
 class ResumesDatabase {
+  classifyDomain(candidate) {
+    if (candidate.field && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.field)) {
+      return candidate.field;
+    }
+    if (candidate.domain && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.domain)) {
+      return candidate.domain;
+    }
+
+    const text = `${candidate.name || ""} ${candidate.role || ""} ${candidate.currentRole || ""} ${(candidate.allSkills || candidate.skills || []).join(" ")} ${candidate.summary || ""} ${candidate.resumeFileName || ""}`.toLowerCase();
+
+    // 1. Data Science
+    if (/data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b|eda\b/i.test(text)) {
+      return "Data Science";
+    }
+
+    // 2. Mechanical
+    if (/mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|mechatronics|thermal|creo|machine design|aerospace/i.test(text)) {
+      return "Mechanical";
+    }
+
+    // 3. Finance
+    if (/finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|wealth management|corporate finance|equity research|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|sap fico|balance sheet|p&l|financial modeling|investment banking/i.test(text)) {
+      return "Finance";
+    }
+
+    // 4. Analyst
+    if (/data analyst|business analyst|bi analyst|operations analyst|product analyst|market research|tableau|power\s?bi|bi tools|business intelligence|reporting analyst|data analytics|dashboards/i.test(text)) {
+      return "Analyst";
+    }
+
+    // 5. Software Engineer
+    if (/software|developer|frontend|backend|full\s?stack|web dev|react|node|javascript|typescript|angular|vue|next|express|java\b|spring|c\+\+|c#|\.net|golang|\bgo\b|rust|python|django|flask|fastapi|devops|kubernetes|docker|cloud/i.test(text)) {
+      return "Software Engineer";
+    }
+
+    return "Software Engineer";
+  }
+
   ensureFields(candidate) {
     if (!candidate) return candidate;
-    const skills = candidate.allSkills || candidate.skills || ["JavaScript", "Python"];
+    const skills = candidate.allSkills || candidate.skills || [];
     const status = candidate.status === "Under Review" ? "Review" : candidate.status || "Review";
-    const expYears = candidate.expYears || 2;
+    const expYears = candidate.expYears || 0;
+    const field = candidate.field || candidate.domain || this.classifyDomain(candidate);
+
     return {
       ...candidate,
+      field,
+      domain: field,
       status,
-      currentRole: candidate.currentRole || `${candidate.role} at Tech Corp`,
-      education: candidate.education || "B.Tech in Computer Science",
-      summary: candidate.summary || `${candidate.name} has demonstrated strong background in ${skills.slice(0, 3).join(", ")} with ${candidate.experience || `${expYears} years`} experience.`,
+      jobId: candidate.jobId || candidate.targetJobId || null,
+      targetJobTitle: candidate.targetJobTitle || null,
+      currentRole: candidate.currentRole || candidate.role || "",
+      education: candidate.education || "",
+      summary: candidate.summary || (candidate.name ? `${candidate.name} profile.` : ""),
       matchedSkills: candidate.matchedSkills || skills.slice(0, 3),
       missingSkills: candidate.missingSkills || [],
       keyPoints: candidate.keyPoints || {
-        strengths: [
-          `Proficient in core technical competencies: ${skills.slice(0, 3).join(", ")}.`,
-          `Over ${candidate.experience || `${expYears} years`} of practical domain experience.`,
-          "Consistent record of clean code delivery and agile collaboration."
-        ],
-        missingSkills: candidate.missingSkills && candidate.missingSkills.length > 0 
-          ? candidate.missingSkills 
-          : ["Advanced cloud deployment automation could be expanded."],
-        experienceMatch: `Meets experience criteria with ${candidate.experience || `${expYears} years`}.`,
+        strengths: skills.length > 0 ? [`Proficient in: ${skills.slice(0, 3).join(", ")}.`] : [],
+        missingSkills: candidate.missingSkills || [],
+        experienceMatch: candidate.experience ? `Experience: ${candidate.experience}` : "",
         verdict: status === "Shortlisted" 
           ? "High ATS compatibility. Shortlisted for screening round." 
           : status === "Review" 
-          ? "Strong candidate profile under evaluation for potential match." 
-          : "Candidate does not meet baseline ATS threshold."
+          ? "Candidate profile under evaluation for potential match." 
+          : "Application processed."
       }
     };
   }
 
   getAll(filters = {}) {
-    let list = readData(COLLECTION, seedResumes);
+    let list = readData(COLLECTION, []);
     list = list.map(c => this.ensureFields(c));
+
+    if (filters.field && filters.field !== "All" && filters.field !== "All Fields") {
+      list = list.filter(r => (r.field || "").toLowerCase() === filters.field.toLowerCase());
+    }
+    if (filters.domain && filters.domain !== "All" && filters.domain !== "All Fields") {
+      list = list.filter(r => (r.domain || r.field || "").toLowerCase() === filters.domain.toLowerCase());
+    }
+    if (filters.jobId && filters.jobId !== "All") {
+      list = list.filter(r => r.jobId === filters.jobId || r.targetJobId === filters.jobId);
+    }
     if (filters.status && filters.status !== "All") {
       list = list.filter(r => r.status.toLowerCase() === filters.status.toLowerCase());
     }
@@ -176,9 +95,10 @@ class ResumesDatabase {
     if (filters.search) {
       const q = filters.search.toLowerCase();
       list = list.filter(r =>
-        r.name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        r.role.toLowerCase().includes(q) ||
+        (r.name && r.name.toLowerCase().includes(q)) ||
+        (r.email && r.email.toLowerCase().includes(q)) ||
+        (r.role && r.role.toLowerCase().includes(q)) ||
+        (r.field && r.field.toLowerCase().includes(q)) ||
         (r.allSkills && r.allSkills.some(s => s.toLowerCase().includes(q)))
       );
     }
@@ -186,36 +106,40 @@ class ResumesDatabase {
   }
 
   getById(id) {
-    const list = readData(COLLECTION, seedResumes);
+    const list = readData(COLLECTION, []);
     const item = list.find(r => r.id === id);
     return item ? this.ensureFields(item) : null;
   }
 
   create(resumeData) {
-    const list = readData(COLLECTION, seedResumes);
+    const list = readData(COLLECTION, []);
     const id = `c-${Date.now()}`;
-    const skills = Array.isArray(resumeData.skills) ? resumeData.skills : (resumeData.skills ? resumeData.skills.split(",").map(s => s.trim()) : ["JavaScript", "React"]);
+    const skills = Array.isArray(resumeData.skills) ? resumeData.skills : (resumeData.skills ? resumeData.skills.split(",").map(s => s.trim()) : []);
     const allSkills = resumeData.allSkills || skills;
+    const field = resumeData.field || resumeData.domain || this.classifyDomain({ ...resumeData, allSkills });
     const newCandidate = {
       id,
-      name: resumeData.name || "Candidate Name",
-      email: resumeData.email || `${id}@example.com`,
-      phone: resumeData.phone || "+91 90000 00000",
-      location: resumeData.location || "Bangalore, India",
-      avatar: resumeData.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-      role: resumeData.role || "Software Engineer",
-      experience: resumeData.experience || "2 Years",
-      expYears: resumeData.expYears || 2,
+      name: resumeData.name || "Candidate",
+      email: resumeData.email || "",
+      phone: resumeData.phone || "",
+      location: resumeData.location || "",
+      avatar: resumeData.avatar || "",
+      role: resumeData.role || "",
+      field,
+      domain: field,
+      experience: resumeData.experience || "0 Years",
+      expYears: resumeData.expYears || 0,
       skills: skills.slice(0, 3),
       extraSkillsCount: Math.max(0, allSkills.length - 3),
       allSkills,
-      atsScore: resumeData.atsScore || Math.floor(Math.random() * 20 + 75),
-      matchScore: resumeData.matchScore || Math.floor(Math.random() * 20 + 75),
-      skillsMatchPct: resumeData.skillsMatchPct || Math.floor(Math.random() * 15 + 80),
+      atsScore: resumeData.atsScore !== undefined ? resumeData.atsScore : 0,
+      matchScore: resumeData.matchScore !== undefined ? resumeData.matchScore : 0,
+      skillsMatchPct: resumeData.skillsMatchPct !== undefined ? resumeData.skillsMatchPct : 0,
       status: resumeData.status || "New",
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-      jobId: resumeData.jobId || "job-1",
-      resumeFileName: resumeData.resumeFileName || "resume.pdf",
+      jobId: resumeData.jobId || resumeData.targetJobId || null,
+      targetJobTitle: resumeData.targetJobTitle || null,
+      resumeFileName: resumeData.resumeFileName || "",
       createdAt: new Date().toISOString()
     };
 
@@ -225,7 +149,7 @@ class ResumesDatabase {
   }
 
   update(id, updates) {
-    const list = readData(COLLECTION, seedResumes);
+    const list = readData(COLLECTION, []);
     const idx = list.findIndex(r => r.id === id);
     if (idx === -1) return null;
     list[idx] = { ...list[idx], ...updates, updatedAt: new Date().toISOString() };
@@ -238,7 +162,7 @@ class ResumesDatabase {
   }
 
   delete(id) {
-    const list = readData(COLLECTION, seedResumes);
+    const list = readData(COLLECTION, []);
     const filtered = list.filter(r => r.id !== id);
     if (filtered.length === list.length) return false;
     writeData(COLLECTION, filtered);

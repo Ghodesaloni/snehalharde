@@ -5,8 +5,9 @@ const candidatesDb = require("../db/candidatesDb");
 // GET /api/candidates - list candidate evaluations
 router.get("/", async (req, res) => {
   try {
-    const { status, role, search } = req.query;
-    const list = await candidatesDb.getAll({ status, role, search });
+    const { status, role, search, userEmail } = req.query;
+    const authorEmail = userEmail || req.headers["x-user-email"];
+    const list = await candidatesDb.getAll({ status, role, search, userEmail: authorEmail });
     res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -29,7 +30,12 @@ router.get("/:id", async (req, res) => {
 // POST /api/candidates - create candidate evaluation
 router.post("/", async (req, res) => {
   try {
-    const newCand = await candidatesDb.create(req.body);
+    const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
+    const newCand = await candidatesDb.create({
+      ...req.body,
+      createdBy: authorEmail,
+      userEmail: authorEmail
+    });
     res.status(201).json({ success: true, data: newCand, message: "Candidate evaluation created" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

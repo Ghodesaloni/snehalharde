@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
-const { query } = require("../db/postgres");
+const { query, getUserByEmail } = require("../db/postgres");
 const { readData, writeData } = require("../db/dbEngine");
 
 const USERS_COLLECTION = "users";
@@ -14,14 +14,29 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, storedHash) {
-  if (!storedHash) return false;
-  // Fallback for plain text or demo pass
-  if (!storedHash.includes(":")) {
-    return password === storedHash || password === "password123";
+  if (!storedHash || !password) return false;
+
+  // 1. Check SHA256 (standard AvaHire registration format)
+  const sha256 = crypto.createHash("sha256").update(password).digest("hex");
+  if (sha256.toLowerCase() === storedHash.toLowerCase()) {
+    return true;
   }
-  const [salt, originalHash] = storedHash.split(":");
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-  return hash === originalHash || password === "password123";
+
+  // 2. Check PBKDF2 with salt ("salt:hash")
+  if (storedHash.includes(":")) {
+    const [salt, originalHash] = storedHash.split(":");
+    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+    if (hash === originalHash) {
+      return true;
+    }
+  }
+
+  // 3. Exact plain match if plain stored
+  if (password === storedHash) {
+    return true;
+  }
+
+  return false;
 }
 
 const defaultUsers = [
@@ -170,39 +185,28 @@ router.post("/login", async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Check PostgreSQL if available
-    let pgUser = null;
+    // 1. First look up registered user from PostgreSQL / mirrored database
+    let user = null;
     try {
-      const existing = await query(
-        "SELECT id, uid, email, name, avatar, role, company, designation, phone, password_hash FROM users WHERE LOWER(email) = $1 LIMIT 1",
-        [cleanEmail]
-      );
-      if (existing && existing.rows && existing.rows.length > 0) {
-        pgUser = existing.rows[0];
-      }
+      user = await getUserByEmail(cleanEmail);
     } catch (e) {
-      // Fallback to local JSON store
+      console.warn("getUserByEmail lookup error:", e.message);
     }
 
-    let user = pgUser;
-    let isLocal = false;
-
+    // 2. If not found in primary store, check default users collection
     if (!user) {
-      // Look in JSON store
       const localUsers = readData(USERS_COLLECTION, defaultUsers);
       const found = localUsers.find(u => u.email?.toLowerCase() === cleanEmail);
       if (found) {
         user = found;
-        isLocal = true;
       }
     }
 
-    // If still not found, check if it's default demo accounts
+    // 3. If still not found, check built-in demo accounts
     if (!user) {
       const matchDefault = defaultUsers.find(u => u.email.toLowerCase() === cleanEmail);
       if (matchDefault) {
         user = matchDefault;
-        isLocal = true;
       }
     }
 
@@ -213,36 +217,33 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Verify password
-    if (user.password_hash) {
-      const isMatch = verifyPassword(password, user.password_hash);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          error: "Incorrect password. Please check your credentials.",
-        });
-      }
+    // 4. Verify password strictly against registered password hash
+    const storedHash = user.password_hash || user.passwordHash;
+    if (!storedHash) {
+      return res.status(401).json({
+        success: false,
+        error: "No password configured for this account. Please reset your password or register again.",
+      });
     }
 
-    // Update last_login timestamp if PostgreSQL
-    if (!isLocal) {
-      try {
-        await query("UPDATE users SET last_login = NOW() WHERE id = $1", [user.id]);
-      } catch (e) {}
-    } else {
-      const localUsers = readData(USERS_COLLECTION, defaultUsers);
-      const idx = localUsers.findIndex(u => u.email?.toLowerCase() === cleanEmail);
-      if (idx !== -1) {
-        localUsers[idx].last_login = new Date().toISOString();
-        writeData(USERS_COLLECTION, localUsers);
-      }
+    const isMatch = verifyPassword(password, storedHash);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        error: "Incorrect password. Please enter the exact password you registered with.",
+      });
     }
+
+    // 5. Update last_login timestamp in PostgreSQL if available
+    try {
+      await query("UPDATE public.users SET updated_at = NOW() WHERE LOWER(email) = $1", [cleanEmail]);
+    } catch (e) {}
 
     const sessionUser = {
       id: user.id,
-      uid: user.uid || `usr_${Date.now()}`,
+      uid: user.uid || `usr_${user.id || Date.now()}`,
       email: user.email,
-      name: user.name || cleanEmail.split("@")[0],
+      name: user.fullName || user.name || cleanEmail.split("@")[0],
       avatar: user.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
       role: user.role || "recruiter",
       company: user.company || "AvaHire Tech Solutions",

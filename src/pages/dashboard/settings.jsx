@@ -49,7 +49,9 @@ const Settings = () => {
         if (saved) {
             try {
                 return JSON.parse(saved);
-            } catch (e) {}
+            } catch (e) {
+                console.warn("Failed to parse saved preferences:", e);
+            }
         }
         return {
             darkMode: false,
@@ -69,7 +71,9 @@ const Settings = () => {
         if (saved) {
             try {
                 return JSON.parse(saved);
-            } catch (e) {}
+            } catch (e) {
+                console.warn("Failed to parse saved interview settings:", e);
+            }
         }
         return {
             // General Interview Settings

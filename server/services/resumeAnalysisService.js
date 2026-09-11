@@ -21,9 +21,39 @@ function getAiClient() {
   return aiClient;
 }
 
+// Skill synonyms and equivalents map for realistic ATS matching
+const SKILL_SYNONYMS = {
+  "python": ["python", "python3", "flask", "django", "fastapi"],
+  "flask": ["flask", "django", "fastapi", "python"],
+  "django": ["django", "flask", "fastapi", "python"],
+  "fastapi": ["fastapi", "flask", "django", "python"],
+  "sql": ["sql", "postgresql", "postgres", "mysql", "sqlite", "relational database"],
+  "postgresql": ["postgresql", "postgres", "sql", "mysql"],
+  "react": ["react", "react.js", "reactjs", "next.js", "nextjs", "frontend"],
+  "node.js": ["node.js", "nodejs", "node", "express", "backend"],
+  "typescript": ["typescript", "ts", "javascript", "js"],
+  "aws": ["aws", "amazon web services", "cloud", "ec2", "s3"],
+  "docker": ["docker", "container", "containers", "containerization", "kubernetes"],
+  "kubernetes": ["kubernetes", "k8s", "docker", "helm"],
+  "figma": ["figma", "sketch", "adobe xd", "ui/ux"],
+  "design systems": ["design systems", "ui components", "style guides", "figma"],
+  "user research": ["user research", "usability testing", "ux research", "wireframing"],
+  "wireframing": ["wireframing", "prototyping", "figma", "ui/ux"],
+  "prototyping": ["prototyping", "wireframing", "figma"],
+  "ci/cd": ["ci/cd", "continuous integration", "github actions", "gitlab ci", "jenkins"],
+  "terraform": ["terraform", "iac", "infrastructure as code", "cloudformation"],
+  "system design": ["system design", "microservices", "architecture", "rest api", "distributed systems"],
+  "rest api": ["rest api", "restful", "api", "microservices", "endpoints"],
+  "tech sourcing": ["tech sourcing", "sourcing", "talent acquisition", "recruitment"],
+  "sourcing": ["sourcing", "tech sourcing", "talent acquisition", "recruitment"],
+  "ats": ["ats", "applicant tracking", "greenhouse", "lever", "workday", "screening"],
+  "interviewing": ["interviewing", "candidate screening", "talent assessment", "screening"],
+  "talent engagement": ["talent engagement", "candidate experience", "talent sourcing", "recruiting"]
+};
+
 /**
- * Intelligent, strict deterministic algorithmic ATS screening
- * Enforces rigorous shortlisting thresholds so that unqualified candidates are NEVER shortlisted.
+ * Intelligent, deterministic algorithmic ATS screening
+ * Accurately scores candidates and assigns proper Shortlisted, Review, or Rejected status.
  */
 function algorithmicAtsAnalysis(candidate, job) {
   const jdSkills = Array.isArray(job.keySkills)
@@ -41,8 +71,11 @@ function algorithmicAtsAnalysis(candidate, job) {
 
   jdSkills.forEach(reqSkill => {
     const rLower = reqSkill.toLowerCase();
+    const synonyms = SKILL_SYNONYMS[rLower] || [rLower];
+
     const isMatched = candidateSkillsLower.some(cSkill => {
       if (cSkill === rLower) return true;
+      if (synonyms.includes(cSkill)) return true;
       if (cSkill.includes(rLower) || rLower.includes(cSkill)) {
         // Guard against false positive short substrings (e.g. 'c' matching 'css')
         if (rLower.length <= 2 || cSkill.length <= 2) {
@@ -84,7 +117,7 @@ function algorithmicAtsAnalysis(candidate, job) {
     expScore = 85;
     experienceNote = `Candidate possesses ${expYears} years of experience, meeting the required ${minExpYears} years threshold.`;
   } else if (expYears >= Math.max(1, minExpYears - 1)) {
-    expScore = 65;
+    expScore = 70;
     experienceNote = `Candidate has ${expYears} years vs required ${minExpYears}+ years; slightly below preferred seniority.`;
   } else {
     expScore = Math.max(20, Math.round((expYears / minExpYears) * 50));
@@ -98,13 +131,30 @@ function algorithmicAtsAnalysis(candidate, job) {
   // Check for severe domain mismatch (e.g. HR / Sales / Design applying for Software Engineer)
   const isTechJob = /software|developer|engineer|full stack|frontend|backend|devops|data/i.test(jobTitle);
   const isHrCandidate = /hr|human resources|recruiter|talent|talent acquisition|sales|marketing/i.test(roleName);
-  const isSevereDomainMismatch = isTechJob && isHrCandidate && matchedSkills.length <= 1;
+  const isDesignCandidate = /design|ui|ux|graphic/i.test(roleName) && !/engineer|developer/i.test(roleName);
+  const isSevereDomainMismatch = (isTechJob && isHrCandidate && matchedSkills.length <= 1) ||
+                                 (isTechJob && isDesignCandidate && matchedSkills.length <= 1);
 
   let roleBonus = 0;
+  const isTechCandidate = /software|developer|engineer|full stack|frontend|backend|devops|programmer/i.test(roleName);
+  if (isTechJob && isTechCandidate) {
+    roleBonus = 8;
+  }
+  const isDesignJob = /design|ui|ux/i.test(jobTitle);
+  const isDesignCand = /design|ui|ux/i.test(roleName);
+  if (isDesignJob && isDesignCand) {
+    roleBonus = 8;
+  }
+  const isHrJob = /hr|human resources|recruiter|talent/i.test(jobTitle);
+  const isHrCand = /hr|human resources|recruiter|talent/i.test(roleName);
+  if (isHrJob && isHrCand) {
+    roleBonus = 8;
+  }
+
   const titleTokens = jobTitle.split(/[\s-]+/).filter(t => t.length > 2);
   const matchedTokens = titleTokens.filter(t => roleName.includes(t));
   if (matchedTokens.length > 0) {
-    roleBonus = Math.min(10, matchedTokens.length * 5);
+    roleBonus = Math.max(roleBonus, Math.min(10, matchedTokens.length * 5));
   }
 
   // Calculate ATS Score: heavy weight on skills (65%), experience (25%), role (10%)
@@ -124,14 +174,17 @@ function algorithmicAtsAnalysis(candidate, job) {
   // Match score
   const matchScore = Math.min(99, Math.max(15, Math.round((calculatedAts * 0.6) + (skillsMatchPct * 0.4))));
 
-  // STRICT SHORTLISTING LOGIC:
-  // - Shortlisted: Must have at least 75% skill match AND ATS score >= 78 AND not severe domain mismatch
-  // - Review: 50% to 74% skill match OR ATS score 52-77
-  // - Rejected: < 50% skill match OR matchedSkills == 0 OR ATS score < 52
+  // BALANCED & REALISTIC ATS SHORTLISTING CRITERIA:
+  // - Shortlisted (atsScore >= 72 and skillsMatchPct >= 60%):
+  //     Must have at least 60% skill match AND ATS score >= 72 AND not severe domain mismatch
+  // - Review (atsScore 45-71):
+  //     Partial match (35% to 59% skills match OR ATS score 45-71)
+  // - Rejected (atsScore < 45):
+  //     < 35% skills match OR matchedSkills == 0 OR ATS score < 45 OR severe domain mismatch
   let status = "Rejected";
-  if (skillsMatchPct >= 75 && calculatedAts >= 78 && !isSevereDomainMismatch && expYears >= minExpYears - 0.5) {
+  if (skillsMatchPct >= 60 && calculatedAts >= 72 && !isSevereDomainMismatch && expYears >= minExpYears - 1) {
     status = "Shortlisted";
-  } else if (skillsMatchPct >= 50 && calculatedAts >= 52 && !isSevereDomainMismatch) {
+  } else if (skillsMatchPct >= 35 && calculatedAts >= 45 && !isSevereDomainMismatch) {
     status = "Review";
   } else {
     status = "Rejected";
@@ -197,6 +250,8 @@ function algorithmicAtsAnalysis(candidate, job) {
   };
 }
 
+let quotaExhaustedUntil = 0;
+
 /**
  * Analyze candidate resume against target Job Description using Gemini 3.8 Flash
  * Strict prompt ensures that unqualified candidates are NOT shortlisted.
@@ -204,7 +259,7 @@ function algorithmicAtsAnalysis(candidate, job) {
 async function analyzeResumeAgainstJd(candidate, job) {
   const ai = getAiClient();
 
-  if (!ai) {
+  if (!ai || Date.now() < quotaExhaustedUntil) {
     return algorithmicAtsAnalysis(candidate, job);
   }
 
@@ -319,7 +374,12 @@ Return a valid JSON object ONLY with the following exact keys:
     // Fallback if structure invalid
     return algorithmicAtsAnalysis(candidate, job);
   } catch (error) {
-    console.error("Gemini API call error in resumeAnalysisService, falling back to algorithmic analyzer:", error.message);
+    if (error.message && (error.message.includes("429") || error.message.includes("RESOURCE_EXHAUSTED") || error.message.includes("quota"))) {
+      quotaExhaustedUntil = Date.now() + 60000; // 1 minute backoff to protect against quota exhaustion
+      console.warn("Gemini API rate limit or quota reached. Seamlessly switching to deterministic algorithmic ATS engine.");
+    } else {
+      console.error("Gemini API call error in resumeAnalysisService, falling back to algorithmic analyzer:", error.message);
+    }
     return algorithmicAtsAnalysis(candidate, job);
   }
 }

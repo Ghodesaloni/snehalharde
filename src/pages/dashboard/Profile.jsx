@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
     Mail,
@@ -21,6 +21,7 @@ import {
     Save,
     Sparkles
 } from "lucide-react";
+import { jobsApi, candidatesApi, interviewsApi } from "@/services/api";
 
 const Profile = () => {
     const [activeTab, setActiveTab] = useState("personal");
@@ -33,25 +34,63 @@ const Profile = () => {
                 return JSON.parse(saved);
             } catch (e) {}
         }
+        const savedUser = localStorage.getItem("avahire_user");
+        let parsedUser = null;
+        if (savedUser) {
+            try { parsedUser = JSON.parse(savedUser); } catch (e) {}
+        }
         return {
-            fullName: "Priya Mehta",
-            dob: "1991-08-14",
-            displayDob: "14/08/1991",
-            email: "priya.mehta@techcorp.com",
-            gender: "Female",
-            phone: "+91 98765 43210",
-            location: "Mumbai, Maharashtra, India",
-            jobTitle: "HR Administrator",
-            linkedin: "https://linkedin.com/in/priyamehta",
+            fullName: parsedUser?.name || "",
+            dob: "",
+            displayDob: "",
+            email: parsedUser?.email || "",
+            gender: "",
+            phone: "",
+            location: "",
+            jobTitle: parsedUser?.designation || "HR Administrator",
+            linkedin: "",
             department: "Human Resources",
-            bio: "HR professional with 6+ years of experience in talent acquisition, employee engagement and HR operations.",
-            avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300",
-            companyName: "TechCorp Solutions Pvt. Ltd.",
-            companyWebsite: "https://techcorp.com",
-            companySize: "250 - 500 Employees",
-            industry: "Software & Technology"
+            bio: "",
+            avatar: "",
+            companyName: parsedUser?.company || "",
+            companyWebsite: "",
+            companySize: "",
+            industry: ""
         };
     });
+
+    const [stats, setStats] = useState({
+        jobsPosted: 0,
+        totalCandidates: 0,
+        interviewsConducted: 0,
+        selectedCandidates: 0
+    });
+
+    useEffect(() => {
+        const loadOverview = async () => {
+            try {
+                const [jobsRes, candRes, intRes] = await Promise.allSettled([
+                    jobsApi.getAll(),
+                    candidatesApi.getAll(),
+                    interviewsApi.getAll()
+                ]);
+                const jobsCount = jobsRes.status === "fulfilled" && Array.isArray(jobsRes.value) ? jobsRes.value.length : 0;
+                const candCount = candRes.status === "fulfilled" && Array.isArray(candRes.value) ? candRes.value.length : 0;
+                const intList = intRes.status === "fulfilled" && Array.isArray(intRes.value) ? intRes.value : [];
+                const intCount = intList.filter(i => i.status === "Completed" || i.status === "Under Review" || i.status === "Shortlisted").length;
+                const selCount = candRes.status === "fulfilled" && Array.isArray(candRes.value) ? candRes.value.filter(c => c.status === "Shortlisted" || c.status === "Selected").length : 0;
+                setStats({
+                    jobsPosted: jobsCount,
+                    totalCandidates: candCount,
+                    interviewsConducted: intCount,
+                    selectedCandidates: selCount
+                });
+            } catch (e) {
+                console.error("Failed to load profile metrics:", e);
+            }
+        };
+        loadOverview();
+    }, []);
 
     const [avatarPhoto, setAvatarPhoto] = useState(profile.avatar);
 
@@ -111,11 +150,17 @@ const Profile = () => {
                     {/* Avatar with Camera badge */}
                     <div className="px-6 pb-6 text-center -mt-14 space-y-4">
                         <div className="relative inline-block mx-auto">
-                            <img
-                                src={avatarPhoto}
-                                alt={profile.fullName}
-                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md mx-auto"
-                            />
+                            {avatarPhoto ? (
+                                <img
+                                    src={avatarPhoto}
+                                    alt={profile.fullName || "User Avatar"}
+                                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md mx-auto"
+                                />
+                            ) : (
+                                <div className="w-24 h-24 rounded-full bg-violet-100 text-violet-700 font-bold text-2xl flex items-center justify-center border-4 border-white shadow-md mx-auto">
+                                    {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : <Users className="w-8 h-8" />}
+                                </div>
+                            )}
                             <label
                                 htmlFor="avatar-upload"
                                 className="absolute bottom-0 right-0 w-8 h-8 bg-violet-600 hover:bg-violet-700 text-white rounded-full flex items-center justify-center cursor-pointer shadow-sm transition border-2 border-white"
@@ -135,7 +180,7 @@ const Profile = () => {
                         {/* Name & Badge */}
                         <div>
                             <div className="flex items-center justify-center gap-2">
-                                <h2 className="text-lg font-bold text-slate-900">{profile.fullName}</h2>
+                                <h2 className="text-lg font-bold text-slate-900">{profile.fullName || "HR User"}</h2>
                                 <span className="px-2.5 py-0.5 rounded-full bg-violet-100 text-violet-700 font-bold text-[11px]">
                                     HR Admin
                                 </span>
@@ -152,7 +197,7 @@ const Profile = () => {
                                 <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                                     <Mail className="w-4 h-4" />
                                 </div>
-                                <span className="truncate font-medium">{profile.email}</span>
+                                <span className="truncate font-medium">{profile.email || "Not specified"}</span>
                             </div>
 
                             {/* Phone */}
@@ -160,7 +205,7 @@ const Profile = () => {
                                 <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                                     <Phone className="w-4 h-4" />
                                 </div>
-                                <span className="font-medium">{profile.phone}</span>
+                                <span className="font-medium">{profile.phone || "Not specified"}</span>
                             </div>
 
                             {/* Location */}
@@ -168,23 +213,15 @@ const Profile = () => {
                                 <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                                     <MapPin className="w-4 h-4" />
                                 </div>
-                                <span className="font-medium">{profile.location}</span>
+                                <span className="font-medium">{profile.location || "Not specified"}</span>
                             </div>
 
-                            {/* Joined Date */}
+                            {/* Account Status */}
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                    <Calendar className="w-4 h-4" />
+                                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 className="w-4 h-4" />
                                 </div>
-                                <span className="font-medium">Joined on 12 Jan, 2024</span>
-                            </div>
-
-                            {/* Last Login */}
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                    <Clock className="w-4 h-4" />
-                                </div>
-                                <span className="font-medium">Last login: 24 May, 2024 10:30 AM</span>
+                                <span className="font-medium">Active HR Account</span>
                             </div>
                         </div>
                     </div>
@@ -575,7 +612,7 @@ const Profile = () => {
                                     </div>
                                     <span className="text-slate-600 font-medium">Jobs Posted</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">12</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{stats.jobsPosted}</span>
                             </div>
 
                             {/* Total Candidates */}
@@ -586,7 +623,7 @@ const Profile = () => {
                                     </div>
                                     <span className="text-slate-600 font-medium">Total Candidates</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">342</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{stats.totalCandidates}</span>
                             </div>
 
                             {/* Interviews Conducted */}
@@ -597,7 +634,7 @@ const Profile = () => {
                                     </div>
                                     <span className="text-slate-600 font-medium">Interviews Conducted</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">28</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{stats.interviewsConducted}</span>
                             </div>
 
                             {/* Selected Candidates */}
@@ -608,7 +645,7 @@ const Profile = () => {
                                     </div>
                                     <span className="text-slate-600 font-medium">Selected Candidates</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">08</span>
+                                <span className="font-extrabold text-slate-900 text-sm">{stats.selectedCandidates}</span>
                             </div>
                         </div>
                     </div>

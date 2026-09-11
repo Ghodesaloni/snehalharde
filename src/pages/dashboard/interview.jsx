@@ -35,16 +35,16 @@ const Interviews = () => {
     // Form state for generating interview link
     const [newCandidateName, setNewCandidateName] = useState("");
     const [newCandidateEmail, setNewCandidateEmail] = useState("");
-    const [newRole, setNewRole] = useState("Frontend Developer");
-    const [newDate, setNewDate] = useState("2026-09-02");
-    const [newTime, setNewTime] = useState("11:00");
+    const [newRole, setNewRole] = useState("");
+    const [newDate, setNewDate] = useState("");
+    const [newTime, setNewTime] = useState("");
     const [newValidity, setNewValidity] = useState("45 Minutes");
 
     useEffect(() => {
         const fetchInterviews = async () => {
             try {
                 const data = await interviewsApi.getAll();
-                if (data && data.length > 0) {
+                if (data) {
                     setInterviews(data);
                     saveInterviews(data);
                     return;

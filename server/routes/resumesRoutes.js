@@ -1,21 +1,59 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
+const path = require("path");
 const resumesDb = require("../db/resumesDb");
 const jobsDb = require("../db/jobsDb");
 const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
-const { extractRawText, parseResumeText } = require("../services/resumeParserService");
+const { extractRawText, parseResumeText, classifyField } = require("../services/resumeParserService");
+
+const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
+const ALLOWED_RESUME_MIMES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
+  "text/plain",
+  "application/rtf",
+  "text/rtf"
+];
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 15 * 1024 * 1024 }
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const mime = (file.mimetype || "").toLowerCase();
+
+    const hasValidExt = ALLOWED_RESUME_EXTENSIONS.includes(ext);
+    const hasValidMime = ALLOWED_RESUME_MIMES.includes(mime) || (mime.startsWith("text/") && ext !== ".csv" && ext !== ".tsv" && ext !== ".json");
+
+    if (!hasValidExt && !hasValidMime) {
+      return cb(
+        new Error(`Invalid document type "${ext || file.originalname}". In resumes, only resume documents (.pdf, .docx, .doc, .txt) are accepted. Other document types are not allowed.`)
+      );
+    }
+    cb(null, true);
+  }
 });
+
+// Middleware to catch multer filter errors and return clean JSON response
+const handleUpload = (req, res, next) => {
+  upload.single("resume")(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({
+        success: false,
+        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
+      });
+    }
+    next();
+  });
+};
 
 // GET /api/resumes - list all candidates/resumes
 router.get("/", (req, res) => {
   try {
-    const { status, role, search } = req.query;
-    const list = resumesDb.getAll({ status, role, search });
+    const { status, role, search, field, domain, jobId } = req.query;
+    const list = resumesDb.getAll({ status, role, search, field, domain, jobId });
     res.json({ success: true, count: list.length, data: list });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -23,7 +61,7 @@ router.get("/", (req, res) => {
 });
 
 // POST /api/resumes/upload-and-screen - upload resume file and screen against target JD
-router.post("/upload-and-screen", upload.single("resume"), async (req, res) => {
+router.post("/upload-and-screen", handleUpload, async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: "No resume file uploaded" });
@@ -76,6 +114,8 @@ router.post("/upload-and-screen", upload.single("resume"), async (req, res) => {
     // Strictly analyze against JD
     const analysis = await analyzeResumeAgainstJd(parsedCandidate, job);
 
+    const candidateField = parsedCandidate.field || parsedCandidate.domain || classifyField(rawText, parsedCandidate.allSkills || parsedCandidate.skills || [], parsedCandidate.role, originalName);
+
     // Persist new candidate in database with accurate screening outcome
     const newCandidate = resumesDb.create({
       name: parsedCandidate.name,
@@ -83,6 +123,8 @@ router.post("/upload-and-screen", upload.single("resume"), async (req, res) => {
       phone: parsedCandidate.phone,
       location: parsedCandidate.location || "India",
       role: parsedCandidate.role,
+      field: candidateField,
+      domain: candidateField,
       experience: parsedCandidate.experience,
       expYears: parsedCandidate.expYears,
       skills: parsedCandidate.skills,
@@ -98,6 +140,7 @@ router.post("/upload-and-screen", upload.single("resume"), async (req, res) => {
       summary: analysis.aiSummary,
       targetJobId: job.id,
       targetJobTitle: job.title,
+      jobId: job.id && job.id !== "custom-jd" ? job.id : null,
       resumeFileName: originalName,
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
       rawText: rawText.slice(0, 2000)
@@ -155,28 +198,29 @@ router.post("/analyze-batch-jd", async (req, res) => {
       ? allCandidates.filter(c => candidateIds.includes(c.id))
       : allCandidates;
 
-    const results = [];
-    for (const candidate of targets) {
-      try {
-        const analysis = await analyzeResumeAgainstJd(candidate, job);
-        const updated = resumesDb.update(candidate.id, {
-          atsScore: analysis.atsScore,
-          matchScore: analysis.matchScore,
-          skillsMatchPct: analysis.skillsMatchPct,
-          status: analysis.status,
-          matchedSkills: analysis.matchedSkills,
-          missingSkills: analysis.missingSkills,
-          keyPoints: analysis.keyPoints,
-          summary: analysis.aiSummary,
-          targetJobId: job.id,
-          targetJobTitle: job.title
-        });
-        results.push(updated);
-      } catch (innerErr) {
-        console.error(`Failed to analyze candidate ${candidate.id}:`, innerErr);
-        results.push(candidate);
-      }
-    }
+    const results = await Promise.all(
+      targets.map(async (candidate) => {
+        try {
+          const analysis = await analyzeResumeAgainstJd(candidate, job);
+          const updated = resumesDb.update(candidate.id, {
+            atsScore: analysis.atsScore,
+            matchScore: analysis.matchScore,
+            skillsMatchPct: analysis.skillsMatchPct,
+            status: analysis.status,
+            matchedSkills: analysis.matchedSkills,
+            missingSkills: analysis.missingSkills,
+            keyPoints: analysis.keyPoints,
+            summary: analysis.aiSummary,
+            targetJobId: job.id,
+            targetJobTitle: job.title
+          });
+          return updated || candidate;
+        } catch (innerErr) {
+          console.error(`Failed to analyze candidate ${candidate.id}:`, innerErr);
+          return candidate;
+        }
+      })
+    );
 
     const shortlistedCount = results.filter(r => r.status === "Shortlisted").length;
     const reviewCount = results.filter(r => r.status === "Review").length;

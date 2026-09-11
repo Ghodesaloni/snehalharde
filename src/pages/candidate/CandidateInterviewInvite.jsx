@@ -31,22 +31,32 @@ const CandidateInterviewInvite = () => {
     const navigate = useNavigate();
 
     const [interviewData, setInterviewData] = useState(() => {
-        const found = getInterviewByCodeOrId(code);
-        if (found) return found;
-        return {
-            id: "iv-default",
-            name: "Candidate",
-            email: "candidate@example.com",
-            role: "Frontend Developer",
-            company: "AvaHire Technologies Pvt. Ltd.",
-            date: "02 September 2026",
-            dayOfWeek: "Tuesday",
-            time: "11:00 AM",
-            timeZone: "IST",
-            duration: "45 Minutes",
-            linkCode: code || "akc123"
-        };
+        return getInterviewByCodeOrId(code) || null;
     });
+    const [isLoading, setIsLoading] = useState(!interviewData);
+
+    useEffect(() => {
+        const fetchInterview = async () => {
+            if (!interviewData && code) {
+                try {
+                    const res = await fetch(`/api/interviews/${code}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data) {
+                            setInterviewData(data);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to load interview:", err);
+                } finally {
+                    setIsLoading(false);
+                }
+            } else {
+                setIsLoading(false);
+            }
+        };
+        fetchInterview();
+    }, [code, interviewData]);
 
     const [copied, setCopied] = useState(false);
     const [showSystemCheck, setShowSystemCheck] = useState(false);
@@ -121,10 +131,30 @@ const CandidateInterviewInvite = () => {
         }
     };
 
-    if (!interviewData) {
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
                 <div className="animate-spin w-8 h-8 border-4 border-violet-600 border-t-transparent rounded-full" />
+            </div>
+        );
+    }
+
+    if (!interviewData) {
+        return (
+            <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-16 h-16 bg-violet-100 text-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <Video className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-800">Interview Not Found</h2>
+                <p className="text-sm text-slate-500 max-w-sm mt-1 mb-6">
+                    No active interview invitation was found for code <span className="font-mono font-bold text-slate-700">{code}</span>. Please verify your link or contact your recruiter.
+                </p>
+                <Link
+                    to="/"
+                    className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-full text-sm font-semibold transition"
+                >
+                    Return to AvaHire Home
+                </Link>
             </div>
         );
     }

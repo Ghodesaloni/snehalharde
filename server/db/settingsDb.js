@@ -4,10 +4,10 @@ const SETTINGS_COLLECTION = "settings";
 const PROFILE_COLLECTION = "profile";
 
 const defaultSettings = {
-  companyName: "AvaHire Technologies Pvt. Ltd.",
-  companyWebsite: "https://avahire.ai",
-  companyLocation: "Bangalore, India",
-  industry: "Information Technology & Services",
+  companyName: "",
+  companyWebsite: "",
+  companyLocation: "",
+  industry: "",
   aiStrictness: "Moderate",
   defaultInterviewDuration: 45,
   minShortlistAtsScore: 80,
@@ -23,15 +23,15 @@ const defaultSettings = {
 };
 
 const defaultProfile = {
-  name: "Snehal Harde",
-  title: "Lead Technical Recruiter",
-  email: "snehal.harde@avahire.ai",
-  phone: "+91 98765 43210",
-  avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-  dept: "Talent Acquisition & HR",
-  bio: "Experienced Technical Recruiter specializing in hiring frontend, backend, AI/ML and Cloud engineering talent.",
-  location: "Nagpur / Bangalore, India",
-  joinedDate: "January 2024",
+  name: "",
+  title: "",
+  email: "",
+  phone: "",
+  avatar: "",
+  dept: "",
+  bio: "",
+  location: "",
+  joinedDate: "",
   updatedAt: new Date().toISOString()
 };
 

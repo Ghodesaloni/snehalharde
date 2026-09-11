@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import Landing from "@/pages/landing";
 import Login from "@/pages/LoginPage";
 import Register from "@/pages/Register";
+import VerifyEmail from "@/pages/VerifyEmail";
 import ForgotPassword from "@/pages/forgetpassword";
 import Features from "@/pages/Features";
 import HowItWorks from "@/pages/Howitworks";
@@ -50,6 +51,7 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Candidate AI Interview Portal */}

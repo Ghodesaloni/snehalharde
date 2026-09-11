@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 import {
-    PieChart, Pie, Cell, ResponsiveContainer,
+    PieChart, Pie, Cell,
 } from "recharts";
 import aiAvatar from "@/assets/ai_avatar.png";
 import { Mic, Video, Phone } from "lucide-react";
@@ -77,18 +77,16 @@ const DashboardPreview = () => (
                                 </div>
                             ))}
                         </div>
-                        <div className="border border-slate-200 rounded-lg p-3">
+                        <div className="border border-slate-200 rounded-lg p-3 min-w-0">
                             <div className="text-xs font-semibold mb-1">Candidates by Stage</div>
                             <div className="flex items-center gap-2">
-                                <div className="relative w-24 h-24">
-                                    <ResponsiveContainer>
-                                        <PieChart>
-                                            <Pie data={stageData} innerRadius={26} outerRadius={40} paddingAngle={2} dataKey="value">
-                                                {stageData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                                            </Pie>
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <div className="relative w-24 h-24 min-w-[96px] min-h-[96px] shrink-0 flex items-center justify-center">
+                                    <PieChart width={96} height={96}>
+                                        <Pie data={stageData} innerRadius={26} outerRadius={40} paddingAngle={2} dataKey="value">
+                                            {stageData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                                        </Pie>
+                                    </PieChart>
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                         <div className="text-[10px] text-slate-400">Total</div>
                                         <div className="text-sm font-bold">1,248</div>
                                     </div>
