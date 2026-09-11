@@ -15,7 +15,14 @@ export default [
       },
     },
     rules: {
-      "no-unused-vars": "warn",
+      "no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_",
+          "varsIgnorePattern": "^(React|_)",
+          "ignoreRestSiblings": true
+        }
+      ],
       "no-empty": "warn",
       "no-undef": "off",
     },
