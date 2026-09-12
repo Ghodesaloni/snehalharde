@@ -1,5 +1,51 @@
 [
   {
+    "id": "smtp-1789202430416-dn52l",
+    "recipient": "snehalharde09@gmail.com",
+    "recipientName": "Snehal Harde",
+    "subject": "Successfully Registered with AvaHire! 🎉",
+    "body": "Congratulations Snehal Harde! You have successfully registered your HR recruiter account with AvaHire. Access login at http://localhost:3000/login",
+    "html": "\n    <!DOCTYPE html>\n    <html>\n    <head>\n      <meta charset=\"utf-8\">\n      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n      <title>Successfully Registered</title>\n      <style>\n        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #1e293b; }\n        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }\n        .header { background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%); padding: 36px 32px; text-align: center; color: white; }\n        .header h1 { margin: 0 0 8px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }\n        .header p { margin: 0; font-size: 15px; opacity: 0.9; }\n        .content { padding: 36px 32px; }\n        .badge { display: inline-block; padding: 6px 14px; background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 9999px; font-size: 13px; font-weight: 700; margin-bottom: 20px; }\n        .greeting { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #0f172a; }\n        .text { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 20px; }\n        .btn-container { text-align: center; margin: 32px 0; }\n        .btn { display: inline-block; background-color: #7c3aed; color: #ffffff !important; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3); }\n        .footer { background-color: #f8fafc; padding: 24px 32px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }\n      </style>\n    </head>\n    <body>\n      <div class=\"container\">\n        <div class=\"header\">\n          <h1>AvaHire</h1>\n          <p>Next-Generation AI Recruitment Portal</p>\n        </div>\n        <div class=\"content\">\n          <div class=\"badge\">✓ Successfully Registered</div>\n          <div class=\"greeting\">Hello Snehal Harde,</div>\n          <p class=\"text\">\n            Congratulations! You have successfully registered your HR recruiter account with <strong>AvaHire</strong>.\n          </p>\n          <p class=\"text\">\n            Your account is ready. You can now log in to set up AI job campaigns, conduct real-time AI voice and video candidate interviews, and streamline your recruitment pipeline.\n          </p>\n\n          <div class=\"btn-container\">\n            <a href=\"http://localhost:3000/login\" class=\"btn\" target=\"_blank\">Login to AvaHire</a>\n          </div>\n\n          <p class=\"text\" style=\"font-size: 13px; color: #64748b; margin-top: 24px;\">\n            Thank you for choosing AvaHire to elevate your hiring experience!\n          </p>\n        </div>\n        <div class=\"footer\">\n          &copy; 2026 AvaHire AI Inc. All rights reserved.<br>\n          Delivered to: <strong>snehalharde09@gmail.com</strong>\n        </div>\n      </div>\n    </body>\n    </html>\n  ",
+    "type": "Registration Welcome",
+    "templateId": null,
+    "senderEmail": "\"AvaHire AI HR\" <no-reply@avahire.ai>",
+    "userEmail": "snehalharde09@gmail.com",
+    "createdBy": "\"AvaHire AI HR\" <no-reply@avahire.ai>",
+    "opened": false,
+    "openedAt": null,
+    "sentAt": "12 Sept 2026, 14:10",
+    "status": "Delivered",
+    "deliveryMode": "mock",
+    "messageId": null,
+    "metadata": {
+      "loginUrl": "http://localhost:3000/login"
+    },
+    "createdAt": "2026-09-12T08:40:30.417Z"
+  },
+  {
+    "id": "smtp-1789194568844-i4lr1",
+    "recipient": "snehal.harde2935@gmail.com",
+    "recipientName": "Snehal Harde",
+    "subject": "Successfully Registered with AvaHire! 🎉",
+    "body": "Congratulations Snehal Harde! You have successfully registered your HR recruiter account with AvaHire. Access login at http://localhost:3000/login",
+    "html": "\n    <!DOCTYPE html>\n    <html>\n    <head>\n      <meta charset=\"utf-8\">\n      <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n      <title>Successfully Registered</title>\n      <style>\n        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #1e293b; }\n        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }\n        .header { background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%); padding: 36px 32px; text-align: center; color: white; }\n        .header h1 { margin: 0 0 8px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }\n        .header p { margin: 0; font-size: 15px; opacity: 0.9; }\n        .content { padding: 36px 32px; }\n        .badge { display: inline-block; padding: 6px 14px; background-color: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; border-radius: 9999px; font-size: 13px; font-weight: 700; margin-bottom: 20px; }\n        .greeting { font-size: 20px; font-weight: 700; margin-bottom: 12px; color: #0f172a; }\n        .text { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 20px; }\n        .btn-container { text-align: center; margin: 32px 0; }\n        .btn { display: inline-block; background-color: #7c3aed; color: #ffffff !important; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3); }\n        .footer { background-color: #f8fafc; padding: 24px 32px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }\n      </style>\n    </head>\n    <body>\n      <div class=\"container\">\n        <div class=\"header\">\n          <h1>AvaHire</h1>\n          <p>Next-Generation AI Recruitment Portal</p>\n        </div>\n        <div class=\"content\">\n          <div class=\"badge\">✓ Successfully Registered</div>\n          <div class=\"greeting\">Hello Snehal Harde,</div>\n          <p class=\"text\">\n            Congratulations! You have successfully registered your HR recruiter account with <strong>AvaHire</strong>.\n          </p>\n          <p class=\"text\">\n            Your account is ready. You can now log in to set up AI job campaigns, conduct real-time AI voice and video candidate interviews, and streamline your recruitment pipeline.\n          </p>\n\n          <div class=\"btn-container\">\n            <a href=\"http://localhost:3000/login\" class=\"btn\" target=\"_blank\">Login to AvaHire</a>\n          </div>\n\n          <p class=\"text\" style=\"font-size: 13px; color: #64748b; margin-top: 24px;\">\n            Thank you for choosing AvaHire to elevate your hiring experience!\n          </p>\n        </div>\n        <div class=\"footer\">\n          &copy; 2026 AvaHire AI Inc. All rights reserved.<br>\n          Delivered to: <strong>snehal.harde2935@gmail.com</strong>\n        </div>\n      </div>\n    </body>\n    </html>\n  ",
+    "type": "Registration Welcome",
+    "templateId": null,
+    "senderEmail": "\"AvaHire AI HR\" <no-reply@avahire.ai>",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "createdBy": "\"AvaHire AI HR\" <no-reply@avahire.ai>",
+    "opened": false,
+    "openedAt": null,
+    "sentAt": "12 Sept 2026, 11:59",
+    "status": "Delivered",
+    "deliveryMode": "mock",
+    "messageId": null,
+    "metadata": {
+      "loginUrl": "http://localhost:3000/login"
+    },
+    "createdAt": "2026-09-12T06:29:28.871Z"
+  },
+  {
     "id": "smtp-1789146076630-tblrt",
     "recipient": "test_strict_1789146070103@example.com",
     "recipientName": "Strict HR User",

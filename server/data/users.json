@@ -1,1 +1,30 @@
-[]
+[
+  {
+    "id": 1,
+    "uid": "usr_1789194441927_z35pp",
+    "email": "snehal.harde2935@gmail.com",
+    "name": "Snehal Harde",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    "role": "hr_admin",
+    "company": "tcs",
+    "designation": "HR",
+    "phone": "8996446955",
+    "password_hash": "478906a0b88ba93b309f335e2ac4cb20:a9054a988a553c0576723351e8d18b5e3a0625eca739458428fba61581023476d4cb224fc450d9357ac0c1838747abd16a6fd96773abc5163b446c6aeb8c4f1f",
+    "last_login": "2026-09-12T06:27:21.929Z",
+    "created_at": "2026-09-12T06:27:21.929Z"
+  },
+  {
+    "id": 2,
+    "uid": "usr_1789194713676_kgy27",
+    "email": "snehalharde09@gmail.com",
+    "name": "Snehal Harde",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    "role": "hr_admin",
+    "company": "tcs",
+    "designation": "HR",
+    "phone": "8996446955",
+    "password_hash": "203bf6813c6595214007f839cc207413:166c75af3426cca7bd154ad6cfeea7169ca1d3bcfc86a372dc189e0147744512da5773db45714093e41388dd198a2d3a872bc2232a67af3b1240a22cc9a5ac9e",
+    "last_login": "2026-09-12T06:31:53.677Z",
+    "created_at": "2026-09-12T06:31:53.677Z"
+  }
+]
