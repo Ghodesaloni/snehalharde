@@ -24,40 +24,69 @@ function storeDispatchedEmail(data) {
   }
 }
 
+function getFormattedFrom(customName) {
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
+  const rawFrom = (process.env.SMTP_FROM || "").trim();
+
+  // If SMTP_FROM contains a valid angle-bracket address like "AvaHire" <foo@bar.com>
+  if (rawFrom.includes("<") && rawFrom.includes(">")) {
+    return rawFrom;
+  }
+  // If SMTP_FROM is an email address
+  if (rawFrom.includes("@")) {
+    return `"${customName || "AvaHire AI"}" <${rawFrom}>`;
+  }
+  // If SMTP_FROM is a brand/display name like "Avahire" or "AvaHire AI"
+  const displayName = rawFrom || customName || "AvaHire AI";
+  if (user) {
+    return `"${displayName}" <${user}>`;
+  }
+  return `"${displayName}" <no-reply@avahire.ai>`;
+}
+
 function getTransporter() {
-  const host = process.env.SMTP_HOST || "smtp.gmail.com";
-  const port = parseInt(process.env.SMTP_PORT || "465", 10);
-  const secure = process.env.SMTP_SECURE === "true" || port === 465;
-  const user = process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER;
-  const rawPass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+  const rawHost = (process.env.SMTP_HOST || "").trim();
+  const rawPort = process.env.SMTP_PORT;
+  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
+  const rawPass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASSWORD || process.env.GMAIL_APP_PASSWORD || "").trim();
   const pass = rawPass ? rawPass.replace(/\s+/g, "") : null;
 
   if (user && pass) {
-    // If Gmail account or host, use the optimized nodemailer Gmail service configuration
-    if (host.includes("gmail") || user.endsWith("@gmail.com")) {
+    // If the host is not a standard host (e.g. user set SMTP_HOST=Avahire), or if user is gmail.com, or host includes gmail
+    const isGmail =
+      user.toLowerCase().endsWith("@gmail.com") ||
+      rawHost.toLowerCase().includes("gmail") ||
+      !rawHost ||
+      !rawHost.includes(".");
+
+    if (isGmail) {
       return nodemailer.createTransport({
         service: "gmail",
         auth: {
-          user: user.trim(),
+          user,
           pass,
         },
-        connectionTimeout: 15000,
-        greetingTimeout: 10000,
-        socketTimeout: 15000,
+        connectionTimeout: 20000,
+        greetingTimeout: 15000,
+        socketTimeout: 20000,
       });
     }
+
+    const host = rawHost || "smtp.gmail.com";
+    const port = parseInt(rawPort || "587", 10);
+    const secure = process.env.SMTP_SECURE === "true" || port === 465;
 
     return nodemailer.createTransport({
       host,
       port,
       secure,
       auth: {
-        user: user.trim(),
+        user,
         pass,
       },
-      connectionTimeout: 15000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
       tls: {
         rejectUnauthorized: false,
       },
@@ -71,16 +100,21 @@ function getTransporter() {
 /**
  * Sends a clean "Successfully Registered" confirmation email to the user's Gmail address
  */
-async function sendRegistrationSuccessEmail({ toEmail, fullName, loginUrl }) {
-  const fromAddress =
-    process.env.SMTP_FROM ||
-    (process.env.SMTP_USER
-      ? `"AvaHire AI" <${process.env.SMTP_USER}>`
-      : '"AvaHire AI HR" <no-reply@avahire.ai>');
+async function sendRegistrationSuccessEmail({ toEmail, fullName, loginUrl, initialPassword }) {
+  const fromAddress = getFormattedFrom("AvaHire AI");
 
   const subject = "Successfully Registered with AvaHire! 🎉";
 
   const targetLoginUrl = loginUrl || "https://ais-dev-7kwwjsy5stydalkxzelcjm-394496037126.asia-southeast1.run.app/login";
+
+  const credentialsHtml = initialPassword ? `
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0; text-align: left;">
+      <div style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;">Your Login Credentials</div>
+      <div style="font-size: 14px; color: #1e293b; margin-bottom: 4px;"><strong>Work Email:</strong> ${toEmail}</div>
+      <div style="font-size: 14px; color: #1e293b;"><strong>Initial Password:</strong> <code style="background: #ede9fe; color: #7c3aed; padding: 3px 8px; border-radius: 6px; font-weight: 700;">${initialPassword}</code></div>
+      <div style="font-size: 12px; color: #64748b; margin-top: 8px;">You can log in immediately with this password, or reset it anytime via Forgot Password.</div>
+    </div>
+  ` : "";
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -119,6 +153,8 @@ async function sendRegistrationSuccessEmail({ toEmail, fullName, loginUrl }) {
           <p class="text">
             Your account is ready. You can now log in to set up AI job campaigns, conduct real-time AI voice and video candidate interviews, and streamline your recruitment pipeline.
           </p>
+
+          ${credentialsHtml}
 
           <div class="btn-container">
             <a href="${targetLoginUrl}" class="btn" target="_blank">Login to AvaHire</a>
@@ -217,11 +253,7 @@ async function sendRegistrationSuccessEmail({ toEmail, fullName, loginUrl }) {
  * Sends a one-time verification email to the user's Gmail address
  */
 async function sendVerificationEmail({ toEmail, fullName, verificationLink, token }) {
-  const fromAddress =
-    process.env.SMTP_FROM ||
-    (process.env.SMTP_USER
-      ? `"AvaHire AI" <${process.env.SMTP_USER}>`
-      : '"AvaHire AI HR" <no-reply@avahire.ai>');
+  const fromAddress = getFormattedFrom("AvaHire HR");
 
   const subject = "Verify your AvaHire Account - Action Required";
 
@@ -424,11 +456,7 @@ async function sendVerificationEmail({ toEmail, fullName, verificationLink, toke
 async function sendLoginAlertEmail({ toEmail, fullName, loginTime, ipAddress, userAgent }) {
   if (!toEmail) return { success: false, error: "Missing recipient email" };
 
-  const fromAddress =
-    process.env.SMTP_FROM ||
-    (process.env.SMTP_USER
-      ? `"AvaHire Security" <${process.env.SMTP_USER}>`
-      : '"AvaHire Security" <security@avahire.ai>');
+  const fromAddress = getFormattedFrom("AvaHire Security");
 
   const subject = "Security Alert: Successful Login to AvaHire";
   const displayTime = loginTime || new Date().toUTCString();
@@ -568,11 +596,7 @@ async function sendLoginAlertEmail({ toEmail, fullName, loginTime, ipAddress, us
 async function sendCommunicationEmail({ toEmail, recipientName, subject, body, senderEmail, senderName, templateId }) {
   if (!toEmail) return { success: false, error: "Missing recipient email" };
 
-  const fromAddress =
-    process.env.SMTP_FROM ||
-    (process.env.SMTP_USER
-      ? `"${senderName || "AvaHire HR"}" <${process.env.SMTP_USER}>`
-      : `"${senderName || "AvaHire HR"}" <hr@avahire.ai>`);
+  const fromAddress = getFormattedFrom(senderName || "AvaHire HR");
 
   const formattedSubject = subject || "Update on your application with AvaHire";
   const formattedBody = (body || "").replace(/\n/g, "<br>");
@@ -680,10 +704,162 @@ async function sendCommunicationEmail({ toEmail, recipientName, subject, body, s
   return { success: true, mode: "mock", recipient: toEmail, record: stored };
 }
 
+/**
+ * Sends a unique password recovery token email to the user
+ */
+async function sendPasswordResetEmail({ toEmail, fullName, resetLink, token }) {
+  const fromAddress = getFormattedFrom("AvaHire Security");
+  const subject = "Reset Your AvaHire Account Password - Action Required";
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Your Password</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; color: #1e293b; }
+        .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+        .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); padding: 36px 32px; text-align: center; color: white; }
+        .header h1 { margin: 0 0 8px 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .header p { margin: 0; font-size: 15px; opacity: 0.9; }
+        .content { padding: 36px 32px; }
+        .greeting { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #0f172a; }
+        .text { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 24px; }
+        .btn-container { text-align: center; margin: 32px 0; }
+        .btn { display: inline-block; background-color: #7c3aed; color: #ffffff !important; font-size: 15px; font-weight: 700; text-decoration: none; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3); }
+        .token-box { background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center; }
+        .token-label { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .token-val { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 800; color: #7c3aed; letter-spacing: 2px; word-break: break-all; }
+        .security-notice { background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 6px; font-size: 13px; color: #92400e; margin: 24px 0; }
+        .footer { background-color: #f8fafc; padding: 24px 32px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>AvaHire</h1>
+          <p>Security &amp; Account Recovery</p>
+        </div>
+        <div class="content">
+          <div class="greeting">Hello ${fullName || "there"},</div>
+          <p class="text">
+            We received a request to reset your password for your AvaHire recruiter account. You can reset your credentials using your unique recovery token or by clicking the button below:
+          </p>
+
+          <div class="token-box">
+            <div class="token-label">Unique Recovery Token</div>
+            <div class="token-val">${token}</div>
+          </div>
+
+          <div class="btn-container">
+            <a href="${resetLink}" class="btn" target="_blank">Reset Password Securely</a>
+          </div>
+
+          <div class="security-notice">
+            <strong>Security Notice:</strong> This recovery token is valid for 1 hour and can only be used once. If you did not request a password reset, you can safely ignore this email. Your account credentials remain secure.
+          </div>
+
+          <p class="text" style="font-size: 13px; color: #64748b; margin-top: 24px;">
+            Or copy and paste this recovery URL into your browser:<br>
+            <a href="${resetLink}" style="color: #7c3aed; word-break: break-all;">${resetLink}</a>
+          </p>
+        </div>
+        <div class="footer">
+          &copy; ${new Date().getFullYear()} AvaHire AI Inc. All rights reserved.<br>
+          Sent to: <strong>${toEmail}</strong>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const activeTransporter = getTransporter();
+
+  if (activeTransporter) {
+    try {
+      const info = await activeTransporter.sendMail({
+        from: fromAddress,
+        to: toEmail,
+        subject,
+        html: htmlContent,
+      });
+
+      console.log(`[SMTP] Password reset email delivered to ${toEmail}. MessageId: ${info.messageId}`);
+      storeDispatchedEmail({
+        recipient: toEmail,
+        recipientName: fullName || "Recruiter",
+        subject,
+        body: `Password reset request for AvaHire. Your unique recovery token is: ${token}. Reset URL: ${resetLink}`,
+        html: htmlContent,
+        type: "Password Reset",
+        senderEmail: fromAddress,
+        userEmail: toEmail,
+        mode: "live_smtp",
+        messageId: info.messageId,
+        metadata: { token, resetLink }
+      });
+      return {
+        success: true,
+        mode: "live_smtp",
+        messageId: info.messageId,
+        recipient: toEmail,
+      };
+    } catch (smtpErr) {
+      console.error("[SMTP] Password reset delivery error:", smtpErr.message);
+      storeDispatchedEmail({
+        recipient: toEmail,
+        recipientName: fullName || "Recruiter",
+        subject,
+        body: `Password reset request for AvaHire. Your unique recovery token is: ${token}. Reset URL: ${resetLink}`,
+        html: htmlContent,
+        type: "Password Reset",
+        senderEmail: fromAddress,
+        userEmail: toEmail,
+        mode: "smtp_error_fallback",
+        messageId: null,
+        metadata: { token, resetLink, smtpError: smtpErr.message }
+      });
+      return {
+        success: true,
+        mode: "smtp_error_fallback",
+        smtpError: smtpErr.message,
+        recipient: toEmail,
+        resetLink,
+      };
+    }
+  }
+
+  // Fallback dev mode
+  console.log(`[SMTP-DEV] Password reset email to ${toEmail} with token: ${token}`);
+  storeDispatchedEmail({
+    recipient: toEmail,
+    recipientName: fullName || "Recruiter",
+    subject,
+    body: `Password reset request for AvaHire. Your unique recovery token is: ${token}. Reset URL: ${resetLink}`,
+    html: htmlContent,
+    type: "Password Reset",
+    senderEmail: fromAddress,
+    userEmail: toEmail,
+    mode: "mock",
+    messageId: null,
+    metadata: { token, resetLink }
+  });
+  return {
+    success: true,
+    mode: "mock",
+    recipient: toEmail,
+    resetLink,
+    token,
+  };
+}
+
 module.exports = {
   sendRegistrationSuccessEmail,
   sendVerificationEmail,
   sendLoginAlertEmail,
   sendCommunicationEmail,
+  sendPasswordResetEmail,
   storeDispatchedEmail,
 };

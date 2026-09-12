@@ -3,6 +3,7 @@ const router = express.Router();
 const crypto = require("crypto");
 const { query, getUserByEmail } = require("../db/postgres");
 const { readData, writeData } = require("../db/dbEngine");
+const { signToken, verifyToken, authenticateToken } = require("../utils/jwt");
 
 const USERS_COLLECTION = "users";
 
@@ -39,13 +40,55 @@ function verifyPassword(password, storedHash) {
   return false;
 }
 
-const defaultUsers = [];
+const defaultUsers = [
+  {
+    id: 1,
+    uid: "usr_hr_lead_01",
+    email: "hr@avahire.ai",
+    name: "Priya Mehta",
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+    role: "Lead HR Administrator",
+    company: "TechCorp Solutions Pvt. Ltd.",
+    designation: "Head of Talent Acquisition",
+    phone: "+91 98765 43210",
+    password_hash: hashPassword("password123"),
+    created_at: "2025-01-15T09:00:00.000Z"
+  },
+  {
+    id: 2,
+    uid: "usr_admin_02",
+    email: "admin@avahire.ai",
+    name: "AvaHire Admin",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    role: "Director of People Ops",
+    company: "AvaHire Talent Intelligence",
+    designation: "VP of People & Culture",
+    phone: "+91 98123 45678",
+    password_hash: hashPassword("password123"),
+    created_at: "2025-01-10T09:00:00.000Z"
+  }
+];
 
 // GET /api/users/demo-accounts - get quick reference demo HR accounts
 router.get("/demo-accounts", (req, res) => {
   res.json({
     success: true,
-    data: [],
+    data: [
+      {
+        email: "hr@avahire.ai",
+        password: "password123",
+        role: "Lead HR Administrator",
+        name: "Priya Mehta",
+        company: "TechCorp Solutions Pvt. Ltd.",
+      },
+      {
+        email: "admin@avahire.ai",
+        password: "password123",
+        role: "Director of People Ops",
+        name: "AvaHire Admin",
+        company: "AvaHire Talent Intelligence",
+      },
+    ],
   });
 });
 
@@ -177,12 +220,19 @@ router.post("/login", async (req, res) => {
 
     // 4. Verify password strictly against registered password hash
     const storedHash = user.password_hash || user.passwordHash;
-    const isMatch = storedHash ? verifyPassword(password, storedHash) : false;
+    if (!storedHash) {
+      return res.status(401).json({
+        success: false,
+        error: "No password configured for this account. If you registered with Google, please sign in with Google or reset your password.",
+      });
+    }
+
+    const isMatch = verifyPassword(password, storedHash);
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        error: "Incorrect password. Please enter the correct password.",
+        error: "Incorrect password. Please enter the exact password you registered with.",
       });
     }
 
@@ -191,25 +241,20 @@ router.post("/login", async (req, res) => {
       await query("UPDATE public.users SET updated_at = NOW() WHERE LOWER(email) = $1", [cleanEmail]);
     } catch (e) {}
 
-    const userFullName = user.fullName || user.full_name || user.name || cleanEmail.split("@")[0];
-
     const sessionUser = {
       id: user.id,
       uid: user.uid || `usr_${user.id || Date.now()}`,
       email: user.email,
-      name: userFullName,
-      fullName: userFullName,
-      avatar: user.avatar || "",
+      name: user.fullName || user.name || cleanEmail.split("@")[0],
+      avatar: user.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
       role: user.role || "recruiter",
-      company: user.company || "",
-      website: user.website || "",
-      designation: user.designation || "",
-      phone: user.phone || "",
-      isVerified: Boolean(user.isVerified || user.is_verified),
-      createdAt: user.createdAt || user.created_at || new Date().toISOString(),
+      company: user.company || "AvaHire Tech Solutions",
+      designation: user.designation || "HR Administrator",
+      phone: user.phone || "+91 98000 00000",
     };
 
-    const token = sessionUser.uid;
+    // Sign a cryptographically secure JWT token
+    const token = signToken(sessionUser);
 
     res.json({
       success: true,

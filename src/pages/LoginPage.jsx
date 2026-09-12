@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Lock, Loader2 } from "lucide-react";
 import AvaHireLogo from "@/components/AvaHireLogo";
+import GoogleAccountChooserModal from "@/components/GoogleAccountChooserModal";
 import { toast } from "sonner";
 import { authApi } from "@/services/api";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -16,6 +20,24 @@ const Login = () => {
   });
 
   useEffect(() => {
+    // 1. Check if user just registered and was passed via route state
+    if (location.state?.email) {
+      setForm((prev) => ({
+        ...prev,
+        email: location.state.email,
+        password: location.state.password || location.state.initialPassword || prev.password,
+      }));
+      return;
+    }
+
+    // 2. Check if a registered email is stored locally
+    const lastRegisteredEmail = localStorage.getItem("avahire_registered_email");
+    if (lastRegisteredEmail) {
+      setForm((prev) => ({ ...prev, email: lastRegisteredEmail }));
+      return;
+    }
+
+    // 3. Otherwise check existing stored user session
     try {
       const stored = localStorage.getItem("avahire_user");
       if (stored) {
@@ -25,18 +47,58 @@ const Login = () => {
         }
       }
     } catch {
-      // ignore JSON parse error
+      // ignore parse errors
     }
-  }, []);
+  }, [location.state]);
 
-  const handleGoogleLogin = () => {
-    toast.info("Strict authentication enabled. Please log in using your registered work email and password.");
+  const handleOpenGoogleLogin = () => {
+    setShowGoogleModal(true);
+  };
+
+  const handleSelectGoogleAccount = async (account) => {
+    setGoogleLoading(true);
+    try {
+      const activeEmail = account.email.trim();
+      const activeName = account.name.trim() || activeEmail.split("@")[0].replace(/[._]/g, " ");
+
+      const response = await authApi.googleAuth({
+        email: activeEmail,
+        name: activeName,
+        avatar: account.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+      });
+
+      if (response && response.success) {
+        const userData = response.data || {
+          name: activeName,
+          email: activeEmail,
+          role: "recruiter",
+          company: "AvaHire Partner",
+        };
+
+        localStorage.setItem("avahire_user", JSON.stringify(userData));
+        localStorage.setItem("avahire_token", response.token || `usr_google_${Date.now()}`);
+        localStorage.setItem("avahire_registered_email", activeEmail);
+
+        setShowGoogleModal(false);
+        toast.success(response.message || `Signed in with Google as ${userData.name || activeEmail} 👋`);
+        setTimeout(() => navigate("/app/dashboard"), 250);
+      } else {
+        throw new Error(response?.error || "Google authentication failed");
+      }
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      const msg = err.response?.data?.error || err.message || "Google sign-in could not be completed.";
+      toast.error(msg);
+      throw new Error(msg);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.email || !form.password) {
-      toast.error("Please enter email and password");
+      toast.error("Please enter both email and password");
       return;
     }
 
@@ -47,35 +109,25 @@ const Login = () => {
         password: form.password,
       });
 
-      // Strictly verify response indicates success and has user data
-      if (response && response.success === true && response.data) {
-        const userData = response.data;
+      if (response && response.success && response.token) {
+        const userData = response.data || {
+          name: form.email.split("@")[0],
+          email: form.email.trim(),
+          designation: "HR Administrator",
+        };
 
-        // Clean up previous cached profile if switching between different email accounts
-        try {
-          const prevProfile = localStorage.getItem("avahire_hr_profile");
-          if (prevProfile) {
-            const parsed = JSON.parse(prevProfile);
-            if (parsed && parsed.email && parsed.email.toLowerCase() !== userData.email.toLowerCase()) {
-              localStorage.removeItem("avahire_hr_profile");
-            }
-          }
-        } catch {
-          localStorage.removeItem("avahire_hr_profile");
-        }
-
-        // Store ONLY this specific logged-in user's details
         localStorage.setItem("avahire_user", JSON.stringify(userData));
-        localStorage.setItem("avahire_token", response.token || userData.uid || `usr_${Date.now()}`);
+        localStorage.setItem("avahire_token", response.token);
+        localStorage.setItem("avahire_registered_email", form.email.trim());
 
-        toast.success(response.message || `Welcome back, ${userData.name}! 👋`);
+        toast.success(response.message || `Welcome back, ${userData.name || "HR User"} 👋`);
         setTimeout(() => navigate("/app/dashboard"), 300);
       } else {
-        toast.error(response?.error || "Incorrect password. Please check your credentials.");
+        toast.error(response?.error || "Incorrect email or password. Please check your credentials.");
       }
     } catch (err) {
-      console.warn("Login attempt rejected:", err?.response?.status);
-      const errMsg = err.response?.data?.error || "Incorrect password or account not found. Please verify your credentials.";
+      console.warn("Login attempt status:", err?.response?.status);
+      const errMsg = err.response?.data?.error || err.message || "Login failed. Please check your credentials.";
       toast.error(errMsg);
     } finally {
       setLoading(false);
@@ -130,7 +182,7 @@ const Login = () => {
             <p className="text-slate-500 mt-1">Login to your HR account</p>
           </div>
 
-          <div className="mt-6 space-y-5">
+          <div className="mt-8 space-y-5">
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2">Work Email</label>
               <div className="relative">
@@ -140,7 +192,8 @@ const Login = () => {
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="Enter your work email"
+                  placeholder="Enter your registered work email"
+                  required
                   className="w-full pl-11 pr-4 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
                 />
               </div>
@@ -154,7 +207,8 @@ const Login = () => {
                   type={show ? "text" : "password"}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  placeholder="Enter your password"
+                  placeholder="Enter your account password"
+                  required
                   className="w-full pl-11 pr-11 py-3.5 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
                 />
                 <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -172,7 +226,7 @@ const Login = () => {
                   className="w-4 h-4 rounded border-slate-300 text-violet-600" />
                 Remember me
               </label>
-              <Link to="/forgot-password" className="text-sm font-semibold text-violet-600">Forgot Password?</Link>
+              <Link to="/forgot-password" className="text-sm font-semibold text-violet-600 hover:underline">Forgot Password?</Link>
             </div>
 
             <button
@@ -197,24 +251,39 @@ const Login = () => {
 
             <button
               type="button"
-              onClick={handleGoogleLogin}
+              data-testid="google-login-btn"
+              onClick={handleOpenGoogleLogin}
+              disabled={googleLoading}
               className="w-full py-3.5 rounded-xl border border-slate-200 font-semibold text-slate-800 flex items-center justify-center gap-3 hover:border-violet-400 transition cursor-pointer bg-white"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
-              </svg>
-              Login with Google
+              {googleLoading ? (
+                <Loader2 size={18} className="animate-spin" />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+                </svg>
+              )}
+              <span>Login with Google</span>
             </button>
 
             <div className="text-center text-sm text-slate-600">
-              Don't have an account? <Link to="/register" className="text-violet-600 font-semibold">Register</Link>
+              Don't have an account? <Link to="/register" className="text-violet-600 font-semibold hover:underline">Register</Link>
             </div>
           </div>
         </form>
       </div>
+
+      {/* Google Account Selector & Add Google Account Modal */}
+      <GoogleAccountChooserModal
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSelectAccount={handleSelectGoogleAccount}
+        mode="login"
+        initialEmail={form.email}
+      />
     </div>
   );
 };

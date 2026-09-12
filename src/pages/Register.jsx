@@ -1,7 +1,18 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, Mail, CheckCircle2, ShieldCheck, ExternalLink, Loader2 } from "lucide-react";
+import {
+  CheckCircle2,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  Lock,
+  Eye,
+  EyeOff,
+  Check,
+  ShieldCheck,
+} from "lucide-react";
 import AvaHireLogo from "@/components/AvaHireLogo";
+import GoogleAccountChooserModal from "@/components/GoogleAccountChooserModal";
 import { toast } from "sonner";
 import { authApi } from "@/services/api";
 
@@ -37,17 +48,13 @@ const AuthIllustration = ({ title, subtitle, bullets }) => (
     <div className="hidden lg:block relative mt-6">
       <svg viewBox="0 0 400 200" className="w-full">
         <ellipse cx="200" cy="180" rx="180" ry="14" fill="#ede9fe" />
-        {/* desk */}
         <rect x="60" y="150" width="280" height="8" fill="#c4b5fd" />
-        {/* laptops */}
         <rect x="90" y="130" width="60" height="22" rx="2" fill="#4c1d95" />
         <rect x="250" y="130" width="60" height="22" rx="2" fill="#4c1d95" />
-        {/* people */}
         <circle cx="120" cy="90" r="18" fill="#fbcfe8" />
         <rect x="102" y="105" width="36" height="35" rx="6" fill="#7c3aed" />
         <circle cx="280" cy="90" r="18" fill="#fde68a" />
         <rect x="262" y="105" width="36" height="35" rx="6" fill="#1e40af" />
-        {/* resume card */}
         <rect x="170" y="70" width="60" height="80" rx="6" fill="#fff" stroke="#c4b5fd" strokeWidth="2" />
         <circle cx="200" cy="90" r="8" fill="#c4b5fd" />
         <rect x="180" y="105" width="40" height="3" fill="#e9d5ff" />
@@ -61,11 +68,15 @@ const AuthIllustration = ({ title, subtitle, bullets }) => (
 
 const Register = () => {
   const navigate = useNavigate();
-  const [show, setShow] = useState(false);
-  const [show2, setShow2] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [resending, setResending] = useState(false);
-  const [verificationSentData, setVerificationSentData] = useState(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [registeredSuccess, setRegisteredSuccess] = useState(false);
+  const [registeredData, setRegisteredData] = useState(null);
+  const [alreadyRegisteredError, setAlreadyRegisteredError] = useState("");
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -74,70 +85,70 @@ const Register = () => {
     designation: "",
     phone: "",
     password: "",
-    confirm: "",
+    confirmPassword: "",
     agree: false,
   });
 
   const set = (k) => (e) => {
     const v = e.target.type === "checkbox" ? e.target.checked : e.target.value;
-    setForm({ ...form, [k]: v });
-  };
-
-  // Strictly allow ONLY 10 digits (0-9) - prevent any words, letters, spaces, or alphanumeric chars
-  const handlePhoneChange = (e) => {
-    const numericOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
-    setForm((prev) => ({ ...prev, phone: numericOnly }));
-  };
-
-  const handlePhoneKeyDown = (e) => {
-    // Allow control/navigation keys
-    if (
-      ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"].includes(e.key) ||
-      e.ctrlKey ||
-      e.metaKey
-    ) {
-      return;
+    if (k === "email") {
+      setAlreadyRegisteredError("");
     }
-    // Disallow non-numeric keys
-    if (!/^\d$/.test(e.key)) {
-      e.preventDefault();
-    }
+    setForm((prev) => ({ ...prev, [k]: v }));
   };
 
-  const handlePhonePaste = (e) => {
-    e.preventDefault();
-    const pasteText = e.clipboardData ? e.clipboardData.getData("text") : "";
-    const numericOnly = pasteText.replace(/\D/g, "").slice(0, 10);
-    setForm((prev) => ({ ...prev, phone: numericOnly }));
-  };
+  // Strict Password Rules Definition
+  const passwordRules = [
+    { id: "length", label: "At least 8 characters", test: (p) => (p || "").length >= 8 },
+    { id: "uppercase", label: "At least 1 uppercase letter (A-Z)", test: (p) => /[A-Z]/.test(p || "") },
+    { id: "lowercase", label: "At least 1 lowercase letter (a-z)", test: (p) => /[a-z]/.test(p || "") },
+    { id: "number", label: "At least 1 number (0-9)", test: (p) => /[0-9]/.test(p || "") },
+    { id: "special", label: "At least 1 special symbol (!@#$%^&*)", test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(p || "") },
+  ];
+
+  const passChecks = passwordRules.map((rule) => ({
+    ...rule,
+    met: rule.test(form.password),
+  }));
+
+  const allRulesMet = passChecks.every((r) => r.met);
+  const passwordsMatch = Boolean(form.password) && form.password === form.confirmPassword;
+  const rulesMetCount = passChecks.filter((r) => r.met).length;
+
+  const strengthLabel =
+    rulesMetCount <= 2 ? "Weak" :
+    rulesMetCount <= 4 ? "Fair" : "Strong";
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.fullName || !form.email || !form.password) {
-      toast.error("Please fill all required fields");
+    setAlreadyRegisteredError("");
+
+    if (!form.fullName.trim() || !form.email.trim()) {
+      toast.error("Please fill in your Full Name and Work Email");
       return;
     }
 
-    // Strict 10-digit validation
-    if (!form.phone) {
-      toast.error("Please enter your 10-digit phone number");
+    if (!form.password) {
+      toast.error("Please create a password for your account");
       return;
     }
 
-    if (!/^\d{10}$/.test(form.phone)) {
-      toast.error("Phone number must be exactly 10 digits containing numbers only (no words or letters allowed).");
+    if (!allRulesMet) {
+      const firstUnmet = passChecks.find((r) => !r.met);
+      toast.error(`Password requirement not met: ${firstUnmet?.label || "Must satisfy all strict rules"}`);
       return;
     }
 
-    if (form.password.length < 6) {
-      toast.error("Password must be at least 6 characters long");
+    if (!form.confirmPassword) {
+      toast.error("Please confirm your password");
       return;
     }
 
-    if (form.password !== form.confirm) {
-      toast.error("Passwords do not match");
+    if (!passwordsMatch) {
+      toast.error("Passwords do not match. Please verify both password fields.");
       return;
     }
+
     if (!form.agree) {
       toast.error("Please accept the terms & conditions");
       return;
@@ -145,7 +156,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      // Call server-side registration route to store in PostgreSQL backend
+      // Call server-side registration route with chosen password
       const response = await authApi.register({
         fullName: form.fullName.trim(),
         email: form.email.trim(),
@@ -153,39 +164,100 @@ const Register = () => {
         company: form.company.trim(),
         website: form.website.trim(),
         designation: form.designation.trim(),
-        phone: form.phone,
+        phone: form.phone.trim(),
       });
 
-      toast.success("Account registered successfully and stored in backend! 🎉");
-      setVerificationSentData(response.data || { email: form.email.trim() });
+      // Save user info and remember registered email for seamless login
+      localStorage.setItem("avahire_registered_email", form.email.trim());
+      if (response?.token) {
+        localStorage.setItem("avahire_token", response.token);
+      }
+      localStorage.setItem("avahire_user", JSON.stringify({
+        name: form.fullName.trim(),
+        email: form.email.trim(),
+        company: form.company.trim() || "AvaHire",
+        designation: form.designation.trim() || "HR Administrator",
+      }));
+
+      setRegisteredData({
+        fullName: form.fullName.trim(),
+        email: form.email.trim(),
+        company: form.company.trim(),
+        registeredPassword: form.password,
+        emailDispatched: response?.emailDispatched !== false,
+      });
+
+      setRegisteredSuccess(true);
+      toast.success("Successfully registered! Your HR account is active and password secured.");
     } catch (err) {
       console.error("Registration error:", err);
-      const msg = err.response?.data?.error || "Registration failed. Please check your details and try again.";
-      toast.error(msg);
+      const errMsg = err.response?.data?.error || err.message || "Registration failed.";
+      
+      if (err.response?.status === 409 || errMsg.toLowerCase().includes("already registered") || errMsg.toLowerCase().includes("already exists")) {
+        setAlreadyRegisteredError("This Gmail address is already registered. Please proceed to login with your password.");
+        toast.error("Account already exists! Please log in instead.");
+      } else {
+        toast.error(errMsg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResend = async () => {
-    if (!form.email && (!verificationSentData || !verificationSentData.email)) return;
-    const targetEmail = verificationSentData?.email || form.email;
-    setResending(true);
+  const handleOpenGoogleRegister = () => {
+    setShowGoogleModal(true);
+  };
+
+  const handleSelectGoogleAccount = async (account) => {
+    setGoogleLoading(true);
     try {
-      const res = await authApi.resendVerification(targetEmail);
-      toast.success("New verification email dispatched via SMTP!");
-      if (res.verificationLink) {
-        setVerificationSentData((prev) => ({
-          ...prev,
-          verificationLink: res.verificationLink,
-          token: res.token,
-        }));
+      const activeEmail = account.email.trim();
+      const activeName = account.name.trim() || activeEmail.split("@")[0];
+
+      const response = await authApi.googleAuth({
+        email: activeEmail,
+        name: activeName,
+        avatar: account.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+        company: form.company.trim() || "AvaHire Partner",
+        designation: form.designation.trim() || "HR Administrator",
+      });
+
+      if (response && response.success) {
+        const userData = response.data || {
+          name: activeName,
+          email: activeEmail,
+          role: "recruiter",
+          company: form.company.trim() || "AvaHire Partner",
+          designation: form.designation.trim() || "HR Administrator",
+        };
+        localStorage.setItem("avahire_user", JSON.stringify(userData));
+        localStorage.setItem("avahire_token", response.token || `usr_${Date.now()}`);
+        localStorage.setItem("avahire_registered_email", activeEmail);
+
+        setShowGoogleModal(false);
+        toast.success(`Successfully registered with Google as ${userData.name}!`);
+        setTimeout(() => navigate("/app/dashboard"), 300);
+      } else {
+        throw new Error(response?.error || "Registration with Google failed");
       }
     } catch (err) {
-      toast.error("Could not resend email: " + (err.response?.data?.error || err.message));
+      const msg = err.response?.data?.error || err.message || "Google registration failed";
+      toast.error(msg);
+      throw new Error(msg);
     } finally {
-      setResending(false);
+      setGoogleLoading(false);
     }
+  };
+
+  const proceedToLogin = () => {
+    const emailToUse = registeredData?.email || form.email.trim();
+    navigate("/login", {
+      state: {
+        email: emailToUse,
+        password: registeredData?.registeredPassword || form.password,
+        initialPassword: registeredData?.registeredPassword || form.password,
+      },
+    });
   };
 
   return (
@@ -201,161 +273,404 @@ const Register = () => {
           ]}
         />
 
-        {verificationSentData ? (
+        {registeredSuccess ? (
           <div
-            data-testid="verification-sent-card"
-            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12 flex flex-col justify-between"
+            data-testid="registration-success-card"
+            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-14 flex flex-col justify-between"
           >
-            <div>
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-6 border border-emerald-200">
-                <CheckCircle2 size={36} />
+            <div className="my-auto text-center max-w-md mx-auto">
+              <div className="w-20 h-20 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-6 border border-emerald-200 shadow-lg shadow-emerald-500/10">
+                <CheckCircle2 size={44} />
               </div>
 
-              <div className="text-center mb-6">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-violet-50 text-violet-700 border border-violet-200 mb-3">
-                  <ShieldCheck size={14} /> One-Time Token Stored in PostgreSQL
-                </span>
-                <h2 className="text-2xl lg:text-3xl font-extrabold text-slate-900">Check Your Gmail Inbox</h2>
-                <p className="text-slate-600 mt-2 text-sm max-w-md mx-auto">
-                  A one-time secure verification token has been generated and sent via SMTP to:
-                </p>
-                <div className="mt-2 inline-block px-4 py-1.5 bg-slate-100 rounded-lg text-slate-800 font-bold text-sm">
-                  {verificationSentData.email}
-                </div>
-              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 mb-3">
+                Account Successfully Created
+              </span>
 
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-6 space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700">Security Details:</span>
-                  <span className="text-emerald-600 font-medium">Valid for 24 Hours &bull; Single-Use</span>
+              <h2 className="text-3xl font-extrabold text-slate-900">
+                Registration Successful!
+              </h2>
+
+              <p className="text-slate-600 mt-3 text-sm leading-relaxed">
+                Welcome to AvaHire, <strong className="text-slate-900">{registeredData?.fullName}</strong>! Your HR account is active.
+              </p>
+
+              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2.5 text-xs text-slate-600">
+                <div className="flex justify-between">
+                  <span className="font-medium text-slate-500">Registered Email:</span>
+                  <span className="font-semibold text-slate-800">{registeredData?.email}</span>
                 </div>
-                <div className="text-xs text-slate-500">
-                  <strong>Secure Verification Token:</strong>
-                  <div className="mt-1 font-mono text-xs bg-white p-2.5 rounded-lg border border-slate-200 text-slate-700 break-all select-all">
-                    {verificationSentData.token}
+                {registeredData?.company && (
+                  <div className="flex justify-between">
+                    <span className="font-medium text-slate-500">Company:</span>
+                    <span className="font-semibold text-slate-800">{registeredData?.company}</span>
                   </div>
+                )}
+                {registeredData?.registeredPassword ? (
+                  <div className="flex justify-between items-center bg-violet-50/80 p-2.5 rounded-lg border border-violet-100">
+                    <span className="font-medium text-violet-900">Configured Password:</span>
+                    <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
+                      <ShieldCheck size={13} className="text-emerald-600" /> Strict Rules Met
+                    </span>
+                  </div>
+                ) : registeredData?.initialPassword ? (
+                  <div className="flex justify-between items-center bg-violet-50/80 p-2 rounded-lg border border-violet-100">
+                    <span className="font-medium text-violet-900">Your Login Password:</span>
+                    <span className="font-mono font-bold text-violet-700 bg-white px-2 py-0.5 rounded border border-violet-200">
+                      {registeredData.initialPassword}
+                    </span>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                  <span className="font-medium text-slate-500">Confirmation Email:</span>
+                  <span className="inline-flex items-center text-emerald-600 font-semibold gap-1">
+                    <CheckCircle2 size={13} /> Dispatched via SMTP
+                  </span>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                {verificationSentData.verificationLink && (
-                  <a
-                    href={verificationSentData.verificationLink}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="w-full py-3.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/20 transition"
-                  >
-                    <span>Click to Test Verification Link</span>
-                    <ExternalLink size={16} />
-                  </a>
-                )}
-
+              <div className="mt-8 space-y-3">
                 <button
                   type="button"
-                  onClick={handleResend}
-                  disabled={resending}
-                  className="w-full py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition disabled:opacity-50"
+                  data-testid="proceed-to-login-btn"
+                  onClick={proceedToLogin}
+                  className="btn-primary w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 cursor-pointer text-base"
                 >
-                  {resending ? <Loader2 size={16} className="animate-spin text-slate-400" /> : <Mail size={16} />}
-                  <span>{resending ? "Resending via SMTP..." : "Resend Verification Email via SMTP"}</span>
+                  <span>Proceed to Login</span>
+                  <ArrowRight size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between text-sm">
-              <button
-                type="button"
-                onClick={() => setVerificationSentData(null)}
-                className="text-slate-500 hover:text-slate-800 font-medium"
-              >
-                &larr; Back to Register
-              </button>
-              <Link to="/login" className="text-violet-600 font-semibold hover:underline">
-                Proceed to Login &rarr;
-              </Link>
+            <div className="pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
+              AvaHire AI Talent Management &bull; Secure Authentication
             </div>
           </div>
         ) : (
           <form
             onSubmit={submit}
             data-testid="register-form"
-            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12"
+            className="bg-white rounded-3xl shadow-xl shadow-violet-500/5 border border-slate-100 p-8 lg:p-12 flex flex-col justify-between"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-extrabold text-slate-900">Create Your HR Account</h2>
-              <p className="text-slate-500 mt-1">Fill in the details below to get started</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <Field label="Full Name" icon="fa-user" placeholder="Enter full name" value={form.fullName} onChange={set("fullName")} testId="reg-fullname" />
-              <Field label="Work Email (Gmail Address)" icon="fa-envelope" placeholder="e.g. yourname@gmail.com" type="email" value={form.email} onChange={set("email")} testId="reg-email" />
-              <Field label="Company Name" icon="fa-building" placeholder="Enter company name" value={form.company} onChange={set("company")} testId="reg-company" />
-              <Field label="Company Website (Optional)" icon="fa-globe" placeholder="Enter website" value={form.website} onChange={set("website")} testId="reg-website" />
-              <Field label="Designation" icon="fa-briefcase" placeholder="Enter your designation" value={form.designation} onChange={set("designation")} testId="reg-designation" />
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-semibold text-slate-800">Phone Number (10 Digits)</label>
-                  <span className={`text-xs font-semibold ${form.phone.length === 10 ? "text-emerald-600" : form.phone.length > 0 ? "text-amber-600" : "text-slate-400"}`}>
-                    {form.phone.length}/10 digits
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50 select-none">
-                    <span className="text-base">🇮🇳</span>
-                    <span className="text-sm font-medium text-slate-700">+91</span>
-                  </div>
-                  <input
-                    id="reg-phone"
-                    data-testid="reg-phone"
-                    type="tel"
-                    inputMode="numeric"
-                    pattern="[0-9]{10}"
-                    maxLength={10}
-                    value={form.phone}
-                    onChange={handlePhoneChange}
-                    onKeyDown={handlePhoneKeyDown}
-                    onPaste={handlePhonePaste}
-                    placeholder="Enter 10-digit mobile number"
-                    className={`flex-1 px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 text-sm transition ${
-                      form.phone.length === 10
-                        ? "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-100"
-                        : form.phone.length > 0
-                        ? "border-amber-300 focus:border-amber-400 focus:ring-amber-100"
-                        : "border-slate-200 focus:border-violet-500 focus:ring-violet-100"
-                    }`}
-                  />
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Only numbers allowed (0-9). Words, alphabets, or special characters are not allowed.
-                </p>
+            <div>
+              <div className="text-center mb-6">
+                <h2 className="text-3xl font-extrabold text-slate-900">Create Your HR Account</h2>
+                <p className="text-slate-500 mt-1">Fill in the details below to get started</p>
               </div>
+
+              {/* Already registered warning banner */}
+              {alreadyRegisteredError && (
+                <div
+                  data-testid="already-registered-alert"
+                  className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3 text-amber-800"
+                >
+                  <AlertCircle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 text-sm">
+                    <div className="font-semibold text-amber-900">Account Already Exists</div>
+                    <div className="mt-0.5 text-amber-700">{alreadyRegisteredError}</div>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/login", { state: { email: form.email.trim() } })}
+                      className="mt-2 text-xs font-bold text-violet-700 bg-white border border-violet-200 px-3 py-1.5 rounded-lg hover:bg-violet-50 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Proceed to Login</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <Field
+                  label="Full Name"
+                  icon="fa-user"
+                  placeholder="Enter full name"
+                  value={form.fullName}
+                  onChange={set("fullName")}
+                  testId="reg-fullname"
+                  required
+                />
+                <Field
+                  label="Work Email (Gmail Address)"
+                  icon="fa-envelope"
+                  placeholder="e.g. yourname@gmail.com"
+                  type="email"
+                  value={form.email}
+                  onChange={set("email")}
+                  testId="reg-email"
+                  required
+                />
+                <Field
+                  label="Company Name"
+                  icon="fa-building"
+                  placeholder="Enter company name"
+                  value={form.company}
+                  onChange={set("company")}
+                  testId="reg-company"
+                />
+                <Field
+                  label="Company Website (Optional)"
+                  icon="fa-globe"
+                  placeholder="Enter website"
+                  value={form.website}
+                  onChange={set("website")}
+                  testId="reg-website"
+                />
+                <Field
+                  label="Designation"
+                  icon="fa-briefcase"
+                  placeholder="Enter your designation"
+                  value={form.designation}
+                  onChange={set("designation")}
+                  testId="reg-designation"
+                />
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-2">Phone Number</label>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-2 px-3 py-3 border border-slate-200 rounded-xl bg-slate-50">
+                      <span className="text-base">🇮🇳</span>
+                      <span className="text-sm font-medium text-slate-700">+91</span>
+                    </div>
+                    <input
+                      data-testid="reg-phone"
+                      value={form.phone}
+                      onChange={set("phone")}
+                      placeholder="Enter phone number"
+                      className="flex-1 px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Strict Password Block */}
+              <div className="mt-6 pt-5 border-t border-slate-200" id="reg-password-section">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-violet-100 text-violet-700 flex items-center justify-center">
+                      <Lock size={16} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Account Password</h3>
+                      <p className="text-xs text-slate-500">Strict enterprise rules apply</p>
+                    </div>
+                  </div>
+                  {form.password && (
+                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50">
+                      <span className="text-slate-500">Strength:</span>
+                      <span
+                        className={
+                          rulesMetCount <= 2
+                            ? "text-red-600 font-bold"
+                            : rulesMetCount <= 4
+                            ? "text-amber-600 font-bold"
+                            : "text-emerald-600 font-bold"
+                        }
+                      >
+                        {strengthLabel}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {/* Create Password */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Create Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        data-testid="reg-password"
+                        type={showPassword ? "text" : "password"}
+                        value={form.password}
+                        onChange={set("password")}
+                        placeholder="Create a strong password"
+                        className="w-full pl-10 pr-10 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
+                        required
+                      />
+                      <button
+                        type="button"
+                        data-testid="toggle-reg-password"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        aria-label="Toggle password visibility"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Visual Strength Progress Bar */}
+                  {form.password.length > 0 && (
+                    <div>
+                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex gap-1">
+                        <div
+                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                            rulesMetCount >= 1
+                              ? rulesMetCount <= 2
+                                ? "bg-red-500"
+                                : rulesMetCount <= 4
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                        <div
+                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                            rulesMetCount >= 2
+                              ? rulesMetCount <= 2
+                                ? "bg-red-500"
+                                : rulesMetCount <= 4
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                        <div
+                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                            rulesMetCount >= 3
+                              ? rulesMetCount <= 4
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                        <div
+                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                            rulesMetCount >= 4
+                              ? rulesMetCount <= 4
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                              : "bg-slate-200"
+                          }`}
+                        />
+                        <div
+                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
+                            rulesMetCount >= 5 ? "bg-emerald-500" : "bg-slate-200"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirm Password */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Confirm Password <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                      <input
+                        data-testid="reg-confirm"
+                        type={showConfirm ? "text" : "password"}
+                        value={form.confirmPassword}
+                        onChange={set("confirmPassword")}
+                        placeholder="Re-enter password to confirm"
+                        className={`w-full pl-10 pr-10 py-2.5 border rounded-xl focus:outline-none text-sm transition ${
+                          form.confirmPassword && form.password
+                            ? passwordsMatch
+                              ? "border-emerald-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                              : "border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                            : "border-slate-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-100"
+                        }`}
+                        required
+                      />
+                      <button
+                        type="button"
+                        data-testid="toggle-reg-confirm"
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                        aria-label="Toggle confirm password visibility"
+                      >
+                        {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+
+                    {form.confirmPassword && (
+                      <div className="mt-1 text-xs flex items-center gap-1 font-medium">
+                        {passwordsMatch ? (
+                          <span className="text-emerald-600 flex items-center gap-1">
+                            <Check size={13} /> Passwords match
+                          </span>
+                        ) : (
+                          <span className="text-red-600 flex items-center gap-1">
+                            <AlertCircle size={13} /> Passwords do not match
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Strict Rules Checklist */}
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                      <span>Strict Password Rules</span>
+                      <span className={allRulesMet ? "text-emerald-600 font-bold" : "text-slate-500"}>
+                        {rulesMetCount}/5 rules met
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                      {passChecks.map((rule) => (
+                        <div
+                          key={rule.id}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
+                            rule.met
+                              ? "bg-emerald-50 text-emerald-800 font-medium border border-emerald-200/60"
+                              : "text-slate-500 bg-white/60 border border-slate-200/50"
+                          }`}
+                        >
+                          {rule.met ? (
+                            <Check size={13} className="text-emerald-600 shrink-0 font-bold" />
+                          ) : (
+                            <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0 flex items-center justify-center text-[9px] text-slate-400">
+                              •
+                            </div>
+                          )}
+                          <span className="truncate">{rule.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <label className="mt-5 flex items-center gap-2 text-sm text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={form.agree}
+                  onChange={set("agree")}
+                  data-testid="reg-agree"
+                  className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                />
+                I agree to the <span className="text-violet-600 font-semibold cursor-pointer">Terms & Conditions</span> and <span className="text-violet-600 font-semibold cursor-pointer">Privacy Policy</span>
+              </label>
+
+              <button
+                type="submit"
+                disabled={loading}
+                data-testid="reg-submit"
+                className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+              >
+                {loading && <Loader2 size={18} className="animate-spin" />}
+                <span>{loading ? "Registering & Storing Data..." : "Register"}</span>
+              </button>
+
+              <div className="my-5 flex items-center gap-3 text-sm text-slate-400">
+                <div className="flex-1 h-px bg-slate-200" />or<div className="flex-1 h-px bg-slate-200" />
+              </div>
+
+              <button
+                type="button"
+                data-testid="google-register-btn"
+                onClick={handleOpenGoogleRegister}
+                disabled={googleLoading}
+                className="w-full py-3.5 rounded-xl border border-slate-200 font-semibold text-slate-800 flex items-center justify-center gap-3 hover:border-violet-400 transition cursor-pointer bg-white shadow-xs"
+              >
+                {googleLoading ? <Loader2 size={18} className="animate-spin" /> : <GoogleIcon />}
+                <span>Register with Google</span>
+              </button>
             </div>
-
-            <PasswordField label="Password" icon={<Lock size={16} />} value={form.password} onChange={set("password")} show={show} setShow={setShow} testId="reg-password" placeholder="Create a password" />
-            <PasswordField label="Confirm Password" icon={<Lock size={16} />} value={form.confirm} onChange={set("confirm")} show={show2} setShow={setShow2} testId="reg-confirm" placeholder="Confirm your password" />
-
-            <label className="mt-5 flex items-center gap-2 text-sm text-slate-600">
-              <input type="checkbox" checked={form.agree} onChange={set("agree")} data-testid="reg-agree" className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
-              I agree to the <a href="#" className="text-violet-600 font-semibold">Terms & Conditions</a> and <a href="#" className="text-violet-600 font-semibold">Privacy Policy</a>
-            </label>
-
-            <button
-              type="submit"
-              disabled={loading}
-              data-testid="reg-submit"
-              className="btn-primary mt-6 w-full py-3.5 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
-            >
-              {loading && <Loader2 size={18} className="animate-spin" />}
-              <span>{loading ? "Generating Secure Token & Sending Email..." : "Register"}</span>
-            </button>
-
-            <div className="my-5 flex items-center gap-3 text-sm text-slate-400">
-              <div className="flex-1 h-px bg-slate-200" />or<div className="flex-1 h-px bg-slate-200" />
-            </div>
-
-            <button type="button" className="w-full py-3.5 rounded-xl border border-slate-200 font-semibold text-slate-800 flex items-center justify-center gap-3 hover:border-violet-400 transition">
-              <GoogleIcon /> Register with Google
-            </button>
 
             <div className="mt-5 text-center text-sm text-slate-600">
               Already have an account? <Link to="/login" className="text-violet-600 font-semibold">Login</Link>
@@ -363,13 +678,25 @@ const Register = () => {
           </form>
         )}
       </div>
+
+      {/* Google Account Selector & Add Google Account Modal */}
+      <GoogleAccountChooserModal
+        isOpen={showGoogleModal}
+        onClose={() => setShowGoogleModal(false)}
+        onSelectAccount={handleSelectGoogleAccount}
+        mode="register"
+        initialEmail={form.email}
+        initialName={form.fullName}
+      />
     </div>
   );
 };
 
-const Field = ({ label, icon, placeholder, value, onChange, type = "text", testId }) => (
+const Field = ({ label, icon, placeholder, value, onChange, type = "text", testId, required }) => (
   <div>
-    <label className="block text-sm font-semibold text-slate-800 mb-2">{label}</label>
+    <label className="block text-sm font-semibold text-slate-800 mb-2">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
     <div className="relative">
       <i className={`fa-solid ${icon} absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm`}></i>
       <input
@@ -378,28 +705,9 @@ const Field = ({ label, icon, placeholder, value, onChange, type = "text", testI
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        required={required}
         className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
       />
-    </div>
-  </div>
-);
-
-const PasswordField = ({ label, value, onChange, show, setShow, placeholder, testId }) => (
-  <div className="mt-5">
-    <label className="block text-sm font-semibold text-slate-800 mb-2">{label}</label>
-    <div className="relative">
-      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-      <input
-        data-testid={testId}
-        type={show ? "text" : "password"}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="w-full pl-11 pr-11 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
-      />
-      <button type="button" onClick={() => setShow((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-        {show ? <EyeOff size={16} /> : <Eye size={16} />}
-      </button>
     </div>
   </div>
 );

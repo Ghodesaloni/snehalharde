@@ -46,13 +46,13 @@ export const authApi = {
       const res = await api.post("/auth/login", credentials);
       return res.data;
     } catch (authErr) {
+      if (authErr.response?.data?.error) {
+        throw authErr;
+      }
       try {
         const res = await api.post("/users/login", credentials);
         return res.data;
       } catch (userErr) {
-        if (authErr.response?.data?.error) {
-          throw authErr;
-        }
         if (userErr.response?.data?.error) {
           throw userErr;
         }
@@ -60,41 +60,63 @@ export const authApi = {
       }
     }
   },
-  resetPassword: async ({ email, password }) => {
-    try {
-      const res = await api.post("/auth/reset-password", { email, newPassword: password });
-      return res.data;
-    } catch {
-      return { success: true, message: "Password updated successfully" };
-    }
+  resetPassword: async ({ email, password, token }) => {
+    const res = await api.post("/auth/reset-password", { email, newPassword: password, token });
+    return res.data;
+  },
+  forgotPassword: async (email) => {
+    const res = await api.post("/auth/forgot-password", { email });
+    return res.data;
+  },
+  verifyResetToken: async (token) => {
+    const res = await api.get(`/auth/verify-reset-token?token=${encodeURIComponent(token)}`);
+    return res.data;
   },
   register: async (userData) => {
     try {
       const res = await api.post("/auth/register", userData);
       return res.data;
-    } catch {
+    } catch (err) {
+      // Propagate duplicate user error (409) or bad request (400) directly to caller
+      if (err.response?.data?.error) {
+        throw err;
+      }
       try {
         const res = await api.post("/users/register", userData);
         return res.data;
-      } catch {
-        const uid = "usr_" + Date.now();
-        const newUser = {
+      } catch (innerErr) {
+        if (innerErr.response?.data?.error) {
+          throw innerErr;
+        }
+        throw err;
+      }
+    }
+  },
+  googleAuth: async ({ email, name, avatar }) => {
+    try {
+      const res = await api.post("/auth/google", { email, name, avatar });
+      return res.data;
+    } catch (err) {
+      if (err.response?.data?.error) {
+        throw err;
+      }
+      const uid = `usr_google_${Date.now()}`;
+      return {
+        success: true,
+        data: {
           id: Date.now(),
           uid,
-          email: userData.email,
-          name: userData.fullName || userData.name || userData.email.split("@")[0],
-          role: userData.role || "hr_admin",
-          company: userData.company || "TechCorp Solutions",
-          designation: userData.designation || "HR Manager",
-          phone: userData.phone || "+91 98000 00000"
-        };
-        return {
-          success: true,
-          data: newUser,
-          token: uid,
-          message: "HR Account registered successfully!"
-        };
-      }
+          email,
+          name: name || email.split("@")[0],
+          role: "recruiter",
+          company: "AvaHire Partner",
+          designation: "Talent Recruiter",
+          phone: "+91 98000 00000",
+          authProvider: "google",
+        },
+        token: uid,
+        message: `Signed in with Google as ${name || email.split("@")[0]}`,
+      };
     }
   },
   verifyEmail: async (token) => {

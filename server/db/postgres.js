@@ -253,6 +253,40 @@ async function saveUser(userData) {
   }
   writeJson(USERS_FILE, usersList);
 
+  // Keep server/data/users.json in sync for unified login compatibility
+  try {
+    const defaultUsersFile = path.join(DATA_DIR, "users.json");
+    const dUsers = readJson(defaultUsersFile);
+    const dIdx = dUsers.findIndex((u) => u.email && u.email.toLowerCase() === email.toLowerCase());
+    if (dIdx >= 0) {
+      dUsers[dIdx] = {
+        ...dUsers[dIdx],
+        name: fullName || dUsers[dIdx].name,
+        company: company !== undefined ? company : dUsers[dIdx].company,
+        designation: designation !== undefined ? designation : dUsers[dIdx].designation,
+        phone: phone !== undefined ? phone : dUsers[dIdx].phone,
+        password_hash: passwordHash || dUsers[dIdx].password_hash,
+      };
+    } else {
+      dUsers.push({
+        id: dUsers.length + 1,
+        uid: `usr_${Date.now()}`,
+        email: email.toLowerCase(),
+        name: fullName || email.split("@")[0],
+        avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+        role: "recruiter",
+        company: company || "AvaHire Tech Solutions",
+        designation: designation || "Talent Recruiter",
+        phone: phone || "+91 98000 00000",
+        password_hash: passwordHash || null,
+        created_at: now,
+      });
+    }
+    writeJson(defaultUsersFile, dUsers);
+  } catch (syncErr) {
+    console.warn("Could not sync user to users.json:", syncErr.message);
+  }
+
   // Persist to PostgreSQL if available
   try {
     const p = getPool();
@@ -460,6 +494,73 @@ async function consumeVerificationToken(token) {
   return { success: true, email: tokenRecord.email };
 }
 
+// Verify recovery token without consuming yet (for preview/verification)
+async function verifyRecoveryToken(token) {
+  if (!token) return { valid: false, reason: "MISSING_TOKEN" };
+  const cleanToken = token.trim();
+  const tokenRecord = await findVerificationToken(cleanToken);
+  if (!tokenRecord) {
+    return { valid: false, reason: "NOT_FOUND" };
+  }
+  if (tokenRecord.used) {
+    return { valid: false, reason: "ALREADY_USED", email: tokenRecord.email };
+  }
+  const expiry = new Date(tokenRecord.expiresAt);
+  if (expiry < new Date()) {
+    return { valid: false, reason: "EXPIRED", email: tokenRecord.email };
+  }
+  return { valid: true, email: tokenRecord.email };
+}
+
+// Securely reset password using a valid recovery token
+async function resetPasswordWithToken({ token, newPassword }) {
+  if (!token || !newPassword) {
+    return { success: false, reason: "MISSING_DATA", error: "Token and new password are required." };
+  }
+
+  const cleanToken = token.trim();
+  const tokenRecord = await findVerificationToken(cleanToken);
+  if (!tokenRecord) {
+    return { success: false, reason: "NOT_FOUND", error: "Invalid or nonexistent recovery token." };
+  }
+  if (tokenRecord.used) {
+    return { success: false, reason: "ALREADY_USED", error: "This recovery token has already been used." };
+  }
+  const expiry = new Date(tokenRecord.expiresAt);
+  if (expiry < new Date()) {
+    return { success: false, reason: "EXPIRED", error: "This recovery token has expired. Please request a new one." };
+  }
+
+  const cleanEmail = tokenRecord.email.toLowerCase().trim();
+
+  // 1. Update the password in database and local mirror
+  await resetPassword(cleanEmail, newPassword);
+
+  // 2. Mark token as consumed
+  const now = new Date();
+  try {
+    const p = getPool();
+    if (p) {
+      await p.query(
+        `UPDATE verification_tokens SET used = TRUE, used_at = $1 WHERE token = $2`,
+        [now, cleanToken]
+      );
+    }
+  } catch (err) {
+    console.warn("PostgreSQL consume recovery token fallback:", err.message);
+  }
+
+  const tokens = readJson(TOKENS_FILE);
+  const tIdx = tokens.findIndex((t) => t.token === cleanToken);
+  if (tIdx >= 0) {
+    tokens[tIdx].used = true;
+    tokens[tIdx].usedAt = now.toISOString();
+    writeJson(TOKENS_FILE, tokens);
+  }
+
+  return { success: true, email: cleanEmail };
+}
+
 // Get user by email
 async function getUserByEmail(email) {
   if (!email) return null;
@@ -644,6 +745,8 @@ module.exports = {
   saveVerificationToken,
   findVerificationToken,
   consumeVerificationToken,
+  verifyRecoveryToken,
+  resetPasswordWithToken,
   getUserByEmail,
   saveSmtpEmail,
   getSmtpEmails,

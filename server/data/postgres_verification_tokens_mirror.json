@@ -18,30 +18,12 @@
     "createdAt": "2026-09-11T05:51:17.438Z"
   },
   {
-    "id": 1789194568839,
-    "email": "snehal.harde2935@gmail.com",
-    "token": "70317a732832b07bf0972dc94337279329ae1542020c8d224d40676b3aca8f2e",
-    "expiresAt": "2026-09-13T06:29:28.839Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-12T06:29:28.839Z"
-  },
-  {
-    "id": 1789202430410,
-    "email": "snehalharde09@gmail.com",
-    "token": "25ef2108b9a178dbf8d20fec62cf8d01947c404019c836ec3f71b9ce1e8e7b9b",
-    "expiresAt": "2026-09-13T08:40:30.410Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-12T08:40:30.410Z"
-  },
-  {
-    "id": 1789215054404,
-    "email": "snehal.harde2935@gmail.com",
-    "token": "46808bc7dcedc811675fba8f0ca422ad9fde78f23028d8da5fd0acb17168e5d0",
-    "expiresAt": "2026-09-13T12:10:54.404Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-12T12:10:54.404Z"
+    "id": 1789233558918,
+    "email": "salonighode3@gmail.com",
+    "token": "5b757436c0bd40beda6443df5c5fda52ab4d6db2cd8b0b1398e15393973fb4f0",
+    "expiresAt": "2026-09-12T18:19:18.918Z",
+    "used": true,
+    "usedAt": "2026-09-12T17:19:31.489Z",
+    "createdAt": "2026-09-12T17:19:18.918Z"
   }
 ]
