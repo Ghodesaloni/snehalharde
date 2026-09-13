@@ -26,6 +26,14 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(distPath, "index.html"));
 });
 
+process.on("unhandledRejection", (reason, promise) => {
+  console.warn("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.warn("Uncaught Exception:", err);
+});
+
 if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AvaHire HR Portal server listening on port ${PORT}`);
@@ -33,3 +41,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
