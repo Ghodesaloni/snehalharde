@@ -183,7 +183,8 @@ async function initTables() {
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
               ON CONFLICT (email) DO UPDATE
               SET password_hash = COALESCE(EXCLUDED.password_hash, public.users.password_hash),
-                  full_name = COALESCE(EXCLUDED.full_name, public.users.full_name);
+                  full_name = COALESCE(EXCLUDED.full_name, public.users.full_name),
+                  is_verified = TRUE;
             `, [
               u.email.toLowerCase(),
               u.fullName || u.name || "",
@@ -192,9 +193,76 @@ async function initTables() {
               u.website || "",
               u.designation || "",
               u.phone || "",
-              Boolean(u.isVerified),
+              true,
             ]);
           }
+        }
+
+        // Pull ALL live PostgreSQL users down to local mirrors to guarantee 100% data consistency
+        const allPgUsers = await client.query(`
+          SELECT id, email, full_name, password_hash, company, website, designation, phone, is_verified, created_at, updated_at
+          FROM public.users
+          ORDER BY id ASC
+        `);
+
+        if (allPgUsers.rows && allPgUsers.rows.length > 0) {
+          // Update all unverified users to verified so no user gets locked out
+          await client.query(`UPDATE public.users SET is_verified = TRUE WHERE is_verified IS NOT TRUE`);
+
+          const mergedUsers = [...localUsers];
+          for (const row of allPgUsers.rows) {
+            const cEmail = row.email.toLowerCase();
+            const existingIdx = mergedUsers.findIndex(u => u.email && u.email.toLowerCase() === cEmail);
+            const userObj = {
+              id: row.id,
+              uid: `usr_${row.id}`,
+              email: cEmail,
+              fullName: row.full_name,
+              name: row.full_name,
+              company: row.company || "AvaHire",
+              website: row.website || "",
+              designation: row.designation || "HR Administrator",
+              phone: row.phone || "",
+              passwordHash: row.password_hash,
+              password_hash: row.password_hash,
+              isVerified: true,
+              createdAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.updated_at || new Date().toISOString(),
+            };
+
+            if (existingIdx >= 0) {
+              mergedUsers[existingIdx] = { ...mergedUsers[existingIdx], ...userObj };
+            } else {
+              mergedUsers.push(userObj);
+            }
+          }
+          writeJson(USERS_FILE, mergedUsers);
+
+          // Also mirror into users.json
+          const defaultUsersFile = path.join(DATA_DIR, "users.json");
+          const defaultUsersList = readJson(defaultUsersFile);
+          for (const mUser of mergedUsers) {
+            const dIdx = defaultUsersList.findIndex(u => u.email && u.email.toLowerCase() === mUser.email.toLowerCase());
+            const dUserObj = {
+              id: mUser.id,
+              uid: mUser.uid || `usr_${mUser.id}`,
+              name: mUser.fullName || mUser.name,
+              email: mUser.email,
+              avatar: mUser.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+              role: mUser.role || "recruiter",
+              company: mUser.company || "AvaHire",
+              designation: mUser.designation || "HR Administrator",
+              phone: mUser.phone || "",
+              password_hash: mUser.passwordHash || mUser.password_hash,
+              created_at: mUser.createdAt,
+            };
+            if (dIdx >= 0) {
+              defaultUsersList[dIdx] = { ...defaultUsersList[dIdx], ...dUserObj };
+            } else {
+              defaultUsersList.push(dUserObj);
+            }
+          }
+          writeJson(defaultUsersFile, defaultUsersList);
         }
       } catch (syncErr) {
         console.warn("PostgreSQL user sync notice:", syncErr.message);
@@ -741,6 +809,49 @@ async function query(text, params) {
   }
 }
 
+// Get all registered users for quick account switching
+async function getAllUsers() {
+  const usersList = readJson(USERS_FILE);
+  const defaultUsersFile = path.join(DATA_DIR, "users.json");
+  const fallbackUsers = readJson(defaultUsersFile);
+
+  const emailMap = new Map();
+  for (const u of fallbackUsers) {
+    if (u && u.email) {
+      emailMap.set(u.email.toLowerCase(), {
+        id: u.id,
+        uid: u.uid || `usr_${u.id}`,
+        email: u.email.toLowerCase(),
+        name: u.name || u.fullName || u.email.split("@")[0],
+        fullName: u.name || u.fullName || u.email.split("@")[0],
+        avatar: u.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+        company: u.company || "AvaHire",
+        designation: u.designation || "HR Administrator",
+        role: u.role || "recruiter",
+      });
+    }
+  }
+
+  for (const u of usersList) {
+    if (u && u.email) {
+      const cEmail = u.email.toLowerCase();
+      emailMap.set(cEmail, {
+        id: u.id,
+        uid: u.uid || `usr_${u.id}`,
+        email: cEmail,
+        name: u.fullName || u.name || cEmail.split("@")[0],
+        fullName: u.fullName || u.name || cEmail.split("@")[0],
+        avatar: u.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+        company: u.company || "AvaHire",
+        designation: u.designation || "HR Administrator",
+        role: u.role || "recruiter",
+      });
+    }
+  }
+
+  return Array.from(emailMap.values());
+}
+
 module.exports = {
   getPool,
   initTables,
@@ -752,6 +863,7 @@ module.exports = {
   verifyRecoveryToken,
   resetPasswordWithToken,
   getUserByEmail,
+  getAllUsers,
   saveSmtpEmail,
   getSmtpEmails,
   query,

@@ -50,10 +50,42 @@ const DEFAULT_ACCOUNTS = [
   },
   {
     id: "acc_2",
+    email: "snehal.harde2935@gmail.com",
+    name: "Snehal Harde",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200",
+    color: "bg-blue-600",
+    isDefault: true,
+  },
+  {
+    id: "acc_3",
+    email: "vanshikashrirame@gmail.com",
+    name: "Vanshika Shrirame",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    color: "bg-rose-600",
+    isDefault: true,
+  },
+  {
+    id: "acc_4",
+    email: "sneha.harde@gmail.com",
+    name: "Snehal Harde (Personal)",
+    avatar: "",
+    color: "bg-teal-600",
+    isDefault: true,
+  },
+  {
+    id: "acc_5",
     email: "saloni.work@gmail.com",
     name: "Saloni Ghode (Work)",
     avatar: "",
     color: "bg-emerald-600",
+    isDefault: true,
+  },
+  {
+    id: "acc_6",
+    email: "hr@avahire.ai",
+    name: "AvaHire HR Lead",
+    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
+    color: "bg-indigo-600",
     isDefault: true,
   },
 ];
@@ -121,6 +153,33 @@ const GoogleAccountChooserModal = ({
       }
 
       setAccounts(list);
+
+      // Dynamically load all registered HR accounts from backend
+      fetch("/api/auth/users-list")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.success && Array.isArray(data.data)) {
+            setAccounts((prev) => {
+              const emailMap = new Map();
+              prev.forEach((a) => {
+                if (a.email) emailMap.set(a.email.toLowerCase(), a);
+              });
+              data.data.forEach((u, i) => {
+                if (u.email && !emailMap.has(u.email.toLowerCase())) {
+                  emailMap.set(u.email.toLowerCase(), {
+                    id: `srv_${u.id || i}`,
+                    email: u.email,
+                    name: u.name || u.fullName || u.email.split("@")[0],
+                    avatar: u.avatar || "",
+                    color: "bg-indigo-600",
+                  });
+                }
+              });
+              return Array.from(emailMap.values());
+            });
+          }
+        })
+        .catch(() => {});
     } catch {
       setAccounts(DEFAULT_ACCOUNTS);
     }

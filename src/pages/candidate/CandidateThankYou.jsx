@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
     Check,
     Sparkles,
@@ -11,10 +11,8 @@ import {
     ShieldCheck,
     Download,
     HelpCircle,
-    Home,
     X,
-    Lock,
-    ExternalLink
+    Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
@@ -153,17 +151,17 @@ const CandidateThankYou = () => {
                     <AvaHireLogo size="sm" variant="lightBg" />
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full font-semibold">
+                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full font-semibold">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Synced to HR Portal</span>
+                        <span>Submission Recorded</span>
                     </div>
-                    <Link
-                        to="/dashboard/interviews"
-                        className="px-4 py-2 bg-violet-50 hover:bg-violet-100 text-violet-700 hover:text-violet-900 border border-violet-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                    <button
+                        onClick={handleCloseSession}
+                        className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                     >
-                        <span>Open HR Recruiter View</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                    </Link>
+                        <Lock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Exit Session</span>
+                    </button>
                 </div>
             </header>
 
@@ -324,19 +322,19 @@ const CandidateThankYou = () => {
                         </button>
 
                         <div className="flex items-center gap-3 w-full sm:w-auto">
-                            <Link
-                                to="/dashboard/interviews"
+                            <button
+                                onClick={handleDownloadReceipt}
                                 className="flex-1 sm:flex-none px-5 py-3.5 bg-violet-50 hover:bg-violet-100 text-violet-800 border border-violet-200 rounded-2xl text-xs sm:text-sm font-bold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <ExternalLink className="w-4 h-4 text-violet-600" />
-                                <span>HR Evaluation Board</span>
-                            </Link>
+                                <Download className="w-4 h-4 text-violet-600" />
+                                <span>Download Receipt</span>
+                            </button>
 
                             <button
                                 onClick={handleCloseSession}
                                 className="flex-1 sm:flex-none px-6 py-3.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/25 transition active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                <X className="w-4 h-4 text-white" />
+                                <Lock className="w-4 h-4 text-white" />
                                 <span>Close Session</span>
                             </button>
                         </div>
