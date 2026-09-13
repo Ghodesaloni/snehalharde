@@ -1,31 +1,6 @@
-const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
-
-const sqlHost = process.env.SQL_HOST || process.env.PGHOST || "localhost";
-const sqlPort = parseInt(process.env.SQL_PORT || process.env.PGPORT || "5432", 10);
-const sqlDb = process.env.SQL_DB_NAME || process.env.PGDATABASE || "cloud_sql_development_database";
-const sqlUser = process.env.SQL_USER || process.env.PGUSER || "ai_studio_app_user";
-const sqlPassword = process.env.SQL_PASSWORD || process.env.PGPASSWORD || "";
-
-let pool = null;
-function getPool() {
-  if (!pool) {
-    pool = new Pool({
-      host: sqlHost,
-      port: sqlPort,
-      database: sqlDb,
-      user: sqlUser,
-      password: sqlPassword,
-      max: 10,
-      connectionTimeoutMillis: 6000,
-    });
-    pool.on("error", (err) => {
-      console.warn("PostgreSQL pool idle candidate session warning:", err.message);
-    });
-  }
-  return pool;
-}
+const { getPool } = require("./postgres");
 
 // Local fallback mirror
 const DATA_DIR = path.resolve(__dirname, "../data");

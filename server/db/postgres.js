@@ -12,7 +12,11 @@ const databaseUrl = process.env.DATABASE_URL;
 
 // Normalize DATABASE_URL and strip accidental bracket wrappers if entered from template [PASSWORD]
 function getCleanDatabaseUrl() {
-  const rawUrl = process.env.DATABASE_URL;
+  const rawUrl =
+    process.env.DATABASE_URL ||
+    (process.env.SQL_USER && process.env.SQL_USER.startsWith("postgresql://")
+      ? process.env.SQL_USER
+      : null);
   if (!rawUrl) return null;
   try {
     const u = new URL(rawUrl);

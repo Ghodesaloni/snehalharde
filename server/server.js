@@ -16,14 +16,48 @@ app.use("/api", apiRouter);
 
 // Serve static frontend build in production
 const distPath = path.resolve(__dirname, "../dist");
-app.use(express.static(distPath));
+const fs = require("fs");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
 
 // Fallback for React Router SPA routes
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: "Endpoint not found" });
   }
-  res.sendFile(path.join(distPath, "index.html"));
+  const indexPath = path.join(distPath, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  return res.status(200).send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>AvaHire Server</title>
+      <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; display: flex; justify-content: center; align-items: center; min-height: 80vh; margin: 0; }
+        .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 32px; max-width: 580px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
+        h1 { font-size: 24px; color: #38bdf8; margin-top: 0; }
+        p { color: #cbd5e1; line-height: 1.6; }
+        code { background: #0f172a; padding: 4px 8px; border-radius: 6px; color: #a5f3fc; font-family: monospace; font-size: 14px; }
+        .btn { display: inline-block; margin-top: 16px; background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h1>AvaHire Backend Server Running</h1>
+        <p>The Express API backend is actively listening on port <strong>${PORT}</strong> and responding to <code>/api</code> endpoints.</p>
+        <p><strong>Running in VS Code for development?</strong></p>
+        <p>Please run the development command in your VS Code terminal:</p>
+        <p><code>npm run dev</code></p>
+        <p>This will start the live Webpack/CRA development server with hot-reloading at <code>http://localhost:3000</code>.</p>
+        <p style="font-size: 13px; color: #94a3b8; margin-top: 24px;">Note: To serve the static frontend via <code>npm start</code>, first run <code>npm run build</code>.</p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
