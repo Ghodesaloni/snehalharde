@@ -79,7 +79,7 @@
     "start": "cross-env PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
     "server": "node server/server.js",
     "build": "cross-env FAST_REFRESH=false BUILD_PATH=dist craco build",
-    "lint": "eslint src/ --max-warnings=500",
+    "lint": "eslint src/ --max-warnings=0",
     "test": "craco test"
   },
   "browserslist": {
