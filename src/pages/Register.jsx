@@ -332,12 +332,21 @@ const Register = () => {
               <div className="mt-8 space-y-3">
                 <button
                   type="button"
+                  data-testid="enter-dashboard-btn"
+                  onClick={() => navigate("/app/dashboard")}
+                  className="btn-primary w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 cursor-pointer text-base bg-violet-600 hover:bg-violet-700"
+                >
+                  <span>Enter HR Dashboard Directly</span>
+                  <ArrowRight size={18} />
+                </button>
+
+                <button
+                  type="button"
                   data-testid="proceed-to-login-btn"
                   onClick={proceedToLogin}
-                  className="btn-primary w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 cursor-pointer text-base"
+                  className="w-full py-3 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 font-semibold flex items-center justify-center gap-2 cursor-pointer text-sm transition-colors"
                 >
                   <span>Proceed to Login</span>
-                  <ArrowRight size={18} />
                 </button>
               </div>
             </div>

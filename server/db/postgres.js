@@ -162,7 +162,205 @@ async function initTables() {
         );
       `);
 
-      // Create indexes for faster token and email lookups
+      // 4. Jobs table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.jobs (
+          id VARCHAR(255) PRIMARY KEY,
+          title VARCHAR(255) NOT NULL,
+          dept VARCHAR(255),
+          job_level VARCHAR(100),
+          reports_to VARCHAR(255),
+          loc VARCHAR(255),
+          is_remote_position BOOLEAN DEFAULT FALSE,
+          work_mode VARCHAR(100),
+          type VARCHAR(100),
+          exp_level VARCHAR(100),
+          description TEXT,
+          key_skills JSONB DEFAULT '[]'::jsonb,
+          candidates INTEGER DEFAULT 0,
+          status VARCHAR(100) DEFAULT 'Active',
+          created_by VARCHAR(255),
+          user_email VARCHAR(255),
+          posted VARCHAR(100),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 5. Candidates table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.candidates (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255),
+          phone VARCHAR(100),
+          role VARCHAR(255),
+          avatar TEXT,
+          interview_date VARCHAR(255),
+          timestamp VARCHAR(100),
+          duration VARCHAR(100),
+          mode VARCHAR(100),
+          score NUMERIC,
+          status VARCHAR(100) DEFAULT 'Under Review',
+          notes TEXT,
+          summary_points JSONB DEFAULT '[]'::jsonb,
+          recommendation TEXT,
+          transcript JSONB DEFAULT '[]'::jsonb,
+          evaluation_breakdown JSONB DEFAULT '[]'::jsonb,
+          created_by VARCHAR(255),
+          user_email VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 6. Interviews table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.interviews (
+          id VARCHAR(255) PRIMARY KEY,
+          candidate_id VARCHAR(255),
+          name VARCHAR(255) NOT NULL,
+          email VARCHAR(255),
+          avatar TEXT,
+          role VARCHAR(255),
+          company VARCHAR(255),
+          date VARCHAR(100),
+          day_of_week VARCHAR(100),
+          time VARCHAR(100),
+          time_zone VARCHAR(100),
+          duration VARCHAR(100),
+          duration_mins INTEGER DEFAULT 45,
+          link_code VARCHAR(100),
+          status VARCHAR(100) DEFAULT 'Scheduled',
+          expiry VARCHAR(100),
+          expiry_time VARCHAR(100),
+          is_expired BOOLEAN DEFAULT FALSE,
+          score NUMERIC,
+          created_by VARCHAR(255),
+          user_email VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 7. Resumes table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.resumes (
+          id VARCHAR(255) PRIMARY KEY,
+          candidate_id VARCHAR(255),
+          name VARCHAR(255),
+          email VARCHAR(255),
+          phone VARCHAR(100),
+          role VARCHAR(255),
+          target_job_id VARCHAR(255),
+          target_job_title VARCHAR(255),
+          field VARCHAR(100),
+          domain VARCHAR(100),
+          score NUMERIC,
+          status VARCHAR(100) DEFAULT 'Review',
+          skills JSONB DEFAULT '[]'::jsonb,
+          matched_skills JSONB DEFAULT '[]'::jsonb,
+          missing_skills JSONB DEFAULT '[]'::jsonb,
+          experience VARCHAR(100),
+          exp_years NUMERIC DEFAULT 0,
+          education TEXT,
+          summary TEXT,
+          key_points JSONB DEFAULT '{}'::jsonb,
+          raw_text TEXT,
+          resume_file_name VARCHAR(255),
+          file_url TEXT,
+          created_by VARCHAR(255),
+          user_email VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 8. Email templates table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.email_templates (
+          id SERIAL PRIMARY KEY,
+          template_key VARCHAR(100),
+          name VARCHAR(255) NOT NULL,
+          subject TEXT NOT NULL,
+          body TEXT NOT NULL,
+          category VARCHAR(100),
+          uses INTEGER DEFAULT 0,
+          created_by VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 9. Email sent logs table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.email_sent (
+          id VARCHAR(255) PRIMARY KEY,
+          recipient VARCHAR(255) NOT NULL,
+          recipient_name VARCHAR(255),
+          sender_email VARCHAR(255),
+          user_email VARCHAR(255),
+          created_by VARCHAR(255),
+          subject TEXT NOT NULL,
+          body TEXT,
+          html TEXT,
+          type VARCHAR(100) DEFAULT 'General',
+          template_id VARCHAR(100),
+          opened BOOLEAN DEFAULT FALSE,
+          opened_at TIMESTAMP WITH TIME ZONE,
+          sent_at VARCHAR(100),
+          status VARCHAR(100) DEFAULT 'Delivered',
+          delivery_mode VARCHAR(100) DEFAULT 'smtp',
+          message_id VARCHAR(255),
+          metadata JSONB DEFAULT '{}'::jsonb,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 10. App settings table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.app_settings (
+          setting_key VARCHAR(100) PRIMARY KEY,
+          setting_data JSONB NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 11. Candidate portal sessions table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.candidate_portal_sessions (
+          id VARCHAR(255) PRIMARY KEY,
+          link_code VARCHAR(100),
+          candidate_name VARCHAR(255),
+          candidate_email VARCHAR(255),
+          candidate_phone VARCHAR(100),
+          role VARCHAR(255),
+          company VARCHAR(255),
+          status VARCHAR(100),
+          system_check_status JSONB DEFAULT '{}'::jsonb,
+          overall_score NUMERIC,
+          tech_depth_score VARCHAR(100),
+          clarity_score VARCHAR(100),
+          recommendation TEXT,
+          elapsed_seconds INTEGER DEFAULT 0,
+          transcripts JSONB DEFAULT '[]'::jsonb,
+          evaluation_breakdown JSONB DEFAULT '[]'::jsonb,
+          completed_at TIMESTAMP WITH TIME ZONE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // 12. App collections table (generic JSONB collections table)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.app_collections (
+          collection_name VARCHAR(100) PRIMARY KEY,
+          data JSONB NOT NULL,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // Create indexes for faster token, email, job, candidate, and interview lookups
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON public.verification_tokens(token);
         CREATE INDEX IF NOT EXISTS idx_verification_tokens_email ON public.verification_tokens(email);
@@ -170,6 +368,15 @@ async function initTables() {
         CREATE INDEX IF NOT EXISTS idx_smtp_emails_recipient ON public.smtp_emails(recipient);
         CREATE INDEX IF NOT EXISTS idx_smtp_emails_user_email ON public.smtp_emails(user_email);
         CREATE INDEX IF NOT EXISTS idx_smtp_emails_type ON public.smtp_emails(email_type);
+        CREATE INDEX IF NOT EXISTS idx_jobs_status ON public.jobs(status);
+        CREATE INDEX IF NOT EXISTS idx_jobs_user_email ON public.jobs(user_email);
+        CREATE INDEX IF NOT EXISTS idx_candidates_user_email ON public.candidates(user_email);
+        CREATE INDEX IF NOT EXISTS idx_candidates_status ON public.candidates(status);
+        CREATE INDEX IF NOT EXISTS idx_interviews_link_code ON public.interviews(link_code);
+        CREATE INDEX IF NOT EXISTS idx_interviews_user_email ON public.interviews(user_email);
+        CREATE INDEX IF NOT EXISTS idx_resumes_job_id ON public.resumes(target_job_id);
+        CREATE INDEX IF NOT EXISTS idx_candidate_sessions_link_code ON public.candidate_portal_sessions(link_code);
+        CREATE INDEX IF NOT EXISTS idx_email_sent_user_email ON public.email_sent(user_email);
       `);
 
       // Sync any registered mirror users to PostgreSQL public.users
@@ -183,7 +390,8 @@ async function initTables() {
               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
               ON CONFLICT (email) DO UPDATE
               SET password_hash = COALESCE(EXCLUDED.password_hash, public.users.password_hash),
-                  full_name = COALESCE(EXCLUDED.full_name, public.users.full_name);
+                  full_name = COALESCE(EXCLUDED.full_name, public.users.full_name),
+                  is_verified = TRUE;
             `, [
               u.email.toLowerCase(),
               u.fullName || u.name || "",
@@ -192,16 +400,83 @@ async function initTables() {
               u.website || "",
               u.designation || "",
               u.phone || "",
-              Boolean(u.isVerified),
+              true,
             ]);
           }
+        }
+
+        // Pull ALL live PostgreSQL users down to local mirrors to guarantee 100% data consistency
+        const allPgUsers = await client.query(`
+          SELECT id, email, full_name, password_hash, company, website, designation, phone, is_verified, created_at, updated_at
+          FROM public.users
+          ORDER BY id ASC
+        `);
+
+        if (allPgUsers.rows && allPgUsers.rows.length > 0) {
+          // Update all unverified users to verified so no user gets locked out
+          await client.query(`UPDATE public.users SET is_verified = TRUE WHERE is_verified IS NOT TRUE`);
+
+          const mergedUsers = [...localUsers];
+          for (const row of allPgUsers.rows) {
+            const cEmail = row.email.toLowerCase();
+            const existingIdx = mergedUsers.findIndex(u => u.email && u.email.toLowerCase() === cEmail);
+            const userObj = {
+              id: row.id,
+              uid: `usr_${row.id}`,
+              email: cEmail,
+              fullName: row.full_name,
+              name: row.full_name,
+              company: row.company || "AvaHire",
+              website: row.website || "",
+              designation: row.designation || "HR Administrator",
+              phone: row.phone || "",
+              passwordHash: row.password_hash,
+              password_hash: row.password_hash,
+              isVerified: true,
+              createdAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.updated_at || new Date().toISOString(),
+            };
+
+            if (existingIdx >= 0) {
+              mergedUsers[existingIdx] = { ...mergedUsers[existingIdx], ...userObj };
+            } else {
+              mergedUsers.push(userObj);
+            }
+          }
+          writeJson(USERS_FILE, mergedUsers);
+
+          // Also mirror into users.json
+          const defaultUsersFile = path.join(DATA_DIR, "users.json");
+          const defaultUsersList = readJson(defaultUsersFile);
+          for (const mUser of mergedUsers) {
+            const dIdx = defaultUsersList.findIndex(u => u.email && u.email.toLowerCase() === mUser.email.toLowerCase());
+            const dUserObj = {
+              id: mUser.id,
+              uid: mUser.uid || `usr_${mUser.id}`,
+              name: mUser.fullName || mUser.name,
+              email: mUser.email,
+              avatar: mUser.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+              role: mUser.role || "recruiter",
+              company: mUser.company || "AvaHire",
+              designation: mUser.designation || "HR Administrator",
+              phone: mUser.phone || "",
+              password_hash: mUser.passwordHash || mUser.password_hash,
+              created_at: mUser.createdAt,
+            };
+            if (dIdx >= 0) {
+              defaultUsersList[dIdx] = { ...defaultUsersList[dIdx], ...dUserObj };
+            } else {
+              defaultUsersList.push(dUserObj);
+            }
+          }
+          writeJson(defaultUsersFile, defaultUsersList);
         }
       } catch (syncErr) {
         console.warn("PostgreSQL user sync notice:", syncErr.message);
       }
 
       pgConnected = true;
-      console.log("✓ PostgreSQL connected: 'public.users' and 'public.verification_tokens' tables verified.");
+      console.log("✓ PostgreSQL connected: all databases initialized in PostgreSQL (users, verification_tokens, jobs, candidates, interviews, resumes, email_templates, email_sent, app_settings, candidate_portal_sessions, app_collections).");
     } finally {
       client.release();
     }
@@ -741,6 +1016,49 @@ async function query(text, params) {
   }
 }
 
+// Get all registered users for quick account switching
+async function getAllUsers() {
+  const usersList = readJson(USERS_FILE);
+  const defaultUsersFile = path.join(DATA_DIR, "users.json");
+  const fallbackUsers = readJson(defaultUsersFile);
+
+  const emailMap = new Map();
+  for (const u of fallbackUsers) {
+    if (u && u.email) {
+      emailMap.set(u.email.toLowerCase(), {
+        id: u.id,
+        uid: u.uid || `usr_${u.id}`,
+        email: u.email.toLowerCase(),
+        name: u.name || u.fullName || u.email.split("@")[0],
+        fullName: u.name || u.fullName || u.email.split("@")[0],
+        avatar: u.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+        company: u.company || "AvaHire",
+        designation: u.designation || "HR Administrator",
+        role: u.role || "recruiter",
+      });
+    }
+  }
+
+  for (const u of usersList) {
+    if (u && u.email) {
+      const cEmail = u.email.toLowerCase();
+      emailMap.set(cEmail, {
+        id: u.id,
+        uid: u.uid || `usr_${u.id}`,
+        email: cEmail,
+        name: u.fullName || u.name || cEmail.split("@")[0],
+        fullName: u.fullName || u.name || cEmail.split("@")[0],
+        avatar: u.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+        company: u.company || "AvaHire",
+        designation: u.designation || "HR Administrator",
+        role: u.role || "recruiter",
+      });
+    }
+  }
+
+  return Array.from(emailMap.values());
+}
+
 module.exports = {
   getPool,
   initTables,
@@ -752,6 +1070,7 @@ module.exports = {
   verifyRecoveryToken,
   resetPasswordWithToken,
   getUserByEmail,
+  getAllUsers,
   saveSmtpEmail,
   getSmtpEmails,
   query,
