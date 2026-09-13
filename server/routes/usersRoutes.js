@@ -304,13 +304,17 @@ router.post("/register", async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    
+    // Check if user already exists in PostgreSQL or local store
+    const existingUser = await getUserByEmail(cleanEmail);
     const localUsers = readData(USERS_COLLECTION, defaultUsers);
-
     const existingIdx = localUsers.findIndex(u => u.email?.toLowerCase() === cleanEmail);
-    if (existingIdx >= 0 && req.body.checkOnly === true) {
+
+    if (existingUser || existingIdx >= 0) {
       return res.status(409).json({
         success: false,
-        error: "An account with this work email already exists. Please log in instead.",
+        error: "This email address is already registered. You cannot register again with the same email. Please log in instead.",
+        alreadyRegistered: true,
       });
     }
 

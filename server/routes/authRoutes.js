@@ -37,10 +37,10 @@ router.post("/register", async (req, res) => {
 
     // Check if user already exists in PostgreSQL or local stores
     const existingUser = await postgresDb.getUserByEmail(trimmedEmail);
-    if (existingUser && req.body.checkOnly === true) {
+    if (existingUser) {
       return res.status(409).json({
         success: false,
-        error: "This email address is already registered. Please proceed to login or use a different email.",
+        error: "This email address is already registered. You cannot register again with the same email. Please proceed to login or use 'Forgot Password?'.",
         alreadyRegistered: true,
       });
     }
@@ -64,27 +64,27 @@ router.post("/register", async (req, res) => {
     // Hash exact password with standard SHA256 (64 hex characters)
     const passwordHash = crypto.createHash("sha256").update(trimmedPassword).digest("hex");
 
-    // 1. Save or update user in PostgreSQL database and local storage mirrors
+    // 1. Save user in PostgreSQL SQL database and local storage mirrors
     const user = await postgresDb.saveUser({
       email: trimmedEmail,
       fullName: fullName.trim(),
       passwordHash,
-      company: company ? company.trim() : (existingUser?.company || "AvaHire"),
-      website: website ? website.trim() : (existingUser?.website || ""),
-      designation: designation ? designation.trim() : (existingUser?.designation || "HR Administrator"),
-      phone: phone ? phone.trim() : (existingUser?.phone || ""),
+      company: company ? company.trim() : "AvaHire",
+      website: website ? website.trim() : "",
+      designation: designation ? designation.trim() : "HR Administrator",
+      phone: phone ? phone.trim() : "",
       isVerified: true,
     });
 
     // 2. Generate signed JWT token for the user
     const sessionUser = {
-      id: user.id || (existingUser ? existingUser.id : Date.now()),
-      uid: user.uid || (existingUser ? existingUser.uid : `usr_${user.id || Date.now()}`),
+      id: user.id || Date.now(),
+      uid: user.uid || `usr_${user.id || Date.now()}`,
       email: trimmedEmail,
       name: fullName.trim(),
       role: "recruiter",
-      company: company ? company.trim() : (existingUser?.company || "AvaHire"),
-      designation: designation ? designation.trim() : (existingUser?.designation || "HR Administrator"),
+      company: company ? company.trim() : "AvaHire",
+      designation: designation ? designation.trim() : "HR Administrator",
     };
     const token = signToken(sessionUser);
 
@@ -94,7 +94,7 @@ router.post("/register", async (req, res) => {
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const loginUrl = `${baseUrl}/login`;
 
-    // 4. Send "Successfully Registered" welcome email via SMTP in background (non-blocking)
+    // 4. Send "Successfully Registered" welcome email via background dispatch (non-blocking)
     emailService.sendRegistrationSuccessEmail({
       toEmail: trimmedEmail,
       fullName: fullName.trim(),
@@ -102,26 +102,14 @@ router.post("/register", async (req, res) => {
       initialPassword: trimmedPassword,
     }).catch(emErr => console.warn("[AUTH-REGISTER] Welcome email notice:", emErr.message));
 
-    console.log(`[AUTH-REGISTER] User registered / updated: ${trimmedEmail}`);
+    console.log(`[AUTH-REGISTER] New user registered and stored in SQL database: ${trimmedEmail}`);
 
-    return res.status(200).json({
+    // Return clean success message - sensitive SQL stored credentials are NOT shown or echoed back
+    return res.status(201).json({
       success: true,
-      message: existingUser
-        ? "Welcome back! Your HR account password has been updated and you are now signed in."
-        : "Successfully registered! Your HR account is active and credentials are saved.",
+      message: "Successfully registered! Your HR account is securely saved in the database.",
       email: trimmedEmail,
       token,
-      data: {
-        id: user.id,
-        uid: user.uid || `usr_${user.id}`,
-        email: trimmedEmail,
-        fullName: fullName.trim(),
-        name: fullName.trim(),
-        company: sessionUser.company,
-        designation: sessionUser.designation,
-        role: "recruiter",
-      },
-      user: sessionUser,
       emailDispatched: true,
     });
   } catch (err) {
@@ -670,6 +658,15 @@ router.post("/google", async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     let user = await postgresDb.getUserByEmail(cleanEmail);
 
+    // If registering and user already exists, prevent re-registration
+    if (user && req.body.mode === "register") {
+      return res.status(409).json({
+        success: false,
+        error: "This email address is already registered. You cannot register again with the same email. Please log in with your credentials.",
+        alreadyRegistered: true,
+      });
+    }
+
     if (!user) {
       const displayName = (name || cleanEmail.split("@")[0]).trim();
       const passwordHash = crypto.createHash("sha256").update("google_oauth_" + cleanEmail).digest("hex");
@@ -724,16 +721,36 @@ router.post("/google", async (req, res) => {
 });
 
 /**
+ * GET /api/auth/check-email
+ * Checks if an email is already registered in SQL database
+ */
+router.get("/check-email", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ success: false, error: "Email query parameter is required." });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = await postgresDb.getUserByEmail(cleanEmail);
+    return res.json({
+      success: true,
+      exists: Boolean(existing),
+      alreadyRegistered: Boolean(existing),
+      message: existing
+        ? "This email address is already registered. You cannot register again with the same email."
+        : "Email is available for registration."
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * GET /api/auth/users-list
- * Returns list of registered HR users for fast account switching / Google chooser
+ * Private - registered users stored in SQL are NOT shown or exposed to users
  */
 router.get("/users-list", async (req, res) => {
-  try {
-    const users = await postgresDb.getAllUsers();
-    return res.json({ success: true, data: users });
-  } catch (err) {
-    return res.json({ success: true, data: [] });
-  }
+  return res.json({ success: true, data: [] });
 });
 
 /**

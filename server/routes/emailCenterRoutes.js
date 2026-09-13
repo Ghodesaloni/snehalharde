@@ -24,80 +24,17 @@ router.post("/templates", (req, res) => {
   }
 });
 
-// GET /api/emails/sent - get sent emails log scoped to user or all
-router.get("/sent", async (req, res) => {
-  try {
-    const { userEmail, type, all } = req.query;
-    const authorEmail = userEmail || req.headers["x-user-email"];
-
-    // First try querying PostgreSQL for persistent SMTP emails
-    const pgEmails = await postgresDb.getSmtpEmails({
-      userEmail: all === "true" ? undefined : authorEmail,
-      emailType: type,
-      limit: 100,
-    });
-
-    if (pgEmails && pgEmails.length > 0) {
-      const formatted = pgEmails.map((row) => ({
-        id: row.id,
-        recipient: row.recipient,
-        recipientName: row.recipient_name,
-        subject: row.subject,
-        body: row.body,
-        html: row.html,
-        type: row.email_type,
-        templateId: row.template_id,
-        senderEmail: row.sender_email,
-        userEmail: row.user_email,
-        status: row.status,
-        deliveryMode: row.delivery_mode,
-        sentAt: row.created_at
-          ? new Date(row.created_at).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "Recently",
-        messageId: row.message_id,
-        metadata: row.metadata,
-      }));
-      return res.json({ success: true, data: formatted, source: "postgres" });
-    }
-
-    // Fallback to local JSON email database
-    const sent = emailCenterDb.getSentEmails({
-      userEmail: all === "true" ? undefined : authorEmail,
-      type,
-    });
-    res.json({ success: true, data: sent, source: "local_cache" });
-  } catch (err) {
-    console.warn("[EMAIL-CENTER] GET /sent fallback notice:", err.message);
-    try {
-      const sent = emailCenterDb.getSentEmails({ userEmail: req.query.userEmail });
-      res.json({ success: true, data: sent, source: "fallback" });
-    } catch (fallbackErr) {
-      res.status(500).json({ success: false, error: err.message });
-    }
-  }
+// GET /api/emails/sent - sent emails are not shown in Email Center
+router.get("/sent", async (_req, res) => {
+  res.json({ success: true, data: [], message: "Sent emails are not shown in Email Center" });
 });
 
-// GET /api/emails/smtp-all - get all stored SMTP emails across the entire system
-router.get("/smtp-all", async (req, res) => {
-  try {
-    const pgEmails = await postgresDb.getSmtpEmails({ limit: 200 });
-    if (pgEmails && pgEmails.length > 0) {
-      return res.json({ success: true, data: pgEmails, source: "postgres", count: pgEmails.length });
-    }
-    const localEmails = emailCenterDb.getSentEmails({});
-    res.json({ success: true, data: localEmails, source: "local_cache", count: localEmails.length });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
+// GET /api/emails/smtp-all - sent emails are not shown in Email Center
+router.get("/smtp-all", async (_req, res) => {
+  res.json({ success: true, data: [], count: 0 });
 });
 
-// POST /api/emails/send - send an email via SMTP and persist to database
+// POST /api/emails/send - send an email via AWS SES / SMTP without displaying in Email Center
 router.post("/send", async (req, res) => {
   try {
     const { recipient, recipientName, subject, body, templateId, senderEmail } = req.body;
@@ -107,7 +44,7 @@ router.post("/send", async (req, res) => {
 
     const authorEmail = senderEmail || req.body.userEmail || req.headers["x-user-email"] || "";
 
-    // Deliver via SMTP and store persistently in both Postgres and JSON
+    // Deliver via AWS SES / SMTP
     const sendResult = await emailService.sendCommunicationEmail({
       toEmail: recipient,
       recipientName: recipientName || "Candidate",
@@ -117,24 +54,22 @@ router.post("/send", async (req, res) => {
       templateId,
     });
 
-    const sentRecord = sendResult.record || emailCenterDb.storeSmtpEmail({
-      recipient,
-      recipientName,
-      subject,
-      body,
-      templateId,
-      senderEmail: authorEmail,
-      userEmail: authorEmail,
-      status: sendResult.mode === "live_smtp" ? "Delivered via SMTP" : "Delivered",
-      deliveryMode: sendResult.mode || "live_smtp",
-      messageId: sendResult.messageId || null,
-    });
+    // Update template use count if a template was used
+    if (templateId) {
+      emailCenterDb.storeSmtpEmail({ templateId });
+    }
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      data: sentRecord,
+      data: {
+        recipient,
+        recipientName: recipientName || "Candidate",
+        subject: subject || "Update on your application",
+        status: "Dispatched",
+        sentAt: "Just now",
+      },
       mode: sendResult.mode,
-      message: "Email dispatched and stored successfully",
+      message: "Email dispatched successfully",
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

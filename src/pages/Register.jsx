@@ -73,7 +73,6 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [registeredSuccess, setRegisteredSuccess] = useState(false);
-  const [registeredData, setRegisteredData] = useState(null);
   const [alreadyRegisteredError, setAlreadyRegisteredError] = useState("");
   const [showGoogleModal, setShowGoogleModal] = useState(false);
 
@@ -95,6 +94,20 @@ const Register = () => {
       setAlreadyRegisteredError("");
     }
     setForm((prev) => ({ ...prev, [k]: v }));
+  };
+
+  const handleEmailBlur = async () => {
+    const trimmed = form.email.trim();
+    if (!trimmed || !trimmed.includes("@")) return;
+    try {
+      const res = await fetch(`/api/auth/check-email?email=${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      if (data && data.alreadyRegistered) {
+        setAlreadyRegisteredError("This email address is already registered. You cannot register again with the same email. Please proceed to login.");
+      }
+    } catch (_e) {
+      // ignore network glitch on blur
+    }
   };
 
   // Strict Password Rules Definition
@@ -172,30 +185,16 @@ const Register = () => {
       if (response?.token) {
         localStorage.setItem("avahire_token", response.token);
       }
-      localStorage.setItem("avahire_user", JSON.stringify({
-        name: form.fullName.trim(),
-        email: form.email.trim(),
-        company: form.company.trim() || "AvaHire",
-        designation: form.designation.trim() || "HR Administrator",
-      }));
-
-      setRegisteredData({
-        fullName: form.fullName.trim(),
-        email: form.email.trim(),
-        company: form.company.trim(),
-        registeredPassword: form.password,
-        emailDispatched: response?.emailDispatched !== false,
-      });
 
       setRegisteredSuccess(true);
-      toast.success("Successfully registered! Your HR account is active and password secured.");
+      toast.success("Successfully registered! Your HR account is active and saved in the database.");
     } catch (err) {
       console.error("Registration error:", err);
       const errMsg = err.response?.data?.error || err.message || "Registration failed.";
       
       if (err.response?.status === 409 || errMsg.toLowerCase().includes("already registered") || errMsg.toLowerCase().includes("already exists")) {
-        setAlreadyRegisteredError("This Gmail address is already registered. Please proceed to login with your password.");
-        toast.error("Account already exists! Please log in instead.");
+        setAlreadyRegisteredError("This email address is already registered. You cannot register again with the same email. Please proceed to login with your password.");
+        toast.error("This email is already registered! Re-registration is not allowed.");
       } else {
         toast.error(errMsg);
       }
@@ -220,6 +219,7 @@ const Register = () => {
         avatar: account.avatar || "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
         company: form.company.trim() || "AvaHire Partner",
         designation: form.designation.trim() || "HR Administrator",
+        mode: "register",
       });
 
       if (response && response.success) {
@@ -242,7 +242,13 @@ const Register = () => {
       }
     } catch (err) {
       const msg = err.response?.data?.error || err.message || "Google registration failed";
-      toast.error(msg);
+      if (err.response?.status === 409 || msg.toLowerCase().includes("already registered") || msg.toLowerCase().includes("already exists")) {
+        setAlreadyRegisteredError("This email address is already registered. You cannot register again with the same email. Please proceed to login with your password.");
+        setShowGoogleModal(false);
+        toast.error("This email is already registered! Re-registration is not allowed.");
+      } else {
+        toast.error(msg);
+      }
       throw new Error(msg);
     } finally {
       setGoogleLoading(false);
@@ -250,12 +256,9 @@ const Register = () => {
   };
 
   const proceedToLogin = () => {
-    const emailToUse = registeredData?.email || form.email.trim();
     navigate("/login", {
       state: {
-        email: emailToUse,
-        password: registeredData?.registeredPassword || form.password,
-        initialPassword: registeredData?.registeredPassword || form.password,
+        email: form.email.trim(),
       },
     });
   };
@@ -292,61 +295,18 @@ const Register = () => {
               </h2>
 
               <p className="text-slate-600 mt-3 text-sm leading-relaxed">
-                Welcome to AvaHire, <strong className="text-slate-900">{registeredData?.fullName}</strong>! Your HR account is active.
+                Your HR recruiter account has been safely registered and saved in the database. For security and privacy, credentials and database records are encrypted and not displayed on screen.
               </p>
-
-              <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left space-y-2.5 text-xs text-slate-600">
-                <div className="flex justify-between">
-                  <span className="font-medium text-slate-500">Registered Email:</span>
-                  <span className="font-semibold text-slate-800">{registeredData?.email}</span>
-                </div>
-                {registeredData?.company && (
-                  <div className="flex justify-between">
-                    <span className="font-medium text-slate-500">Company:</span>
-                    <span className="font-semibold text-slate-800">{registeredData?.company}</span>
-                  </div>
-                )}
-                {registeredData?.registeredPassword ? (
-                  <div className="flex justify-between items-center bg-violet-50/80 p-2.5 rounded-lg border border-violet-100">
-                    <span className="font-medium text-violet-900">Configured Password:</span>
-                    <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                      <ShieldCheck size={13} className="text-emerald-600" /> Strict Rules Met
-                    </span>
-                  </div>
-                ) : registeredData?.initialPassword ? (
-                  <div className="flex justify-between items-center bg-violet-50/80 p-2 rounded-lg border border-violet-100">
-                    <span className="font-medium text-violet-900">Your Login Password:</span>
-                    <span className="font-mono font-bold text-violet-700 bg-white px-2 py-0.5 rounded border border-violet-200">
-                      {registeredData.initialPassword}
-                    </span>
-                  </div>
-                ) : null}
-                <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-                  <span className="font-medium text-slate-500">Confirmation Email:</span>
-                  <span className="inline-flex items-center text-emerald-600 font-semibold gap-1">
-                    <CheckCircle2 size={13} /> Dispatched via SMTP
-                  </span>
-                </div>
-              </div>
 
               <div className="mt-8 space-y-3">
                 <button
                   type="button"
-                  data-testid="enter-dashboard-btn"
-                  onClick={() => navigate("/app/dashboard")}
-                  className="btn-primary w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 cursor-pointer text-base bg-violet-600 hover:bg-violet-700"
-                >
-                  <span>Enter HR Dashboard Directly</span>
-                  <ArrowRight size={18} />
-                </button>
-
-                <button
-                  type="button"
                   data-testid="proceed-to-login-btn"
                   onClick={proceedToLogin}
-                  className="w-full py-3 rounded-xl text-slate-700 bg-slate-100 hover:bg-slate-200 font-semibold flex items-center justify-center gap-2 cursor-pointer text-sm transition-colors"
+                  className="btn-primary w-full py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 cursor-pointer text-base bg-violet-600 hover:bg-violet-700"
                 >
                   <span>Proceed to Login</span>
+                  <ArrowRight size={18} />
                 </button>
               </div>
             </div>
@@ -406,6 +366,7 @@ const Register = () => {
                   type="email"
                   value={form.email}
                   onChange={set("email")}
+                  onBlur={handleEmailBlur}
                   testId="reg-email"
                   required
                 />
@@ -701,7 +662,7 @@ const Register = () => {
   );
 };
 
-const Field = ({ label, icon, placeholder, value, onChange, type = "text", testId, required }) => (
+const Field = ({ label, icon, placeholder, value, onChange, onBlur, type = "text", testId, required }) => (
   <div>
     <label className="block text-sm font-semibold text-slate-800 mb-2">
       {label} {required && <span className="text-red-500">*</span>}
@@ -713,6 +674,7 @@ const Field = ({ label, icon, placeholder, value, onChange, type = "text", testI
         type={type}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         placeholder={placeholder}
         required={required}
         className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"

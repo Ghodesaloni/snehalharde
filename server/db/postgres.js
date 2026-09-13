@@ -27,6 +27,10 @@ function getCleanDatabaseUrl() {
       ? process.env.SQL_USER
       : null);
   if (!rawUrl) return null;
+  // If not starting with postgresql:// or postgres://, treat as host, not a full connection URI
+  if (!rawUrl.startsWith("postgresql://") && !rawUrl.startsWith("postgres://")) {
+    return null;
+  }
   try {
     const u = new URL(rawUrl);
     let pw = decodeURIComponent(u.password);
@@ -88,12 +92,15 @@ function getPool() {
       )
     );
 
+    const isAwsRds = Boolean(sqlHost && sqlHost.includes("rds.amazonaws.com"));
+    const isRemote = Boolean(sqlHost && !sqlHost.includes("localhost") && !sqlHost.includes("127.0.0.1"));
+
     const poolConfig = cleanUrl
       ? {
           connectionString: cleanUrl,
           ssl: isCloudPostgres ? { rejectUnauthorized: false } : undefined,
           max: 10,
-          connectionTimeoutMillis: 8000,
+          connectionTimeoutMillis: 10000,
         }
       : {
           host: sqlHost,
@@ -101,8 +108,9 @@ function getPool() {
           database: sqlDb,
           user: sqlUser,
           password: sqlPassword,
+          ssl: (isAwsRds || isRemote) ? { rejectUnauthorized: false } : undefined,
           max: 10,
-          connectionTimeoutMillis: 5000,
+          connectionTimeoutMillis: 10000,
         };
 
     pool = new Pool(poolConfig);

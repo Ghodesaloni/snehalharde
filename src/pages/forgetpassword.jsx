@@ -264,7 +264,7 @@ const ForgotPassword = () => {
                     Recovery Token
                   </span>
                   <span className="text-[10px] bg-violet-100 text-violet-700 font-semibold px-2 py-0.5 rounded-full">
-                    {dispatchedMode === "live_smtp" ? "Delivered to Gmail" : "Token Ready"}
+                    {dispatchedMode === "aws_ses" ? "Delivered via AWS SES" : (dispatchedMode === "live_smtp" ? "Delivered via SMTP" : "Token Ready")}
                   </span>
                 </div>
                 <div className="bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-xs font-extrabold text-slate-800 break-all select-all">

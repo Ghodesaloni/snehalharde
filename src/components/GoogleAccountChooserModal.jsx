@@ -153,33 +153,6 @@ const GoogleAccountChooserModal = ({
       }
 
       setAccounts(list);
-
-      // Dynamically load all registered HR accounts from backend
-      fetch("/api/auth/users-list")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.success && Array.isArray(data.data)) {
-            setAccounts((prev) => {
-              const emailMap = new Map();
-              prev.forEach((a) => {
-                if (a.email) emailMap.set(a.email.toLowerCase(), a);
-              });
-              data.data.forEach((u, i) => {
-                if (u.email && !emailMap.has(u.email.toLowerCase())) {
-                  emailMap.set(u.email.toLowerCase(), {
-                    id: `srv_${u.id || i}`,
-                    email: u.email,
-                    name: u.name || u.fullName || u.email.split("@")[0],
-                    avatar: u.avatar || "",
-                    color: "bg-indigo-600",
-                  });
-                }
-              });
-              return Array.from(emailMap.values());
-            });
-          }
-        })
-        .catch(() => {});
     } catch {
       setAccounts(DEFAULT_ACCOUNTS);
     }

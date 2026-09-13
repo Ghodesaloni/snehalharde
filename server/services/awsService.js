@@ -34,8 +34,15 @@ class AwsService {
   getConfig() {
     this.storedConfig = loadStoredConfig();
     const stored = this.storedConfig || {};
+    const rawRegion = (process.env.AWS_REGION || stored.region || "eu-north-1").trim();
+    // Normalize availability zone format (e.g. eu-north-1a -> eu-north-1)
+    const normalizedRegion = rawRegion.replace(/([0-9]+)[a-z]$/i, "$1") || "eu-north-1";
+
+    const rawSesRegion = (process.env.AWS_SES_REGION || stored.sesRegion || stored.region || normalizedRegion).trim();
+    const normalizedSesRegion = rawSesRegion.replace(/([0-9]+)[a-z]$/i, "$1") || normalizedRegion;
+
     return {
-      region: process.env.AWS_REGION || stored.region || "eu-north-1",
+      region: normalizedRegion,
       hasAccessKey: Boolean(process.env.AWS_ACCESS_KEY_ID || stored.accessKeyId),
       accessKeyIdMasked: (process.env.AWS_ACCESS_KEY_ID || stored.accessKeyId)
         ? (process.env.AWS_ACCESS_KEY_ID || stored.accessKeyId).slice(0, 4) + "••••••••"
@@ -46,7 +53,7 @@ class AwsService {
       rdsDatabase: process.env.AWS_RDS_DB || stored.rdsDatabase || "avahire_db",
       rdsUser: process.env.AWS_RDS_USER || stored.rdsUser || "postgres",
       sesSender: process.env.AWS_SES_FROM_EMAIL || stored.sesSender || "salonighode@gmail.com",
-      sesRegion: process.env.AWS_SES_REGION || stored.sesRegion || stored.region || "eu-north-1",
+      sesRegion: normalizedSesRegion,
       serverInstance: {
         provider: "Amazon Web Services (AWS)",
         service: "AWS EC2 / App Runner",
@@ -54,7 +61,7 @@ class AwsService {
         environment: "Production (AWS VPC)",
         status: "Active & Serving",
         uptimeSeconds: Math.floor(process.uptime()),
-        region: process.env.AWS_REGION || stored.region || "us-east-1",
+        region: normalizedRegion,
         port: 3000
       }
     };
@@ -77,7 +84,8 @@ class AwsService {
 
   getS3Client() {
     const creds = this.getCredentials();
-    const region = process.env.AWS_REGION || this.storedConfig.region || "us-east-1";
+    const rawRegion = process.env.AWS_REGION || this.storedConfig.region || "eu-north-1";
+    const region = rawRegion.replace(/([0-9]+)[a-z]$/i, "$1") || "eu-north-1";
     if (creds) {
       return new S3Client({ region, credentials: creds });
     }
@@ -86,7 +94,8 @@ class AwsService {
 
   getSesClient() {
     const creds = this.getCredentials();
-    const region = process.env.AWS_SES_REGION || process.env.AWS_REGION || this.storedConfig.sesRegion || "us-east-1";
+    const rawRegion = process.env.AWS_SES_REGION || process.env.AWS_REGION || this.storedConfig.sesRegion || this.storedConfig.region || "eu-north-1";
+    const region = rawRegion.replace(/([0-9]+)[a-z]$/i, "$1") || "eu-north-1";
     if (creds) {
       return new SESClient({ region, credentials: creds });
     }
