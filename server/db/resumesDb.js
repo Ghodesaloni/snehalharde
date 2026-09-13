@@ -1,4 +1,5 @@
 const { readData, writeData } = require("./dbEngine");
+const { getPool } = require("./postgres");
 
 const COLLECTION = "resumes";
 
@@ -145,6 +146,32 @@ class ResumesDatabase {
 
     list.unshift(newCandidate);
     writeData(COLLECTION, list);
+
+    // Persist directly to PostgreSQL public.resumes
+    try {
+      const pool = getPool();
+      pool.query(`
+        INSERT INTO public.resumes (
+          id, candidate_id, name, email, phone, role, target_job_id,
+          target_job_title, field, domain, score, status, skills,
+          experience, exp_years, resume_file_name, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          email = EXCLUDED.email,
+          status = EXCLUDED.status,
+          score = EXCLUDED.score,
+          updated_at = NOW();
+      `, [
+        newCandidate.id, newCandidate.id, newCandidate.name, newCandidate.email,
+        newCandidate.phone, newCandidate.role, newCandidate.jobId,
+        newCandidate.targetJobTitle, newCandidate.field, newCandidate.domain,
+        newCandidate.atsScore || newCandidate.matchScore || 0, newCandidate.status,
+        JSON.stringify(newCandidate.allSkills), newCandidate.experience,
+        newCandidate.expYears, newCandidate.resumeFileName
+      ]).catch(err => console.warn("PostgreSQL resume insert warning:", err.message));
+    } catch (e) {}
+
     return newCandidate;
   }
 
@@ -154,6 +181,21 @@ class ResumesDatabase {
     if (idx === -1) return null;
     list[idx] = { ...list[idx], ...updates, updatedAt: new Date().toISOString() };
     writeData(COLLECTION, list);
+
+    // Update in PostgreSQL public.resumes
+    try {
+      const pool = getPool();
+      pool.query(`
+        UPDATE public.resumes SET
+          status = COALESCE($2, status),
+          score = COALESCE($3, score),
+          target_job_id = COALESCE($4, target_job_id),
+          updated_at = NOW()
+        WHERE id = $1
+      `, [id, updates.status || null, updates.atsScore || updates.score || null, updates.jobId || null])
+      .catch(err => console.warn("PostgreSQL resume update warning:", err.message));
+    } catch (e) {}
+
     return list[idx];
   }
 
@@ -166,6 +208,14 @@ class ResumesDatabase {
     const filtered = list.filter(r => r.id !== id);
     if (filtered.length === list.length) return false;
     writeData(COLLECTION, filtered);
+
+    // Delete in PostgreSQL public.resumes
+    try {
+      const pool = getPool();
+      pool.query("DELETE FROM public.resumes WHERE id = $1", [id])
+        .catch(err => console.warn("PostgreSQL resume delete warning:", err.message));
+    } catch (e) {}
+
     return true;
   }
 }
