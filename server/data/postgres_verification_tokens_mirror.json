@@ -25,32 +25,5 @@
     "used": true,
     "usedAt": "2026-09-12T17:19:31.489Z",
     "createdAt": "2026-09-12T17:19:18.918Z"
-  },
-  {
-    "id": 1789299483655,
-    "email": "snehalharde09@gmail.com",
-    "token": "051ce86ab082ffb31ad29bbaa99f5e0dafa03547d0f7df90010b42f381d2f537",
-    "expiresAt": "2026-09-13T12:38:03.655Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-13T11:38:03.655Z"
-  },
-  {
-    "id": 1789299783714,
-    "email": "salonighode3@gmail.com",
-    "token": "9a1c65e487c89597774d2649529c11bb38a1baf78faa625f2cf03f26b30b1984",
-    "expiresAt": "2026-09-13T12:43:03.714Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-13T11:43:03.714Z"
-  },
-  {
-    "id": 1789300023244,
-    "email": "salonighode3@gmail.com",
-    "token": "068d27ee98528228d855068d3c314427218647c300af8bb7f87dc0efa7809e18",
-    "expiresAt": "2026-09-13T12:47:03.244Z",
-    "used": false,
-    "usedAt": null,
-    "createdAt": "2026-09-13T11:47:03.244Z"
   }
 ]

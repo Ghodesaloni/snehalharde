@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Environment and local credentials
+.env
+.env.local
+.env.*.local
+server/data/aws_server_config.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

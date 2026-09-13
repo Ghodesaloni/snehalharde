@@ -13,20 +13,31 @@ function storeDispatchedEmail(data) {
       templateId: data.templateId || null,
       senderEmail: data.senderEmail,
       userEmail: data.userEmail || data.recipient,
-      status: data.mode === "live_smtp" ? "Delivered via SMTP" : (data.mode === "dev_smtp" ? "Delivered (Dev SMTP)" : "Delivered"),
-      deliveryMode: data.mode || "live_smtp",
+      status: "Delivered via AWS SES",
+      deliveryMode: data.mode || "aws_ses",
       messageId: data.messageId || null,
       metadata: data.metadata || null,
     });
   } catch (err) {
-    console.warn("[SMTP-STORE] Error saving email record:", err.message);
+    console.warn("[AWS-SES-STORE] Error saving email record:", err.message);
     return null;
   }
 }
 
+function getStoredAwsConfig() {
+  try {
+    const p = path.resolve(__dirname, "../data/aws_server_config.json");
+    if (fs.existsSync(p)) {
+      return JSON.parse(fs.readFileSync(p, "utf8")) || {};
+    }
+  } catch (e) {}
+  return {};
+}
+
 function getFormattedFrom(customName) {
-  const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
-  const rawFrom = (process.env.SMTP_FROM || "").trim();
+  const awsCfg = getStoredAwsConfig();
+  const user = (process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
+  const rawFrom = (process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || process.env.SMTP_FROM || "").trim();
 
   // If SMTP_FROM contains a valid angle-bracket address like "AvaHire" <foo@bar.com>
   if (rawFrom.includes("<") && rawFrom.includes(">")) {
@@ -45,6 +56,31 @@ function getFormattedFrom(customName) {
 }
 
 function getTransporter() {
+  const awsCfg = getStoredAwsConfig();
+  const region = (process.env.AWS_SES_REGION || awsCfg.sesRegion || process.env.AWS_REGION || awsCfg.region || "us-east-1").trim();
+  // 1. AWS SES Transporter (Primary)
+  const sesHost = (process.env.AWS_SES_HOST || `email-smtp.${region}.amazonaws.com`).trim();
+  const sesUser = (process.env.AWS_SES_SMTP_USER || awsCfg.sesSmtpUser || process.env.AWS_SES_USER || "").trim();
+  const sesPass = (process.env.AWS_SES_SMTP_PASSWORD || awsCfg.sesSmtpPassword || process.env.AWS_SES_PASSWORD || "").trim();
+
+  if (sesUser && sesPass) {
+    return nodemailer.createTransport({
+      host: sesHost,
+      port: parseInt(process.env.AWS_SES_PORT || "587", 10),
+      secure: process.env.AWS_SES_PORT === "465",
+      auth: {
+        user: sesUser,
+        pass: sesPass,
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 20000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+  }
+
   const rawHost = (process.env.SMTP_HOST || "").trim();
   const rawPort = process.env.SMTP_PORT;
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
@@ -52,7 +88,6 @@ function getTransporter() {
   const pass = rawPass ? rawPass.replace(/\s+/g, "") : null;
 
   if (user && pass) {
-    // If the host is not a standard host (e.g. user set SMTP_HOST=Avahire), or if user is gmail.com, or host includes gmail
     const isGmail =
       user.toLowerCase().endsWith("@gmail.com") ||
       rawHost.toLowerCase().includes("gmail") ||

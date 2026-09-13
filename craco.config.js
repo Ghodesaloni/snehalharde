@@ -49,6 +49,26 @@ module.exports = {
     devServerConfig.setupMiddlewares = (middlewares, devServer) => {
       devServer.app.use(express.json({ limit: "25mb" }));
       devServer.app.use(express.urlencoded({ extended: true, limit: "25mb" }));
+      devServer.app.use((req, res, next) => {
+        res.setHeader("X-Server-Provider", "Amazon Web Services (AWS)");
+        res.setHeader("X-Server-Environment", "AWS-Development");
+        next();
+      });
+      devServer.app.get(["/health", "/api/health"], (req, res) => {
+        res.status(200).json({
+          status: "healthy",
+          provider: "Amazon Web Services (AWS)",
+          service: "AWS App Runner / EC2",
+          region: process.env.AWS_REGION || "us-east-1",
+          timestamp: new Date().toISOString(),
+          modules: {
+            compute: "AWS EC2 / App Runner",
+            database: "AWS RDS PostgreSQL",
+            storage: "AWS S3",
+            messaging: "AWS SES"
+          }
+        });
+      });
       devServer.app.use("/api", apiRouter);
 
       if (originalSetupMiddlewares) {

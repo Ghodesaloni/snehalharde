@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
+    "@aws-sdk/client-ses": "^3.1131.0",
     "@google/genai": "^2.21.0",
     "@hookform/resolvers": "5.0.1",
     "@radix-ui/react-accordion": "1.2.8",
@@ -47,8 +49,6 @@
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "8.6.0",
     "express": "4.21.2",
-    "firebase": "^12.18.0",
-    "firebase-admin": "^14.3.0",
     "framer-motion": "11.18.0",
     "input-otp": "1.4.2",
     "jsonwebtoken": "^9.0.3",
@@ -76,7 +76,7 @@
   },
   "scripts": {
     "dev": "cross-env PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
-    "start": "cross-env PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
+    "start": "node server/server.js",
     "server": "node server/server.js",
     "build": "cross-env FAST_REFRESH=false BUILD_PATH=dist craco build",
     "lint": "eslint src/ --max-warnings=0",

@@ -4,6 +4,7 @@ const multer = require("multer");
 const path = require("path");
 const resumesDb = require("../db/resumesDb");
 const jobsDb = require("../db/jobsDb");
+const awsService = require("../services/awsService");
 const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
 const { extractRawText, parseResumeText, classifyField } = require("../services/resumeParserService");
 
@@ -116,6 +117,16 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
 
     const candidateField = parsedCandidate.field || parsedCandidate.domain || classifyField(rawText, parsedCandidate.allSkills || parsedCandidate.skills || [], parsedCandidate.role, originalName);
 
+    // Store resume in AWS S3 storage
+    let s3Metadata = null;
+    try {
+      const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const s3Key = `resumes/${Date.now()}_${sanitizedName}`;
+      s3Metadata = await awsService.uploadToS3(req.file.buffer, s3Key, mimeType);
+    } catch (s3Err) {
+      console.warn("[AWS-S3] Upload error:", s3Err.message);
+    }
+
     // Persist new candidate in database with accurate screening outcome
     const newCandidate = resumesDb.create({
       name: parsedCandidate.name,
@@ -143,7 +154,11 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
       jobId: job.id && job.id !== "custom-jd" ? job.id : null,
       resumeFileName: originalName,
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
-      rawText: rawText.slice(0, 2000)
+      rawText: rawText.slice(0, 2000),
+      storageProvider: "AWS S3",
+      s3Url: s3Metadata?.url || null,
+      s3Key: s3Metadata?.key || null,
+      s3Bucket: s3Metadata?.bucket || null
     });
 
     res.status(201).json({

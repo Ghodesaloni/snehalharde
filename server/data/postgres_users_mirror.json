@@ -10,7 +10,7 @@
     "phone": "hjuyiko",
     "isVerified": true,
     "createdAt": "2026-09-11T08:32:58.440Z",
-    "updatedAt": "2026-09-13T12:03:24.633Z",
+    "updatedAt": "2026-09-13T12:07:48.077Z",
     "uid": "usr_2",
     "name": "Saloni Ghode",
     "password_hash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
@@ -43,7 +43,7 @@
     "phone": "9146980039",
     "isVerified": true,
     "createdAt": "2026-09-11T08:32:58.795Z",
-    "updatedAt": "2026-09-13T12:04:31.070Z",
+    "updatedAt": "2026-09-13T12:25:38.171Z",
     "uid": "usr_6",
     "name": "Snehal Harde",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
@@ -60,7 +60,7 @@
     "phone": "jkhbjkubhu",
     "isVerified": true,
     "createdAt": "2026-09-11T08:32:58.970Z",
-    "updatedAt": "2026-09-13T12:03:24.814Z",
+    "updatedAt": "2026-09-13T12:04:15.157Z",
     "uid": "usr_8",
     "name": "Saloni Ghode",
     "password_hash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
@@ -93,7 +93,7 @@
     "phone": "548941325461",
     "isVerified": true,
     "createdAt": "2026-09-11T15:19:33.530Z",
-    "updatedAt": "2026-09-11T15:19:33.530Z",
+    "updatedAt": "2026-09-13T12:04:15.509Z",
     "uid": "usr_83",
     "name": "Snehal Harde",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
@@ -193,7 +193,7 @@
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "createdAt": "2026-09-11T08:44:36.325Z",
-    "updatedAt": "2026-09-13T12:03:25.170Z",
+    "updatedAt": "2026-09-13T12:04:26.892Z",
     "is_verified": true
   },
   {
@@ -210,7 +210,7 @@
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "createdAt": "2026-09-11T09:01:11.424Z",
-    "updatedAt": "2026-09-13T12:03:25.348Z",
+    "updatedAt": "2026-09-13T12:04:15.685Z",
     "is_verified": true
   },
   {
@@ -227,7 +227,7 @@
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "createdAt": "2026-09-11T14:39:50.167Z",
-    "updatedAt": "2026-09-11T14:40:24.397Z",
+    "updatedAt": "2026-09-13T12:04:15.862Z",
     "is_verified": true
   },
   {
@@ -292,11 +292,11 @@
     "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
     "isVerified": true,
     "createdAt": "2026-09-13T12:02:59.194Z",
-    "updatedAt": "2026-09-13T12:02:59.201Z",
+    "updatedAt": "2026-09-13T12:04:27.226Z",
     "is_verified": true
   },
   {
-    "id": 19,
+    "id": 627,
     "email": "test_recruiter_1789301070532@gmail.com",
     "fullName": "Alex Rivera",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
@@ -305,7 +305,10 @@
     "designation": "Lead Recruiter",
     "phone": "",
     "isVerified": true,
-    "createdAt": "2026-09-13T12:04:30.720Z",
-    "updatedAt": "2026-09-13T12:04:30.720Z"
+    "createdAt": "2026-09-13T12:04:30.809Z",
+    "updatedAt": "2026-09-13T12:04:30.809Z",
+    "uid": "usr_627",
+    "name": "Alex Rivera",
+    "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea"
   }
 ]

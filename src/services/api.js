@@ -340,6 +340,37 @@ export const settingsApi = {
   updateProfile: async (data) => {
     const res = await api.put("/settings/profile", data);
     return res.data.data;
+  },
+  getAwsSettings: async () => {
+    const res = await api.get("/settings/aws");
+    return res.data.data;
+  },
+  updateAwsSettings: async (data) => {
+    const res = await api.put("/settings/aws", data);
+    return res.data.data;
+  },
+  testAwsConnection: async () => {
+    const res = await api.post("/settings/aws/test");
+    return res.data;
+  }
+};
+
+export const awsApi = {
+  getConfig: async () => {
+    const res = await api.get("/settings/aws");
+    return res.data.data;
+  },
+  updateConfig: async (data) => {
+    const res = await api.put("/settings/aws", data);
+    return res.data.data;
+  },
+  testConnection: async () => {
+    const res = await api.post("/settings/aws/test");
+    return res.data;
+  },
+  getHealth: async () => {
+    const res = await api.get("/health");
+    return res.data;
   }
 };
 

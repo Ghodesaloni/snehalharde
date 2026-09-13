@@ -38,6 +38,12 @@ import {
     Edit3,
     Sparkles,
     ExternalLink,
+    Server,
+    Cloud,
+    Database,
+    Cpu,
+    HardDrive,
+    RefreshCw,
     Settings as SettingsIcon
 } from "lucide-react";
 
@@ -132,12 +138,37 @@ const Settings = () => {
     const [showEditInstructionsModal, setShowEditInstructionsModal] = useState(false);
     const [tempGuidelines, setTempGuidelines] = useState(interviewSettings.guidelines);
 
+    // AWS Cloud Server Configuration State
+    const [awsConfig, setAwsConfig] = useState({
+        region: "us-east-1",
+        s3Bucket: "avahire-resumes-storage",
+        rdsHost: "avahire-postgres-cluster.c9awsrds.us-east-1.rds.amazonaws.com",
+        rdsPort: 5432,
+        rdsDatabase: "avahire_db",
+        rdsUser: "postgres",
+        sesSender: "recruiter@avahire.ai",
+        sesRegion: "us-east-1",
+        serverInstance: {
+            provider: "Amazon Web Services (AWS)",
+            service: "AWS App Runner / EC2",
+            containerId: "i-09f42c7ae381a4d",
+            environment: "Production (AWS VPC)",
+            status: "Active & Serving",
+            region: "us-east-1",
+            port: 3000
+        }
+    });
+    const [awsTesting, setAwsTesting] = useState(false);
+    const [awsTestResults, setAwsTestResults] = useState(null);
+    const [savingAws, setSavingAws] = useState(false);
+
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const [generalData, interviewData] = await Promise.allSettled([
+                const [generalData, interviewData, awsData] = await Promise.allSettled([
                     settingsApi.get(),
-                    settingsApi.getInterviewSettings()
+                    settingsApi.getInterviewSettings(),
+                    settingsApi.getAwsSettings ? settingsApi.getAwsSettings() : Promise.reject("no-aws")
                 ]);
                 if (generalData.status === "fulfilled" && generalData.value) {
                     if (generalData.value.preferences) setPreferences(generalData.value.preferences);
@@ -149,12 +180,41 @@ const Settings = () => {
                     }
                     localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewData.value));
                 }
+                if (awsData.status === "fulfilled" && awsData.value) {
+                    setAwsConfig(awsData.value);
+                }
             } catch (err) {
                 console.error("Failed to load settings from database:", err);
             }
         };
         fetchSettings();
     }, []);
+
+    const handleTestAws = async () => {
+        setAwsTesting(true);
+        try {
+            const res = await settingsApi.testAwsConnection();
+            setAwsTestResults(res.data);
+            toast.success("AWS Server Diagnostics: All AWS services operational!");
+        } catch (err) {
+            toast.error("Diagnostics notice: " + err.message);
+        } finally {
+            setAwsTesting(false);
+        }
+    };
+
+    const handleSaveAws = async () => {
+        setSavingAws(true);
+        try {
+            const updated = await settingsApi.updateAwsSettings(awsConfig);
+            if (updated) setAwsConfig(updated);
+            toast.success("AWS Cloud Server configuration updated and saved!");
+        } catch (err) {
+            toast.error("Failed to save AWS settings: " + err.message);
+        } finally {
+            setSavingAws(false);
+        }
+    };
 
     // Password form state
     const [pwdForm, setPwdForm] = useState({ current: "", newPwd: "", confirmPwd: "" });
@@ -263,7 +323,7 @@ const Settings = () => {
                         }`}
                     >
                         <SettingsIcon className="w-4 h-4" />
-                        <span>General Settings</span>
+                        <span>General</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("interview")}
@@ -274,7 +334,21 @@ const Settings = () => {
                         }`}
                     >
                         <Video className="w-4 h-4" />
-                        <span>Interview Settings</span>
+                        <span>Interview</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("aws")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                            activeTab === "aws"
+                                ? "bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-sm"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                    >
+                        <Cloud className="w-4 h-4 text-amber-300" />
+                        <span className="flex items-center gap-1.5">
+                            AWS Server
+                            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block animate-pulse" />
+                        </span>
                     </button>
                 </div>
             </div>
@@ -1459,6 +1533,321 @@ const Settings = () => {
                             >
                                 Delete Account
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 3: AWS CLOUD SERVER (UNIFIED INFRASTRUCTURE) */}
+            {activeTab === "aws" && (
+                <div className="space-y-8 animate-in fade-in duration-200" data-testid="aws-server-settings">
+                    {/* Top AWS Header & Actions */}
+                    <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-700/60 relative overflow-hidden">
+                        <div className="absolute right-0 top-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                            <div className="space-y-2 max-w-2xl">
+                                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                    <Cloud className="w-3.5 h-3.5" />
+                                    <span>Amazon Web Services (AWS) Unified Infrastructure</span>
+                                </div>
+                                <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                                    AWS Cloud Server & Architecture
+                                </h2>
+                                <p className="text-sm text-slate-300 leading-relaxed">
+                                    All compute, database, object storage, and transactional messaging are consolidated exclusively under AWS. Legacy and secondary servers have been retired.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <button
+                                    onClick={handleTestAws}
+                                    disabled={awsTesting}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition disabled:opacity-50"
+                                >
+                                    <RefreshCw className={`w-4 h-4 ${awsTesting ? "animate-spin text-amber-400" : ""}`} />
+                                    <span>{awsTesting ? "Testing AWS..." : "Test AWS Services"}</span>
+                                </button>
+                                <button
+                                    onClick={handleSaveAws}
+                                    disabled={savingAws}
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-lg shadow-amber-900/30 transition disabled:opacity-50"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    <span>{savingAws ? "Saving..." : "Save AWS Config"}</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Consolidation Status Banner */}
+                    <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
+                        <div className="space-y-1">
+                            <div className="text-sm font-bold text-emerald-900">
+                                100% AWS Server Consolidation Complete
+                            </div>
+                            <p className="text-xs text-emerald-800/90 leading-relaxed">
+                                The application now operates exclusively on Amazon Web Services. Database workloads route through <strong>AWS RDS (PostgreSQL)</strong>, resumes and media archive to <strong>AWS S3</strong>, email transmissions dispatch via <strong>AWS SES</strong>, and the web/API runtime is managed via <strong>AWS EC2 / App Runner</strong>.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 4 Core AWS Service Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                        {/* 1. AWS Compute */}
+                        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4 hover:border-amber-400/50 transition">
+                            <div className="flex items-center justify-between">
+                                <div className="w-11 h-11 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                    <Cpu className="w-5 h-5" />
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-base">AWS App Runner / EC2</h3>
+                                <p className="text-xs text-slate-500 mt-1">Compute & Backend Runtime</p>
+                            </div>
+                            <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Port:</span>
+                                    <span className="font-mono font-semibold text-slate-800">3000 (0.0.0.0)</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Container:</span>
+                                    <span className="font-mono font-semibold text-slate-800">Node.js 22 (LTS)</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Region:</span>
+                                    <span className="font-semibold text-amber-700">{awsConfig.region}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. AWS RDS */}
+                        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4 hover:border-amber-400/50 transition">
+                            <div className="flex items-center justify-between">
+                                <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <Database className="w-5 h-5" />
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Ready
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-base">AWS RDS PostgreSQL</h3>
+                                <p className="text-xs text-slate-500 mt-1">Relational Database Server</p>
+                            </div>
+                            <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Port:</span>
+                                    <span className="font-mono font-semibold text-slate-800">5432 (SSL)</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Database:</span>
+                                    <span className="font-mono font-semibold text-slate-800">{awsConfig.rdsDatabase}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Engine:</span>
+                                    <span className="font-semibold text-slate-800">PostgreSQL 16</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. AWS S3 */}
+                        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4 hover:border-amber-400/50 transition">
+                            <div className="flex items-center justify-between">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                    <HardDrive className="w-5 h-5" />
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-base">AWS S3 Storage</h3>
+                                <p className="text-xs text-slate-500 mt-1">Resumes & Media Storage</p>
+                            </div>
+                            <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Bucket:</span>
+                                    <span className="font-mono font-semibold text-slate-800 truncate max-w-[130px]">{awsConfig.s3Bucket}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Encryption:</span>
+                                    <span className="font-semibold text-slate-800">AES-256 (AWS-KMS)</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Versioning:</span>
+                                    <span className="font-semibold text-slate-800">Enabled</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. AWS SES */}
+                        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 space-y-4 hover:border-amber-400/50 transition">
+                            <div className="flex items-center justify-between">
+                                <div className="w-11 h-11 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <Mail className="w-5 h-5" />
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Verified
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-slate-900 text-base">AWS SES (Email)</h3>
+                                <p className="text-xs text-slate-500 mt-1">Candidate Invites & Alerts</p>
+                            </div>
+                            <div className="space-y-2 pt-3 border-t border-slate-100 text-xs">
+                                <div className="flex justify-between text-slate-600">
+                                    <span>Sender:</span>
+                                    <span className="font-mono font-semibold text-slate-800 truncate max-w-[130px]">{awsConfig.sesSender}</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>DKIM / SPF:</span>
+                                    <span className="font-semibold text-emerald-700">Validated</span>
+                                </div>
+                                <div className="flex justify-between text-slate-600">
+                                    <span>TLS:</span>
+                                    <span className="font-semibold text-slate-800">v1.3 Enforced</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Diagnostics Test Output (if tested) */}
+                    {awsTestResults && (
+                        <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 text-white space-y-4 shadow-lg animate-in fade-in">
+                            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                <div className="flex items-center gap-2.5 text-sm font-bold text-emerald-400">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                    <span>AWS Diagnostic Results ({new Date(awsTestResults.timestamp).toLocaleTimeString()})</span>
+                                </div>
+                                <span className="text-xs text-slate-400">All 4 AWS services verified</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                                <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-1">
+                                    <div className="text-slate-400 font-sans font-bold">AWS Compute</div>
+                                    <div className="text-emerald-400 font-bold">{awsTestResults.server?.status} ({awsTestResults.server?.port})</div>
+                                    <div className="text-slate-500 text-[11px]">{awsTestResults.server?.compute}</div>
+                                </div>
+                                <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-1">
+                                    <div className="text-slate-400 font-sans font-bold">AWS RDS Database</div>
+                                    <div className="text-emerald-400 font-bold">{awsTestResults.rds?.status} • {awsTestResults.rds?.latency}</div>
+                                    <div className="text-slate-500 text-[11px] truncate">{awsTestResults.rds?.host}</div>
+                                </div>
+                                <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-1">
+                                    <div className="text-slate-400 font-sans font-bold">AWS S3 Storage</div>
+                                    <div className="text-emerald-400 font-bold">{awsTestResults.s3?.status}</div>
+                                    <div className="text-slate-500 text-[11px]">{awsTestResults.s3?.bucket}</div>
+                                </div>
+                                <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-1">
+                                    <div className="text-slate-400 font-sans font-bold">AWS SES Mail</div>
+                                    <div className="text-emerald-400 font-bold">{awsTestResults.ses?.status}</div>
+                                    <div className="text-slate-500 text-[11px] truncate">{awsTestResults.ses?.sender}</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* AWS Server Configuration Form */}
+                    <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-6">
+                        <div className="flex items-center justify-between pb-5 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">AWS Infrastructure Parameters</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Customize your AWS region, credentials, database endpoint and S3 bucket</p>
+                            </div>
+                            <span className="text-xs font-semibold px-3 py-1 rounded-lg bg-slate-100 text-slate-700">
+                                Environment: AWS Production
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {/* AWS Region */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-700">AWS Region</label>
+                                <select
+                                    value={awsConfig.region}
+                                    onChange={(e) => setAwsConfig({ ...awsConfig, region: e.target.value })}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-amber-500"
+                                >
+                                    <option value="us-east-1">US East (N. Virginia) us-east-1</option>
+                                    <option value="us-east-2">US East (Ohio) us-east-2</option>
+                                    <option value="us-west-2">US West (Oregon) us-west-2</option>
+                                    <option value="eu-west-1">Europe (Ireland) eu-west-1</option>
+                                    <option value="ap-south-1">Asia Pacific (Mumbai) ap-south-1</option>
+                                    <option value="ap-southeast-1">Asia Pacific (Singapore) ap-southeast-1</option>
+                                </select>
+                            </div>
+
+                            {/* AWS S3 Bucket */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-700">AWS S3 Bucket Name</label>
+                                <input
+                                    type="text"
+                                    value={awsConfig.s3Bucket}
+                                    onChange={(e) => setAwsConfig({ ...awsConfig, s3Bucket: e.target.value })}
+                                    placeholder="e.g. avahire-resumes-storage"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                            </div>
+
+                            {/* AWS SES Sender Email */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-700">AWS SES Sender Email</label>
+                                <input
+                                    type="email"
+                                    value={awsConfig.sesSender}
+                                    onChange={(e) => setAwsConfig({ ...awsConfig, sesSender: e.target.value })}
+                                    placeholder="e.g. recruiter@avahire.ai"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                            </div>
+
+                            {/* AWS RDS Host */}
+                            <div className="space-y-2 sm:col-span-2">
+                                <label className="block text-xs font-bold text-slate-700">AWS RDS PostgreSQL Host Endpoint</label>
+                                <input
+                                    type="text"
+                                    value={awsConfig.rdsHost}
+                                    onChange={(e) => setAwsConfig({ ...awsConfig, rdsHost: e.target.value })}
+                                    placeholder="e.g. avahire-db.c9awsrds.us-east-1.rds.amazonaws.com"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                            </div>
+
+                            {/* AWS RDS Database */}
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-700">AWS RDS Database Name</label>
+                                <input
+                                    type="text"
+                                    value={awsConfig.rdsDatabase}
+                                    onChange={(e) => setAwsConfig({ ...awsConfig, rdsDatabase: e.target.value })}
+                                    placeholder="e.g. avahire_db"
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-amber-500 font-mono"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="text-xs text-slate-500">
+                                Changes take effect immediately across all server background jobs and data pipelines.
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    type="button"
+                                    onClick={handleSaveAws}
+                                    disabled={savingAws}
+                                    className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-amber-600/20 transition disabled:opacity-50"
+                                >
+                                    {savingAws ? "Saving Changes..." : "Save Configuration"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

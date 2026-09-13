@@ -1,18 +1,18 @@
 {
+  "aiAvatar": "Ava (Technical Evaluator)",
+  "industry": "",
+  "timeZone": "Asia/Kolkata (IST)",
+  "updatedAt": "2026-09-11T16:33:53.285Z",
   "companyName": "",
+  "aiStrictness": "Moderate",
   "companyWebsite": "",
   "companyLocation": "",
-  "industry": "",
-  "aiStrictness": "Moderate",
-  "defaultInterviewDuration": 45,
-  "minShortlistAtsScore": 80,
-  "autoSendInviteOnShortlist": true,
   "emailNotifications": {
+    "weeklyReport": true,
     "candidateApplied": true,
-    "interviewCompleted": true,
-    "weeklyReport": true
+    "interviewCompleted": true
   },
-  "aiAvatar": "Ava (Technical Evaluator)",
-  "timeZone": "Asia/Kolkata (IST)",
-  "updatedAt": "2026-09-11T16:33:53.285Z"
+  "minShortlistAtsScore": 80,
+  "defaultInterviewDuration": 45,
+  "autoSendInviteOnShortlist": true
 }
