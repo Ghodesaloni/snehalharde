@@ -24,26 +24,54 @@ export const createPool = () => {
   return global._postgresPool;
 };
 
-let db: any;
-try {
-  const pool = createPool();
-  db = drizzle(pool, { schema });
-} catch (err) {
-  console.warn('[AI Studio] Database not connected — using mock', err);
-  const noOp = {
-    findMany: async () => [],
-    findFirst: async () => null,
-    findUnique: async () => null,
-    create: async (d: any) => d?.data ?? {},
-    update: async (d: any) => d?.data ?? {},
-    delete: async () => ({}),
-  };
-  db = new Proxy({}, {
-    get: (_, prop) =>
-      prop === 'query'
-        ? new Proxy({}, { get: () => noOp })
-        : async () => [],
+const createMockChain = (resolvedValue: any = []): any => {
+  const fn: any = () => fn;
+  return new Proxy(fn, {
+    get: (_, prop) => {
+      if (prop === 'then') {
+        return (resolve: any) => Promise.resolve(resolvedValue).then(resolve);
+      }
+      if (prop === 'catch') {
+        return (reject: any) => Promise.resolve(resolvedValue).catch(reject);
+      }
+      return createMockChain(resolvedValue);
+    },
+    apply: () => createMockChain(resolvedValue),
   });
+};
+
+const mockNoOp = {
+  findMany: async () => [],
+  findFirst: async () => null,
+  findUnique: async () => null,
+  create: async (d: any) => d?.data ?? {},
+  update: async (d: any) => d?.data ?? {},
+  delete: async () => ({}),
+};
+
+const createMockDb = () => {
+  return new Proxy({}, {
+    get: (_, prop) => {
+      if (prop === 'query') {
+        return new Proxy({}, { get: () => mockNoOp });
+      }
+      return createMockChain([]);
+    },
+  });
+};
+
+let db: any;
+if (!process.env.SQL_HOST && !process.env.DATABASE_URL) {
+  console.warn('[AI Studio] Database credentials not set — using in-memory mock');
+  db = createMockDb();
+} else {
+  try {
+    const pool = createPool();
+    db = drizzle(pool, { schema });
+  } catch (err) {
+    console.warn('[AI Studio] Database not connected — using mock', err);
+    db = createMockDb();
+  }
 }
 
 export { db };
