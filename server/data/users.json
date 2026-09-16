@@ -1,7 +1,7 @@
 [
   {
-    "id": 601,
-    "uid": "usr_601",
+    "id": 18,
+    "uid": "usr_18",
     "email": "hr@avahire.ai",
     "name": "Priya Mehta",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -10,7 +10,7 @@
     "designation": "Head of Talent Acquisition",
     "phone": "+91 98765 43210",
     "password_hash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
-    "created_at": "2026-09-13T12:02:59.194Z",
+    "created_at": "2026-09-15T20:03:24.225Z",
     "passwordHash": "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f",
     "isVerified": true,
     "is_verified": true
@@ -29,8 +29,8 @@
     "created_at": "2025-01-10T09:00:00.000Z"
   },
   {
-    "id": 275,
-    "uid": "usr_275",
+    "id": 7,
+    "uid": "usr_7",
     "email": "recruiter.google@gmail.com",
     "name": "recruiter.google",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -39,11 +39,11 @@
     "designation": "Talent Recruiter",
     "phone": "+91 98000 00000",
     "password_hash": "59b7bf18d65947515f33c54d80ff1969375227b04a76fd240e9acd5a7e1ec49a",
-    "created_at": "2026-09-12T17:18:53.339Z"
+    "created_at": "2026-09-15T20:03:20.601Z"
   },
   {
-    "id": 304,
-    "uid": "usr_304",
+    "id": 8,
+    "uid": "usr_8",
     "email": "custom.user@gmail.com",
     "name": "Custom User",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -52,11 +52,11 @@
     "designation": "Talent Recruiter",
     "phone": "+91 98000 00000",
     "password_hash": "56aa15e6d27ea647992d3207573c8b453913534bfbcf2101dd58a4215fc9cb84",
-    "created_at": "2026-09-12T17:25:04.745Z"
+    "created_at": "2026-09-15T20:03:20.927Z"
   },
   {
-    "id": 8,
-    "uid": "usr_8",
+    "id": 4,
+    "uid": "usr_4",
     "email": "salonighode@gmail.com",
     "name": "Saloni Ghode",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -64,15 +64,15 @@
     "company": "tyhb",
     "designation": "hr",
     "phone": "9146980039",
-    "password_hash": "bbfda6d4bd1114d6b0c9d060904c2ca3b9ce408e2ffdb67ec621198e244ad166",
-    "created_at": "2026-09-11T08:32:58.970Z",
+    "password_hash": "b7d6959b30ebde6b9ecab937804df451449ecd2b2d98e967c50cd57481a56ce7",
+    "created_at": "2026-09-15T20:03:19.621Z",
     "passwordHash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 2,
-    "uid": "usr_2",
+    "id": 1,
+    "uid": "usr_1",
     "email": "salonighode3@gmail.com",
     "name": "Saloni Ghode",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -80,15 +80,15 @@
     "company": "hgkj",
     "designation": "hr",
     "phone": "hjuyiko",
-    "password_hash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
-    "created_at": "2026-09-11T08:32:58.440Z",
+    "password_hash": "abd8cfba151826bb7bf3de57387e9653e9d7f54d61e2e107213b3add4383cf91",
+    "created_at": "2026-09-15T20:03:18.636Z",
     "passwordHash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 325,
-    "uid": "usr_325",
+    "id": 9,
+    "uid": "usr_9",
     "email": "jwt_user_1789234537282@avahire.ai",
     "name": "JWT Test Recruiter",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -97,11 +97,11 @@
     "designation": "HR Director",
     "phone": "",
     "password_hash": "56a4764e3977273bca381bf22141b76f6a4f3014aed01a78f0aa3cdd03c0fe38",
-    "created_at": "2026-09-12T17:35:37.530Z"
+    "created_at": "2026-09-15T20:03:21.254Z"
   },
   {
-    "id": 332,
-    "uid": "usr_332",
+    "id": 10,
+    "uid": "usr_10",
     "email": "test_google_jwt@gmail.com",
     "name": "Google Test User",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -110,11 +110,11 @@
     "designation": "Talent Recruiter",
     "phone": "+91 98000 00000",
     "password_hash": "e34b15e48d0f5d49e23e040800e4fcbbd5ded7a5ea0fdee65eaf6b46f3dd46e7",
-    "created_at": "2026-09-12T17:35:47.385Z"
+    "created_at": "2026-09-15T20:03:21.580Z"
   },
   {
-    "id": 573,
-    "uid": "usr_573",
+    "id": 11,
+    "uid": "usr_11",
     "email": "alice@company.com",
     "name": "Alice Tester",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -123,11 +123,11 @@
     "designation": "Recruiter",
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-13T11:52:03.634Z"
+    "created_at": "2026-09-15T20:03:21.906Z"
   },
   {
-    "id": 4,
-    "uid": "usr_4",
+    "id": 2,
+    "uid": "usr_2",
     "name": "Test Recruiter",
     "email": "recruiter.test@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -136,11 +136,11 @@
     "designation": "VP of Talent",
     "phone": "",
     "password_hash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
-    "created_at": "2026-09-11T08:32:58.619Z"
+    "created_at": "2026-09-15T20:03:18.967Z"
   },
   {
-    "id": 6,
-    "uid": "usr_6",
+    "id": 3,
+    "uid": "usr_3",
     "name": "Snehal Harde",
     "email": "snehal.harde2935@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -149,14 +149,14 @@
     "designation": "Senior HR Manager",
     "phone": "9146980039",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T08:32:58.795Z",
+    "created_at": "2026-09-15T20:03:19.295Z",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 14,
-    "uid": "usr_14",
+    "id": 5,
+    "uid": "usr_5",
     "name": "Test Registered HR",
     "email": "hr_auth_test_1789115630416@example.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -165,11 +165,11 @@
     "designation": "Talent Lead",
     "phone": "+1 555-0199",
     "password_hash": "e880037d39875be7b0e27a229d2a93b5b5cff1b970cd23e1b7ab705bef8516a4",
-    "created_at": "2026-09-11T08:33:50.635Z"
+    "created_at": "2026-09-15T20:03:19.948Z"
   },
   {
-    "id": 83,
-    "uid": "usr_83",
+    "id": 6,
+    "uid": "usr_6",
     "name": "Snehal Harde",
     "email": "snehalharde09@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -178,14 +178,14 @@
     "designation": "HR",
     "phone": "548941325461",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T15:19:33.530Z",
+    "created_at": "2026-09-15T20:03:20.274Z",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 25,
-    "uid": "usr_25",
+    "id": 12,
+    "uid": "usr_12",
     "name": "vanshika shrirame",
     "email": "vanshikashrirame@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -194,14 +194,14 @@
     "designation": "hr",
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T08:44:36.325Z",
+    "created_at": "2026-09-15T20:03:22.233Z",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 33,
-    "uid": "usr_33",
+    "id": 13,
+    "uid": "usr_13",
     "name": "snehal harde",
     "email": "sneha.harde@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -210,14 +210,14 @@
     "designation": "hr",
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T09:01:11.424Z",
+    "created_at": "2026-09-15T20:03:22.559Z",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 35,
-    "uid": "usr_35",
+    "id": 14,
+    "uid": "usr_14",
     "name": "snehal harde",
     "email": "sneha.harde2935@gmail.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -226,14 +226,14 @@
     "designation": "HR Administrator",
     "phone": "91gbk",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T14:39:50.167Z",
+    "created_at": "2026-09-15T20:03:22.885Z",
     "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "isVerified": true,
     "is_verified": true
   },
   {
-    "id": 167,
-    "uid": "usr_167",
+    "id": 15,
+    "uid": "usr_15",
     "name": "Alpha Test",
     "email": "test_strict_auth@example.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -242,11 +242,11 @@
     "designation": "HR",
     "phone": "98765432",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-11T17:00:49.565Z"
+    "created_at": "2026-09-15T20:03:23.212Z"
   },
   {
-    "id": 169,
-    "uid": "usr_169",
+    "id": 16,
+    "uid": "usr_16",
     "name": "Strict HR User",
     "email": "test_strict_1789146056337@example.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -255,11 +255,11 @@
     "designation": "Head of Talent",
     "phone": "9876543210",
     "password_hash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
-    "created_at": "2026-09-11T17:00:56.423Z"
+    "created_at": "2026-09-15T20:03:23.573Z"
   },
   {
-    "id": 171,
-    "uid": "usr_171",
+    "id": 17,
+    "uid": "usr_17",
     "name": "Strict HR User",
     "email": "test_strict_1789146070103@example.com",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -268,11 +268,11 @@
     "designation": "Head of Talent",
     "phone": "9876543210",
     "password_hash": "b926e929192ee30e047ab90fc9d1e0d811a4ccc5f0411da2047abfccc8cd8f60",
-    "created_at": "2026-09-11T17:01:11.588Z"
+    "created_at": "2026-09-15T20:03:23.899Z"
   },
   {
-    "id": 627,
-    "uid": "usr_627",
+    "id": 19,
+    "uid": "usr_19",
     "email": "test_recruiter_1789301070532@gmail.com",
     "name": "Alex Rivera",
     "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
@@ -281,6 +281,6 @@
     "designation": "Lead Recruiter",
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
-    "created_at": "2026-09-13T12:04:30.809Z"
+    "created_at": "2026-09-15T20:03:24.552Z"
   }
 ]
