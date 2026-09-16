@@ -1,3 +1,4 @@
+require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
 const nodemailer = require("nodemailer");
@@ -10,7 +11,7 @@ function getStoredAwsConfig() {
     if (fs.existsSync(p)) {
       return JSON.parse(fs.readFileSync(p, "utf8")) || {};
     }
-  } catch (e) {}
+  } catch (e) { }
   return {};
 }
 

@@ -12,12 +12,12 @@ try {
   }
 } catch (e) {}
 
-const sqlHost = process.env.AWS_RDS_HOST || awsStoredConfig.rdsHost || process.env.SQL_HOST || process.env.PGHOST || "localhost";
-const sqlPort = parseInt(process.env.AWS_RDS_PORT || awsStoredConfig.rdsPort || process.env.SQL_PORT || process.env.PGPORT || "5432", 10);
-const sqlDb = process.env.AWS_RDS_DB || awsStoredConfig.rdsDatabase || process.env.SQL_DB_NAME || process.env.PGDATABASE || "avahire_db";
-const sqlUser = process.env.AWS_RDS_USER || awsStoredConfig.rdsUser || process.env.SQL_USER || process.env.PGUSER || "postgres";
-const sqlPassword = process.env.AWS_RDS_PASSWORD || awsStoredConfig.rdsPassword || process.env.SQL_PASSWORD || process.env.PGPASSWORD || "";
-const databaseUrl = process.env.AWS_RDS_URL || process.env.DATABASE_URL;
+const sqlHost = process.env.DB_HOST || process.env.AWS_RDS_HOST || awsStoredConfig.rdsHost || process.env.SQL_HOST || process.env.PGHOST || "localhost";
+const sqlPort = parseInt(process.env.DB_PORT || process.env.AWS_RDS_PORT || awsStoredConfig.rdsPort || process.env.SQL_PORT || process.env.PGPORT || "5432", 10);
+const sqlDb = process.env.DB_NAME || process.env.AWS_RDS_DB || awsStoredConfig.rdsDatabase || process.env.SQL_DB_NAME || process.env.PGDATABASE || "avahire_db";
+const sqlUser = process.env.DB_USER || process.env.AWS_RDS_USER || awsStoredConfig.rdsUser || process.env.SQL_USER || process.env.PGUSER || "postgres";
+const sqlPassword = process.env.DB_PASSWORD || process.env.AWS_RDS_PASSWORD || awsStoredConfig.rdsPassword || process.env.SQL_PASSWORD || process.env.PGPASSWORD || "";
+const databaseUrl = process.env.DATABASE_URL || process.env.AWS_RDS_URL;
 
 // Normalize DATABASE_URL and strip accidental bracket wrappers if entered from template [PASSWORD]
 function getCleanDatabaseUrl() {
