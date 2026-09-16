@@ -1,58 +1,44 @@
 const { readData, writeData } = require("./dbEngine");
 const { getPool } = require("./postgres");
+const { classifyCandidateDomain, ALL_DOMAINS } = require("../services/domainClassifier");
 
 const COLLECTION = "resumes";
 
 class ResumesDatabase {
   classifyDomain(candidate) {
-    if (candidate.field && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.field)) {
-      return candidate.field;
-    }
-    if (candidate.domain && ["Data Science", "Mechanical", "Software Engineer", "Finance", "Analyst"].includes(candidate.domain)) {
+    if (candidate.domain && ALL_DOMAINS.includes(candidate.domain)) {
       return candidate.domain;
     }
-
-    const text = `${candidate.name || ""} ${candidate.role || ""} ${candidate.currentRole || ""} ${(candidate.allSkills || candidate.skills || []).join(" ")} ${candidate.summary || ""} ${candidate.resumeFileName || ""}`.toLowerCase();
-
-    // 1. Data Science
-    if (/data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b|eda\b/i.test(text)) {
-      return "Data Science";
+    if (candidate.field && ALL_DOMAINS.includes(candidate.field)) {
+      return candidate.field;
     }
 
-    // 2. Mechanical
-    if (/mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|mechatronics|thermal|creo|machine design|aerospace/i.test(text)) {
-      return "Mechanical";
-    }
+    const classification = classifyCandidateDomain(
+      {
+        role: candidate.role || candidate.currentRole || "",
+        currentRole: candidate.currentRole || candidate.role || "",
+        education: typeof candidate.education === "string" ? candidate.education : (candidate.education?.[0]?.degree || ""),
+        summary: candidate.summary || "",
+        experience: candidate.experienceEntries || []
+      },
+      candidate.rawText || "",
+      candidate.all_normalized_skills || []
+    );
 
-    // 3. Finance
-    if (/finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|wealth management|corporate finance|equity research|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|sap fico|balance sheet|p&l|financial modeling|investment banking/i.test(text)) {
-      return "Finance";
-    }
-
-    // 4. Analyst
-    if (/data analyst|business analyst|bi analyst|operations analyst|product analyst|market research|tableau|power\s?bi|bi tools|business intelligence|reporting analyst|data analytics|dashboards/i.test(text)) {
-      return "Analyst";
-    }
-
-    // 5. Software Engineer
-    if (/software|developer|frontend|backend|full\s?stack|web dev|react|node|javascript|typescript|angular|vue|next|express|java\b|spring|c\+\+|c#|\.net|golang|\bgo\b|rust|python|django|flask|fastapi|devops|kubernetes|docker|cloud/i.test(text)) {
-      return "Software Engineer";
-    }
-
-    return "Software Engineer";
+    return classification.primary_domain;
   }
 
   ensureFields(candidate) {
     if (!candidate) return candidate;
     const skills = candidate.allSkills || candidate.skills || [];
     const status = candidate.status === "Under Review" ? "Review" : candidate.status || "Review";
-    const expYears = candidate.expYears || 0;
     const field = candidate.field || candidate.domain || this.classifyDomain(candidate);
 
     return {
       ...candidate,
       field,
       domain: field,
+      secondaryDomains: candidate.secondaryDomains || candidate.secondary_domains || [],
       status,
       jobId: candidate.jobId || candidate.targetJobId || null,
       targetJobTitle: candidate.targetJobTitle || null,
@@ -61,6 +47,10 @@ class ResumesDatabase {
       summary: candidate.summary || (candidate.name ? `${candidate.name} profile.` : ""),
       matchedSkills: candidate.matchedSkills || skills.slice(0, 3),
       missingSkills: candidate.missingSkills || [],
+      missingRequiredSkills: candidate.missingRequiredSkills || [],
+      missingPreferredSkills: candidate.missingPreferredSkills || [],
+      breakdown: candidate.breakdown || null,
+      resumeQuality: candidate.resumeQuality || candidate.resume_quality || null,
       keyPoints: candidate.keyPoints || {
         strengths: skills.length > 0 ? [`Proficient in: ${skills.slice(0, 3).join(", ")}.`] : [],
         missingSkills: candidate.missingSkills || [],
@@ -81,8 +71,12 @@ class ResumesDatabase {
     if (filters.field && filters.field !== "All" && filters.field !== "All Fields") {
       list = list.filter(r => (r.field || "").toLowerCase() === filters.field.toLowerCase());
     }
-    if (filters.domain && filters.domain !== "All" && filters.domain !== "All Fields") {
-      list = list.filter(r => (r.domain || r.field || "").toLowerCase() === filters.domain.toLowerCase());
+    if (filters.domain && filters.domain !== "All" && filters.domain !== "All Domains" && filters.domain !== "All Fields") {
+      const qDom = filters.domain.toLowerCase();
+      list = list.filter(r =>
+        (r.domain || r.field || "").toLowerCase() === qDom ||
+        (Array.isArray(r.secondaryDomains) && r.secondaryDomains.some(sd => sd.toLowerCase() === qDom))
+      );
     }
     if (filters.jobId && filters.jobId !== "All") {
       list = list.filter(r => r.jobId === filters.jobId || r.targetJobId === filters.jobId);
@@ -100,9 +94,34 @@ class ResumesDatabase {
         (r.email && r.email.toLowerCase().includes(q)) ||
         (r.role && r.role.toLowerCase().includes(q)) ||
         (r.field && r.field.toLowerCase().includes(q)) ||
+        (r.domain && r.domain.toLowerCase().includes(q)) ||
         (r.allSkills && r.allSkills.some(s => s.toLowerCase().includes(q)))
       );
     }
+
+    // Sorting
+    if (filters.sortBy) {
+      switch (filters.sortBy) {
+        case "ats_desc":
+          list.sort((a, b) => (b.atsScore || 0) - (a.atsScore || 0));
+          break;
+        case "ats_asc":
+          list.sort((a, b) => (a.atsScore || 0) - (b.atsScore || 0));
+          break;
+        case "match_desc":
+          list.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+          break;
+        case "exp_desc":
+          list.sort((a, b) => (b.expYears || 0) - (a.expYears || 0));
+          break;
+        case "domain":
+          list.sort((a, b) => (a.domain || "").localeCompare(b.domain || ""));
+          break;
+        default:
+          break;
+      }
+    }
+
     return list;
   }
 
@@ -112,12 +131,42 @@ class ResumesDatabase {
     return item ? this.ensureFields(item) : null;
   }
 
+  findByEmail(email) {
+    if (!email) return null;
+    const list = readData(COLLECTION, []);
+    const item = list.find(r => r.email && r.email.toLowerCase() === email.toLowerCase());
+    return item ? this.ensureFields(item) : null;
+  }
+
+  findDuplicate(resumeData) {
+    const list = readData(COLLECTION, []);
+    if (resumeData.email) {
+      const byEmail = list.find(r => r.email && r.email.toLowerCase() === resumeData.email.toLowerCase());
+      if (byEmail) return byEmail;
+    }
+    if (resumeData.name && resumeData.resumeFileName) {
+      const byNameAndFile = list.find(r =>
+        r.name && r.name.toLowerCase() === resumeData.name.toLowerCase() &&
+        r.resumeFileName && r.resumeFileName.toLowerCase() === resumeData.resumeFileName.toLowerCase()
+      );
+      if (byNameAndFile) return byNameAndFile;
+    }
+    return null;
+  }
+
   create(resumeData) {
+    // Check for duplicate candidate to update rather than creating multiple duplicate rows
+    const existing = this.findDuplicate(resumeData);
+    if (existing) {
+      return this.update(existing.id, resumeData);
+    }
+
     const list = readData(COLLECTION, []);
     const id = `c-${Date.now()}`;
     const skills = Array.isArray(resumeData.skills) ? resumeData.skills : (resumeData.skills ? resumeData.skills.split(",").map(s => s.trim()) : []);
     const allSkills = resumeData.allSkills || skills;
     const field = resumeData.field || resumeData.domain || this.classifyDomain({ ...resumeData, allSkills });
+
     const newCandidate = {
       id,
       name: resumeData.name || "Candidate",
@@ -128,26 +177,44 @@ class ResumesDatabase {
       role: resumeData.role || "",
       field,
       domain: field,
+      secondaryDomains: resumeData.secondaryDomains || resumeData.secondary_domains || [],
       experience: resumeData.experience || "0 Years",
-      expYears: resumeData.expYears || 0,
+      expYears: resumeData.expYears !== undefined ? resumeData.expYears : 0,
       skills: skills.slice(0, 3),
       extraSkillsCount: Math.max(0, allSkills.length - 3),
       allSkills,
+      all_normalized_skills: resumeData.all_normalized_skills || [],
+      education: typeof resumeData.education === "string" ? resumeData.education : (resumeData.education?.[0]?.degree || "Bachelor's Degree"),
+      educationEntries: Array.isArray(resumeData.education) ? resumeData.education : [],
+      experienceEntries: Array.isArray(resumeData.experienceEntries) ? resumeData.experienceEntries : [],
       atsScore: resumeData.atsScore !== undefined ? resumeData.atsScore : 0,
       matchScore: resumeData.matchScore !== undefined ? resumeData.matchScore : 0,
       skillsMatchPct: resumeData.skillsMatchPct !== undefined ? resumeData.skillsMatchPct : 0,
       status: resumeData.status || "New",
+      breakdown: resumeData.breakdown || null,
+      resumeQuality: resumeData.resumeQuality || resumeData.resume_quality || null,
+      matchedSkills: resumeData.matchedSkills || [],
+      missingSkills: resumeData.missingSkills || [],
+      missingRequiredSkills: resumeData.missingRequiredSkills || [],
+      missingPreferredSkills: resumeData.missingPreferredSkills || [],
+      keyPoints: resumeData.keyPoints || null,
+      summary: resumeData.summary || "",
       uploadedDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
       jobId: resumeData.jobId || resumeData.targetJobId || null,
       targetJobTitle: resumeData.targetJobTitle || null,
       resumeFileName: resumeData.resumeFileName || "",
+      rawText: resumeData.rawText ? resumeData.rawText.slice(0, 3000) : "",
+      storageProvider: resumeData.storageProvider || "Local",
+      s3Url: resumeData.s3Url || null,
+      s3Key: resumeData.s3Key || null,
+      s3Bucket: resumeData.s3Bucket || null,
       createdAt: new Date().toISOString()
     };
 
     list.unshift(newCandidate);
     writeData(COLLECTION, list);
 
-    // Persist directly to PostgreSQL public.resumes
+    // Persist to PostgreSQL public.resumes
     try {
       const pool = getPool();
       pool.query(`
@@ -179,7 +246,12 @@ class ResumesDatabase {
     const list = readData(COLLECTION, []);
     const idx = list.findIndex(r => r.id === id);
     if (idx === -1) return null;
-    list[idx] = { ...list[idx], ...updates, updatedAt: new Date().toISOString() };
+
+    list[idx] = {
+      ...list[idx],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
     writeData(COLLECTION, list);
 
     // Update in PostgreSQL public.resumes
