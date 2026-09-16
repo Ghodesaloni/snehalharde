@@ -71,7 +71,9 @@ async function loadFromPostgres() {
       console.log(`✓ Synchronized ${res.rows.length} collections from PostgreSQL into memory.`);
     }
   } catch (err) {
-    console.warn("PostgreSQL collection cache warm-up notice:", err.message);
+    if (err && err.message) {
+      console.warn("PostgreSQL collection cache warm-up notice:", err.message);
+    }
   }
 }
 

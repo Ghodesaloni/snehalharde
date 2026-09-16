@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { Pool } = require("pg");
 const fs = require("fs");
 const path = require("path");
@@ -499,7 +500,8 @@ async function initTables() {
     }
   } catch (err) {
     pgConnected = false;
-    console.warn("Notice: PostgreSQL live connection currently unavailable (" + err.message + "). Dual-layer persistence active.");
+    const reason = err && err.message ? err.message : "No active PostgreSQL server found at " + sqlHost + ":" + sqlPort;
+    console.warn("Notice: PostgreSQL live connection currently unavailable (" + reason + "). Dual-layer persistence active (using local storage).");
   }
 }
 
@@ -1076,9 +1078,27 @@ async function getAllUsers() {
   return Array.from(emailMap.values());
 }
 
+function isPgConnected() {
+  return pgConnected;
+}
+
+function getConnectionStatus() {
+  return {
+    connected: pgConnected,
+    mode: pgConnected ? "PostgreSQL (Live Database)" : "Local JSON Engine (Dual-Layer Persistence Fallback)",
+    host: sqlHost,
+    port: sqlPort,
+    database: sqlDb,
+    user: sqlUser,
+    hasUrlConfigured: Boolean(process.env.AWS_RDS_URL || process.env.DATABASE_URL)
+  };
+}
+
 module.exports = {
   getPool,
   initTables,
+  isPgConnected,
+  getConnectionStatus,
   saveUser,
   resetPassword,
   saveVerificationToken,

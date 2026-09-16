@@ -18,8 +18,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// AWS Health Check
+const { getConnectionStatus } = require("./db/postgres");
+
+// AWS Health & Database Status Check
 app.get(["/health", "/api/health"], (req, res) => {
+  const dbStatus = getConnectionStatus();
   res.status(200).json({
     status: "healthy",
     provider: "Amazon Web Services (AWS)",
@@ -27,13 +30,18 @@ app.get(["/health", "/api/health"], (req, res) => {
     region: process.env.AWS_REGION || "us-east-1",
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
+    database: dbStatus,
     modules: {
       compute: "AWS EC2 / App Runner",
-      database: "AWS RDS PostgreSQL",
+      database: dbStatus.connected ? "AWS RDS PostgreSQL (Connected)" : "Local JSON Engine (Dual-Layer Fallback)",
       storage: "AWS S3",
       messaging: "AWS SES"
     }
   });
+});
+
+app.get("/api/db-status", (req, res) => {
+  res.status(200).json(getConnectionStatus());
 });
 
 // Mount API routes
