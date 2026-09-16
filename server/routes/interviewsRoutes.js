@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const interviewsDb = require("../db/interviewsDb");
+const emailService = require("../services/emailService");
 
 // GET /api/interviews - list interviews
 router.get("/", async (req, res) => {
@@ -49,7 +50,43 @@ router.post("/", async (req, res) => {
       createdBy: authorEmail,
       userEmail: authorEmail
     });
-    res.status(201).json({ success: true, data: newInterview, message: "Interview scheduled successfully" });
+
+    // Automatically send interview invitation email to candidate
+    const candidateEmail = (newInterview.email || req.body.email || "").trim();
+    let emailResult = null;
+    if (candidateEmail && candidateEmail.includes("@")) {
+      const host = req.get("x-forwarded-host") || req.get("host") || "localhost:3000";
+      const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
+      const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+      const interviewLink = `${baseUrl}/i/${newInterview.linkCode}`;
+
+      try {
+        emailResult = await emailService.sendInterviewInvitationEmail({
+          toEmail: candidateEmail,
+          candidateName: newInterview.name || "Candidate",
+          role: newInterview.role || "Software Engineer",
+          company: newInterview.company || "AvaHire Technologies Pvt. Ltd.",
+          interviewLink,
+          linkCode: newInterview.linkCode,
+          date: newInterview.date,
+          time: newInterview.time,
+          duration: newInterview.duration || "45 Minutes",
+          expiryTime: newInterview.expiryTime || newInterview.expiry,
+          userEmail: authorEmail,
+        });
+        console.log(`[INTERVIEWS] Interview invitation email sent to ${candidateEmail} for link ${newInterview.linkCode}`);
+      } catch (emErr) {
+        console.warn("[INTERVIEWS-EMAIL] Could not send invite email:", emErr.message);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: newInterview,
+      emailDispatched: Boolean(emailResult?.success),
+      emailResult,
+      message: "Interview scheduled successfully"
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

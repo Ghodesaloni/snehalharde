@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const candidatesDb = require("../db/candidatesDb");
+const emailService = require("../services/emailService");
 
 // GET /api/candidates - list candidate evaluations
 router.get("/", async (req, res) => {
@@ -45,10 +46,51 @@ router.post("/", async (req, res) => {
 // PUT /api/candidates/:id - update candidate evaluation / status / notes
 router.put("/:id", async (req, res) => {
   try {
+    const existing = await candidatesDb.getById(req.params.id);
     const updated = await candidatesDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate not found" });
     }
+
+    // Automatically send status update email to candidate if status changed
+    const candEmail = (updated.email || existing?.email || "").trim();
+    const candName = updated.name || existing?.name || "Candidate";
+    const candRole = updated.role || existing?.role || "Software Engineer";
+    const authorEmail = updated.userEmail || updated.createdBy || req.headers["x-user-email"] || "";
+
+    if (candEmail && candEmail.includes("@") && req.body.status) {
+      const newStatus = req.body.status.trim().toLowerCase();
+      const prevStatus = (existing?.status || "").trim().toLowerCase();
+
+      if ((newStatus === "selected" || newStatus === "shortlisted" || newStatus === "hired") && prevStatus !== newStatus) {
+        try {
+          await emailService.sendCandidateSelectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[CANDIDATES-EMAIL] Sent selection/shortlist email to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[CANDIDATES-EMAIL] Selection email warning:", emErr.message);
+        }
+      } else if (newStatus === "rejected" && prevStatus !== "rejected") {
+        try {
+          await emailService.sendCandidateRejectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[CANDIDATES-EMAIL] Sent rejection email to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[CANDIDATES-EMAIL] Rejection email warning:", emErr.message);
+        }
+      }
+    }
+
     res.json({ success: true, data: updated, message: "Candidate evaluation updated" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

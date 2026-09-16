@@ -310,5 +310,31 @@
     "uid": "usr_19",
     "name": "Alex Rivera",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea"
+  },
+  {
+    "id": 20,
+    "email": "riyabondre435@gmail.com",
+    "fullName": "riyabondre435",
+    "passwordHash": "3a59c0d6edbf6dac4cf20beb70902824e814c1b8389f8133b704f2c94f83badf",
+    "company": "AvaHire Partner",
+    "website": "",
+    "designation": "Talent Recruiter",
+    "phone": "+91 98000 00000",
+    "isVerified": true,
+    "createdAt": "2026-09-16T15:12:07.441Z",
+    "updatedAt": "2026-09-16T15:12:07.441Z"
+  },
+  {
+    "id": 21,
+    "email": "test.recruiter.unique99@example.com",
+    "fullName": "Test Recruiter",
+    "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
+    "company": "AvaHire AI",
+    "website": "",
+    "designation": "Talent Acquisition",
+    "phone": "",
+    "isVerified": true,
+    "createdAt": "2026-09-16T15:33:39.911Z",
+    "updatedAt": "2026-09-16T15:33:39.911Z"
   }
 ]

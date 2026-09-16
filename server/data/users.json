@@ -282,5 +282,18 @@
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "created_at": "2026-09-15T20:03:24.552Z"
+  },
+  {
+    "id": 21,
+    "uid": "usr_1789571527441",
+    "email": "riyabondre435@gmail.com",
+    "name": "riyabondre435",
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    "role": "recruiter",
+    "company": "AvaHire Partner",
+    "designation": "Talent Recruiter",
+    "phone": "+91 98000 00000",
+    "password_hash": "3a59c0d6edbf6dac4cf20beb70902824e814c1b8389f8133b704f2c94f83badf",
+    "created_at": "2026-09-16T15:12:07.441Z"
   }
 ]

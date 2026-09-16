@@ -272,20 +272,33 @@ async function initTables() {
           name VARCHAR(255),
           email VARCHAR(255),
           phone VARCHAR(100),
+          location VARCHAR(255),
           role VARCHAR(255),
           target_job_id VARCHAR(255),
           target_job_title VARCHAR(255),
           field VARCHAR(100),
           domain VARCHAR(100),
           score NUMERIC,
+          ats_score NUMERIC,
+          match_score NUMERIC,
+          skills_match_pct NUMERIC,
           status VARCHAR(100) DEFAULT 'Review',
           skills JSONB DEFAULT '[]'::jsonb,
+          all_skills JSONB DEFAULT '[]'::jsonb,
+          secondary_domains JSONB DEFAULT '[]'::jsonb,
           matched_skills JSONB DEFAULT '[]'::jsonb,
           missing_skills JSONB DEFAULT '[]'::jsonb,
+          missing_required_skills JSONB DEFAULT '[]'::jsonb,
+          missing_preferred_skills JSONB DEFAULT '[]'::jsonb,
           experience VARCHAR(100),
           exp_years NUMERIC DEFAULT 0,
+          experience_entries JSONB DEFAULT '[]'::jsonb,
           education TEXT,
+          education_entries JSONB DEFAULT '[]'::jsonb,
           summary TEXT,
+          breakdown JSONB DEFAULT '{}'::jsonb,
+          ai_analysis JSONB DEFAULT '{}'::jsonb,
+          resume_data JSONB DEFAULT '{}'::jsonb,
           key_points JSONB DEFAULT '{}'::jsonb,
           raw_text TEXT,
           resume_file_name VARCHAR(255),
@@ -295,6 +308,21 @@ async function initTables() {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+
+        -- Safe column migrations if table already exists
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS location VARCHAR(255);
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS ats_score NUMERIC;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS match_score NUMERIC;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS skills_match_pct NUMERIC;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS secondary_domains JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS all_skills JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS experience_entries JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS education_entries JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS missing_required_skills JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS missing_preferred_skills JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS breakdown JSONB DEFAULT '{}'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS ai_analysis JSONB DEFAULT '{}'::jsonb;
+        ALTER TABLE public.resumes ADD COLUMN IF NOT EXISTS resume_data JSONB DEFAULT '{}'::jsonb;
       `);
 
       // 8. Email templates table
@@ -494,6 +522,166 @@ async function initTables() {
         }
       } catch (syncErr) {
         console.warn("PostgreSQL user sync notice:", syncErr.message);
+      }
+
+      // Sync resumes between PostgreSQL and local storage
+      try {
+        const resumesFile = path.join(DATA_DIR, "resumes.json");
+        const localResumes = readJson(resumesFile);
+
+        // Delete any legacy sample resumes so Resume Screener starts empty
+        await client.query(`
+          DELETE FROM public.resumes 
+          WHERE id IN ('c-1001', 'c-1002', 'c-1003', 'c-1004', 'c-1005', 'c-1006')
+             OR id LIKE 'c-100%'
+             OR email LIKE '%@example.com';
+        `).catch(err => console.warn("Notice cleaning sample resumes:", err.message));
+
+        // Also clean any sample interview candidates
+        await client.query(`
+          DELETE FROM public.candidates
+          WHERE id = 'cand-1789141858939' 
+             OR id LIKE 'cand-sample%' 
+             OR name = 'hina';
+        `).catch(err => console.warn("Notice cleaning sample candidates:", err.message));
+
+        // Clean sample records from app_collections
+        await client.query(`
+          UPDATE public.app_collections 
+          SET data = '[]'::jsonb 
+          WHERE collection_name = 'resumes' AND data::text LIKE '%c-1001%';
+        `).catch(() => {});
+
+        // Seed any non-sample manually uploaded resumes to PostgreSQL if missing
+        if (Array.isArray(localResumes) && localResumes.length > 0) {
+          for (const r of localResumes) {
+            if (!r || !r.id) continue;
+            // Never seed preloaded/sample candidates
+            if (r.id.startsWith("c-100") || (r.email && r.email.endsWith("@example.com"))) continue;
+            await client.query(`
+              INSERT INTO public.resumes (
+                id, candidate_id, name, email, phone, location, role,
+                target_job_id, target_job_title, field, domain, score,
+                ats_score, match_score, skills_match_pct, status, skills,
+                all_skills, secondary_domains, matched_skills, missing_skills,
+                missing_required_skills, missing_preferred_skills, experience,
+                exp_years, experience_entries, education, education_entries,
+                summary, breakdown, ai_analysis, resume_data, key_points,
+                raw_text, resume_file_name, file_url, created_at, updated_at
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+                $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
+                $29, $30, $31, $32, $33, $34, $35, $36,
+                COALESCE($37::timestamp with time zone, CURRENT_TIMESTAMP),
+                COALESCE($38::timestamp with time zone, CURRENT_TIMESTAMP)
+              )
+              ON CONFLICT (id) DO NOTHING;
+            `, [
+              r.id,
+              r.candidateId || r.candidate_id || r.id,
+              r.name || "Candidate",
+              r.email || "",
+              r.phone || "",
+              r.location || "Remote",
+              r.role || "",
+              r.jobId || r.targetJobId || r.target_job_id || null,
+              r.targetJobTitle || r.target_job_title || null,
+              r.field || r.domain || "General",
+              r.domain || r.field || "General",
+              Number(r.atsScore ?? r.score ?? 0),
+              Number(r.atsScore ?? r.score ?? 0),
+              Number(r.matchScore ?? r.score ?? 0),
+              Number(r.skillsMatchPct ?? 80),
+              r.status || "Review",
+              JSON.stringify(r.skills || []),
+              JSON.stringify(r.allSkills || r.skills || []),
+              JSON.stringify(r.secondaryDomains || []),
+              JSON.stringify(r.matchedSkills || []),
+              JSON.stringify(r.missingSkills || []),
+              JSON.stringify(r.missingRequiredSkills || []),
+              JSON.stringify(r.missingPreferredSkills || []),
+              r.experience || "0 Years",
+              Number(r.expYears || 0),
+              JSON.stringify(r.experienceEntries || []),
+              r.education || "Bachelor's Degree",
+              JSON.stringify(r.educationEntries || []),
+              r.summary || "",
+              JSON.stringify(r.breakdown || {}),
+              JSON.stringify(r.aiAnalysis || {}),
+              JSON.stringify(r.resumeData || {}),
+              JSON.stringify(r.keyPoints || {}),
+              r.rawText || r.raw_text || "",
+              r.resumeFileName || r.resume_file_name || "",
+              r.fileUrl || r.file_url || null,
+              r.createdAt || r.created_at || null,
+              r.updatedAt || r.updated_at || null
+            ]);
+          }
+        }
+
+        // Pull any manually uploaded PostgreSQL resumes into local storage (ignoring any samples)
+        const pgResumes = await client.query(`
+          SELECT * FROM public.resumes 
+          WHERE id NOT IN ('c-1001', 'c-1002', 'c-1003', 'c-1004', 'c-1005', 'c-1006')
+            AND id NOT LIKE 'c-100%'
+            AND (email IS NULL OR email NOT LIKE '%@example.com')
+          ORDER BY created_at DESC
+        `);
+        if (pgResumes.rows && pgResumes.rows.length > 0) {
+          const mergedResumes = Array.isArray(localResumes) ? [...localResumes] : [];
+          for (const row of pgResumes.rows) {
+            const existingIdx = mergedResumes.findIndex((x) => x.id === row.id);
+            const rObj = {
+              id: row.id,
+              candidateId: row.candidate_id || row.id,
+              name: row.name,
+              email: row.email,
+              phone: row.phone,
+              location: row.location || "Remote",
+              role: row.role,
+              jobId: row.target_job_id,
+              targetJobId: row.target_job_id,
+              targetJobTitle: row.target_job_title,
+              field: row.field || row.domain || "General",
+              domain: row.domain || row.field || "General",
+              score: Number(row.ats_score ?? row.score ?? 0),
+              atsScore: Number(row.ats_score ?? row.score ?? 0),
+              matchScore: Number(row.match_score ?? row.score ?? 0),
+              skillsMatchPct: Number(row.skills_match_pct ?? 80),
+              status: row.status || "Review",
+              skills: Array.isArray(row.skills) ? row.skills : [],
+              allSkills: Array.isArray(row.all_skills) ? row.all_skills : (Array.isArray(row.skills) ? row.skills : []),
+              secondaryDomains: Array.isArray(row.secondary_domains) ? row.secondary_domains : [],
+              matchedSkills: Array.isArray(row.matched_skills) ? row.matched_skills : [],
+              missingSkills: Array.isArray(row.missing_skills) ? row.missing_skills : [],
+              missingRequiredSkills: Array.isArray(row.missing_required_skills) ? row.missing_required_skills : [],
+              missingPreferredSkills: Array.isArray(row.missing_preferred_skills) ? row.missing_preferred_skills : [],
+              experience: row.experience || "0 Years",
+              expYears: Number(row.exp_years ?? 0),
+              experienceEntries: Array.isArray(row.experience_entries) ? row.experience_entries : [],
+              education: row.education || "Bachelor's Degree",
+              educationEntries: Array.isArray(row.education_entries) ? row.education_entries : [],
+              summary: row.summary || "",
+              breakdown: typeof row.breakdown === "object" ? row.breakdown : {},
+              aiAnalysis: typeof row.ai_analysis === "object" ? row.ai_analysis : {},
+              resumeData: typeof row.resume_data === "object" ? row.resume_data : {},
+              keyPoints: typeof row.key_points === "object" ? row.key_points : {},
+              rawText: row.raw_text || "",
+              resumeFileName: row.resume_file_name || "",
+              fileUrl: row.file_url || null,
+              createdAt: row.created_at || new Date().toISOString(),
+              updatedAt: row.updated_at || new Date().toISOString()
+            };
+            if (existingIdx >= 0) {
+              mergedResumes[existingIdx] = { ...mergedResumes[existingIdx], ...rObj };
+            } else {
+              mergedResumes.push(rObj);
+            }
+          }
+          writeJson(resumesFile, mergedResumes);
+        }
+      } catch (resumeSyncErr) {
+        console.warn("PostgreSQL resume sync notice:", resumeSyncErr.message);
       }
 
       pgConnected = true;

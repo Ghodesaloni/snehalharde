@@ -8,6 +8,7 @@ const awsService = require("../services/awsService");
 const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
 const { parseResume } = require("../services/resumeParserService");
 const { ALL_DOMAINS } = require("../services/domainClassifier");
+const emailService = require("../services/emailService");
 
 const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
 const ALLOWED_RESUME_MIMES = [
@@ -201,6 +202,33 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
       keyPoints: analysis.keyPoints,
       summary: analysis.aiSummary || parsed.professional_summary,
       resumeQuality: parsed.resume_quality,
+      resumeData: {
+        fileName: originalName,
+        rawText: parsed.raw_text,
+        education: parsed.education,
+        educationEntries: parsed.education,
+        experienceEntries: parsed.experience,
+        projects: parsed.projects,
+        certifications: parsed.certifications,
+        resumeQuality: parsed.resume_quality,
+        requiresOcr: parsed.requires_ocr,
+        ocrWarning: parsed.ocr_warning,
+        s3Url: s3Metadata?.url || null,
+        storageProvider: s3Metadata?.url ? "AWS S3" : "Local"
+      },
+      aiAnalysis: {
+        summary: analysis.aiSummary || parsed.professional_summary,
+        keyPoints: analysis.keyPoints,
+        breakdown: analysis.breakdown,
+        matchedSkills: analysis.matchedSkills,
+        missingSkills: analysis.missingSkills,
+        missingRequiredSkills: analysis.missingRequiredSkills,
+        missingPreferredSkills: analysis.missingPreferredSkills,
+        atsScore: analysis.atsScore,
+        matchScore: analysis.matchScore,
+        skillsMatchPct: analysis.skillsMatchPct,
+        status: analysis.status
+      },
       targetJobId: job.id,
       targetJobTitle: job.title,
       jobId: job.id && job.id !== "custom-jd" ? job.id : null,
@@ -298,6 +326,32 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           keyPoints: analysis.keyPoints,
           summary: analysis.aiSummary || parsed.professional_summary,
           resumeQuality: parsed.resume_quality,
+          resumeData: {
+            fileName: originalName,
+            rawText: parsed.raw_text,
+            education: parsed.education,
+            educationEntries: parsed.education,
+            experienceEntries: parsed.experience,
+            projects: parsed.projects,
+            certifications: parsed.certifications,
+            resumeQuality: parsed.resume_quality,
+            requiresOcr: parsed.requires_ocr,
+            ocrWarning: parsed.ocr_warning,
+            storageProvider: "Local"
+          },
+          aiAnalysis: {
+            summary: analysis.aiSummary || parsed.professional_summary,
+            keyPoints: analysis.keyPoints,
+            breakdown: analysis.breakdown,
+            matchedSkills: analysis.matchedSkills,
+            missingSkills: analysis.missingSkills,
+            missingRequiredSkills: analysis.missingRequiredSkills,
+            missingPreferredSkills: analysis.missingPreferredSkills,
+            atsScore: analysis.atsScore,
+            matchScore: analysis.matchScore,
+            skillsMatchPct: analysis.skillsMatchPct,
+            status: analysis.status
+          },
           targetJobId: job.id,
           targetJobTitle: job.title,
           jobId: job.id && job.id !== "custom-jd" ? job.id : null,
@@ -452,12 +506,52 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/resumes/:id - update resume
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
+    const existing = resumesDb.getById(req.params.id);
     const updated = resumesDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
+
+    const candEmail = (updated.email || existing?.email || "").trim();
+    const candName = updated.name || existing?.name || "Candidate";
+    const candRole = updated.role || existing?.role || "Software Engineer";
+    const authorEmail = updated.userEmail || updated.createdBy || req.headers["x-user-email"] || "";
+
+    if (candEmail && candEmail.includes("@") && req.body.status) {
+      const newStatus = req.body.status.trim().toLowerCase();
+      const prevStatus = (existing?.status || "").trim().toLowerCase();
+
+      if ((newStatus === "selected" || newStatus === "shortlisted" || newStatus === "hired") && prevStatus !== newStatus) {
+        try {
+          await emailService.sendCandidateSelectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[RESUMES-EMAIL] Selection email sent to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[RESUMES-EMAIL] Selection email notice:", emErr.message);
+        }
+      } else if (newStatus === "rejected" && prevStatus !== "rejected") {
+        try {
+          await emailService.sendCandidateRejectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[RESUMES-EMAIL] Rejection email sent to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[RESUMES-EMAIL] Rejection email notice:", emErr.message);
+        }
+      }
+    }
+
     res.json({ success: true, data: updated, message: "Candidate updated successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -465,16 +559,56 @@ router.put("/:id", (req, res) => {
 });
 
 // PATCH /api/resumes/:id/status - update status (e.g. Shortlisted, Rejected, Hired)
-router.patch("/:id/status", (req, res) => {
+router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
     if (!status) {
       return res.status(400).json({ success: false, error: "Status is required" });
     }
+    const existing = resumesDb.getById(req.params.id);
     const updated = resumesDb.updateStatus(req.params.id, status);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
+
+    const candEmail = (updated.email || existing?.email || "").trim();
+    const candName = updated.name || existing?.name || "Candidate";
+    const candRole = updated.role || existing?.role || "Software Engineer";
+    const authorEmail = updated.userEmail || updated.createdBy || req.headers["x-user-email"] || "";
+
+    if (candEmail && candEmail.includes("@")) {
+      const newStatus = status.trim().toLowerCase();
+      const prevStatus = (existing?.status || "").trim().toLowerCase();
+
+      if ((newStatus === "selected" || newStatus === "shortlisted" || newStatus === "hired") && prevStatus !== newStatus) {
+        try {
+          await emailService.sendCandidateSelectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[RESUMES-EMAIL] Selection email sent to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[RESUMES-EMAIL] Selection email notice:", emErr.message);
+        }
+      } else if (newStatus === "rejected" && prevStatus !== "rejected") {
+        try {
+          await emailService.sendCandidateRejectedEmail({
+            toEmail: candEmail,
+            candidateName: candName,
+            role: candRole,
+            company: "AvaHire Technologies",
+            userEmail: authorEmail,
+          });
+          console.log(`[RESUMES-EMAIL] Rejection email sent to ${candEmail}`);
+        } catch (emErr) {
+          console.warn("[RESUMES-EMAIL] Rejection email notice:", emErr.message);
+        }
+      }
+    }
+
     res.json({ success: true, data: updated, message: `Status updated to ${status}` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
