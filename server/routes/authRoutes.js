@@ -94,13 +94,20 @@ router.post("/register", async (req, res) => {
     const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
     const loginUrl = `${baseUrl}/login`;
 
-    // 4. Send "Successfully Registered" welcome email via background dispatch (non-blocking)
-    emailService.sendRegistrationSuccessEmail({
-      toEmail: trimmedEmail,
-      fullName: fullName.trim(),
-      loginUrl,
-      initialPassword: trimmedPassword,
-    }).catch(emErr => console.warn("[AUTH-REGISTER] Welcome email notice:", emErr.message));
+    // 4. Send "Successfully Registered" welcome email via background dispatch
+    let emailDispatched = false;
+    try {
+      const emailResult = await emailService.sendRegistrationSuccessEmail({
+        toEmail: trimmedEmail,
+        fullName: fullName.trim(),
+        loginUrl,
+        initialPassword: trimmedPassword,
+      });
+      emailDispatched = Boolean(emailResult?.success);
+      console.log(`[AUTH-REGISTER] Welcome email sent to ${trimmedEmail} (messageId: ${emailResult?.messageId})`);
+    } catch (emErr) {
+      console.warn("[AUTH-REGISTER] Welcome email notice:", emErr.message);
+    }
 
     console.log(`[AUTH-REGISTER] New user registered and stored in SQL database: ${trimmedEmail}`);
 
@@ -110,7 +117,7 @@ router.post("/register", async (req, res) => {
       message: "Successfully registered! Your HR account is securely saved in the database.",
       email: trimmedEmail,
       token,
-      emailDispatched: true,
+      emailDispatched,
     });
   } catch (err) {
     console.error("Registration route error:", err);
@@ -420,6 +427,13 @@ router.post("/forgot-password", async (req, res) => {
       resetLink,
       token: recoveryToken,
     });
+
+    if (!emailDispatch || !emailDispatch.success) {
+      return res.status(500).json({
+        success: false,
+        error: emailDispatch?.error || "Failed to send password recovery email via SMTP.",
+      });
+    }
 
     console.log(`[AUTH] Password recovery email dispatched to ${cleanEmail}`);
 

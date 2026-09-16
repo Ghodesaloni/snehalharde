@@ -54,20 +54,26 @@ module.exports = {
         res.setHeader("X-Server-Environment", "AWS-Development");
         next();
       });
+      const { getConnectionStatus } = require("./server/db/postgres");
       devServer.app.get(["/health", "/api/health"], (req, res) => {
+        const dbStatus = getConnectionStatus();
         res.status(200).json({
           status: "healthy",
           provider: "Amazon Web Services (AWS)",
           service: "AWS App Runner / EC2",
           region: process.env.AWS_REGION || "us-east-1",
           timestamp: new Date().toISOString(),
+          database: dbStatus,
           modules: {
             compute: "AWS EC2 / App Runner",
-            database: "AWS RDS PostgreSQL",
+            database: dbStatus.connected ? "AWS RDS PostgreSQL (Connected)" : "Local JSON Engine (Dual-Layer Fallback)",
             storage: "AWS S3",
-            messaging: "AWS SES"
+            messaging: process.env.SMTP_USER ? `SMTP (${process.env.SMTP_USER})` : "SMTP"
           }
         });
+      });
+      devServer.app.get("/api/db-status", (req, res) => {
+        res.status(200).json(getConnectionStatus());
       });
       devServer.app.use("/api", apiRouter);
 

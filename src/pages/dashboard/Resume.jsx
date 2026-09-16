@@ -47,7 +47,8 @@ import {
     Folder,
     FolderOpen,
     FolderKanban,
-    Tag
+    Tag,
+    Trash2
 } from "lucide-react";
 import { addOrUpdateInterview } from "@/utils/interviewStore";
 
@@ -189,9 +190,10 @@ const Resumes = () => {
                 }
 
                 if (resumesData.status === "fulfilled" && Array.isArray(resumesData.value)) {
-                    // Set to empty state as requested until new resumes are uploaded
-                    setCandidates([]);
-                    setSelectedCandidateId(null);
+                    setCandidates(resumesData.value);
+                    if (resumesData.value.length > 0) {
+                        setSelectedCandidateId(resumesData.value[0].id);
+                    }
                 }
             } catch (err) {
                 console.error("Error loading initial data:", err);
@@ -490,15 +492,38 @@ const Resumes = () => {
             }
 
             if (newlyAdded.length > 0) {
-                setCandidates((prev) => [...newlyAdded, ...prev]);
+                try {
+                    const freshResumes = await resumesApi.getAll();
+                    if (Array.isArray(freshResumes) && freshResumes.length > 0) {
+                        setCandidates(freshResumes);
+                    } else {
+                        setCandidates((prev) => [...newlyAdded, ...prev]);
+                    }
+                } catch (e) {
+                    setCandidates((prev) => [...newlyAdded, ...prev]);
+                }
                 setSelectedCandidateId(newlyAdded[0].id);
-                toast.success(`Screened and organized ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""}!`);
+                toast.success(`Screened and saved ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""} to database!`);
             }
         } catch (err) {
             console.error("Upload screening error:", err);
             toast.error("Failed to parse and screen uploaded resumes.");
         } finally {
             setIsUploading(false);
+        }
+    };
+
+    const handleDeleteCandidate = async (id) => {
+        try {
+            await resumesApi.delete(id);
+            setCandidates((prev) => prev.filter((c) => c.id !== id));
+            if (selectedCandidateId === id) {
+                setSelectedCandidateId(null);
+            }
+            toast.success("Candidate removed from database.");
+        } catch (err) {
+            console.error("Delete candidate error:", err);
+            toast.error("Failed to delete candidate from database.");
         }
     };
 
@@ -1543,6 +1568,17 @@ const Resumes = () => {
                                                             <Download className="w-3.5 h-3.5 text-slate-500" />
                                                             <span>Download Resume PDF</span>
                                                         </button>
+                                                        <div className="border-t border-slate-100 my-1" />
+                                                        <button
+                                                            onClick={() => {
+                                                                handleDeleteCandidate(candidate.id);
+                                                                setOpenActionMenuId(null);
+                                                            }}
+                                                            className="w-full px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer font-medium"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                                            <span>Delete from Database</span>
+                                                        </button>
                                                     </div>
                                                 )}
                                             </td>
@@ -1600,17 +1636,41 @@ const Resumes = () => {
                                     <p className="text-sm text-slate-500 font-medium">
                                         {selectedCandidate.role} · {selectedCandidate.experience} Experience
                                     </p>
-                                    <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                                         <span
-                                            className={`px-3 py-0.5 rounded-full text-xs font-semibold ${getStatusPill(
+                                            className={`px-3 py-0.5 rounded-full font-semibold ${getStatusPill(
                                                 selectedCandidate.status
                                             )}`}
                                         >
                                             {selectedCandidate.status}
                                         </span>
-                                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                                            <MapPin className="w-3.5 h-3.5" />
-                                            {selectedCandidate.location}
+                                        {selectedCandidate.location && (
+                                            <span className="text-slate-500 flex items-center gap-1 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                                                {selectedCandidate.location}
+                                            </span>
+                                        )}
+                                        {selectedCandidate.email && (
+                                            <a
+                                                href={`mailto:${selectedCandidate.email}`}
+                                                className="text-slate-600 hover:text-violet-600 flex items-center gap-1 bg-slate-100 hover:bg-violet-50 px-2.5 py-0.5 rounded-full transition"
+                                            >
+                                                <Mail className="w-3.5 h-3.5 text-slate-400" />
+                                                {selectedCandidate.email}
+                                            </a>
+                                        )}
+                                        {selectedCandidate.phone && (
+                                            <a
+                                                href={`tel:${selectedCandidate.phone}`}
+                                                className="text-slate-600 hover:text-violet-600 flex items-center gap-1 bg-slate-100 hover:bg-violet-50 px-2.5 py-0.5 rounded-full transition"
+                                            >
+                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
+                                                {selectedCandidate.phone}
+                                            </a>
+                                        )}
+                                        <span className="text-violet-700 font-medium flex items-center gap-1 bg-violet-50 border border-violet-100 px-2.5 py-0.5 rounded-full">
+                                            <Folder className="w-3.5 h-3.5 text-violet-500" />
+                                            {selectedCandidate.targetJobTitle || selectedCandidate.domain || selectedCandidate.field || "General"}
                                         </span>
                                     </div>
                                 </div>
@@ -1935,7 +1995,11 @@ const Resumes = () => {
                                         <span>Work Experience Timeline</span>
                                     </div>
 
-                                    {(Array.isArray(selectedCandidate.workExperience) && selectedCandidate.workExperience.length > 0
+                                    {((Array.isArray(selectedCandidate.experienceEntries) && selectedCandidate.experienceEntries.length > 0)
+                                        ? selectedCandidate.experienceEntries
+                                        : (Array.isArray(selectedCandidate.resumeData?.experienceEntries) && selectedCandidate.resumeData.experienceEntries.length > 0)
+                                        ? selectedCandidate.resumeData.experienceEntries
+                                        : (Array.isArray(selectedCandidate.workExperience) && selectedCandidate.workExperience.length > 0)
                                         ? selectedCandidate.workExperience
                                         : [
                                             {
@@ -1953,11 +2017,11 @@ const Resumes = () => {
                                         <div key={idx} className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-2">
                                             <div className="flex items-start justify-between">
                                                 <div>
-                                                    <div className="font-bold text-slate-900 text-sm">{exp.title}</div>
-                                                    <div className="text-xs text-violet-700 font-semibold">{exp.company}</div>
+                                                    <div className="font-bold text-slate-900 text-sm">{exp.title || exp.role || "Role"}</div>
+                                                    <div className="text-xs text-violet-700 font-semibold">{exp.company || exp.organization || ""}</div>
                                                 </div>
                                                 <span className="text-xs text-slate-500 font-medium px-2.5 py-0.5 rounded-full bg-white border border-slate-200">
-                                                    {exp.duration}
+                                                    {exp.duration || exp.timeline || exp.years || selectedCandidate.experience || ""}
                                                 </span>
                                             </div>
                                             {Array.isArray(exp.responsibilities) && exp.responsibilities.length > 0 && (
@@ -1978,14 +2042,29 @@ const Resumes = () => {
                                         <span>Education &amp; Academic Credentials</span>
                                     </div>
 
-                                    <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-1">
-                                        <div className="font-bold text-slate-900 text-sm">
-                                            {selectedCandidate.education || "Bachelor of Technology / Computer Science"}
+                                    {((Array.isArray(selectedCandidate.educationEntries) && selectedCandidate.educationEntries.length > 0)
+                                        ? selectedCandidate.educationEntries
+                                        : (Array.isArray(selectedCandidate.resumeData?.educationEntries) && selectedCandidate.resumeData.educationEntries.length > 0)
+                                        ? selectedCandidate.resumeData.educationEntries
+                                        : [
+                                            {
+                                                degree: selectedCandidate.education || "Bachelor's Degree",
+                                                institution: "University / Academic Institution",
+                                                year: ""
+                                            }
+                                        ]
+                                    ).map((edu, idx) => (
+                                        <div key={idx} className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-1">
+                                            <div className="font-bold text-slate-900 text-sm">
+                                                {typeof edu === "string" ? edu : (edu.degree || edu.title || "Degree / Qualification")}
+                                            </div>
+                                            {typeof edu === "object" && (edu.institution || edu.school || edu.university || edu.year) && (
+                                                <div className="text-xs text-slate-500">
+                                                    {[edu.institution || edu.school || edu.university, edu.year].filter(Boolean).join(" · ")}
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="text-xs text-slate-500">
-                                            Graduated with Distinction · Relevant coursework in systems &amp; data structures
-                                        </div>
-                                    </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

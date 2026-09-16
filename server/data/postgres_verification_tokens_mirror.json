@@ -34,5 +34,14 @@
     "used": false,
     "usedAt": null,
     "createdAt": "2026-09-13T17:56:49.335Z"
+  },
+  {
+    "id": 1789572747010,
+    "email": "recruiter.forgot@example.com",
+    "token": "549458e0f9b41e374082b0c3f4a303d1ed6e529e5bb6313730ec607f554ac147",
+    "expiresAt": "2026-09-16T16:32:27.009Z",
+    "used": false,
+    "usedAt": null,
+    "createdAt": "2026-09-16T15:32:27.010Z"
   }
 ]

@@ -35,7 +35,7 @@ app.get(["/health", "/api/health"], (req, res) => {
       compute: "AWS EC2 / App Runner",
       database: dbStatus.connected ? "AWS RDS PostgreSQL (Connected)" : "Local JSON Engine (Dual-Layer Fallback)",
       storage: "AWS S3",
-      messaging: "AWS SES"
+      messaging: process.env.SMTP_USER ? `SMTP (${process.env.SMTP_USER})` : "SMTP"
     }
   });
 });

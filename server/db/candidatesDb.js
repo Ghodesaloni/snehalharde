@@ -44,7 +44,9 @@ class CandidatesDatabase {
 
       const res = await p.query(query, params);
       if (res.rows && res.rows.length > 0) {
-        return res.rows.map(this._mapRow);
+        return res.rows
+          .filter(r => r && r.id !== "cand-1789141858939" && !r.id.startsWith("cand-sample") && r.name !== "hina")
+          .map(this._mapRow);
       }
     } catch (err) {
       console.warn("PostgreSQL candidates getAll fallback:", err.message);
@@ -52,6 +54,7 @@ class CandidatesDatabase {
 
     // 2. Fallback to local JSON mirror
     let list = readData(COLLECTION, []);
+    list = list.filter(c => c && c.id !== "cand-1789141858939" && !c.id.startsWith("cand-sample") && c.name !== "hina");
     if (filters.userEmail) {
       const emailLower = filters.userEmail.toLowerCase().trim();
       list = list.filter(c =>

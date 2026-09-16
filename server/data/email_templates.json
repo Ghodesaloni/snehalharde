@@ -3,7 +3,7 @@
     "id": 1,
     "body": "Hi {{candidateName}},\n\nWe were very impressed by your background and would like to invite you for an AI-powered technical interview for the {{role}} position.\n\nPlease join using your personalized link:\n{{interviewLink}}\n\nBest regards,\nTalent Acquisition Team\n{{company}}",
     "name": "Interview Invitation",
-    "uses": 0,
+    "uses": 1,
     "subject": "You're invited to interview for {{role}} at {{company}}",
     "category": "Interview",
     "createdAt": "2026-09-01T00:00:00.000Z"

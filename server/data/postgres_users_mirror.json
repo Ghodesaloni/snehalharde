@@ -3,7 +3,7 @@
     "id": 1,
     "email": "salonighode3@gmail.com",
     "fullName": "Saloni Ghode",
-    "passwordHash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
+    "passwordHash": "abd8cfba151826bb7bf3de57387e9653e9d7f54d61e2e107213b3add4383cf91",
     "company": "hgkj",
     "website": "",
     "designation": "hr",
@@ -13,7 +13,7 @@
     "updatedAt": "2026-09-15T20:03:18.636Z",
     "uid": "usr_1",
     "name": "Saloni Ghode",
-    "password_hash": "e01e3b92b4ebef10849dc4d0a86277bd723a0eb0f1987eabd841f4bba3d26bb2",
+    "password_hash": "abd8cfba151826bb7bf3de57387e9653e9d7f54d61e2e107213b3add4383cf91",
     "is_verified": true
   },
   {
@@ -53,7 +53,7 @@
     "id": 4,
     "email": "salonighode@gmail.com",
     "fullName": "Saloni Ghode",
-    "passwordHash": "bbfda6d4bd1114d6b0c9d060904c2ca3b9ce408e2ffdb67ec621198e244ad166",
+    "passwordHash": "b7d6959b30ebde6b9ecab937804df451449ecd2b2d98e967c50cd57481a56ce7",
     "company": "tyhb",
     "website": "",
     "designation": "hr",
@@ -63,7 +63,7 @@
     "updatedAt": "2026-09-16T17:34:47.084Z",
     "uid": "usr_4",
     "name": "Saloni Ghode",
-    "password_hash": "bbfda6d4bd1114d6b0c9d060904c2ca3b9ce408e2ffdb67ec621198e244ad166",
+    "password_hash": "b7d6959b30ebde6b9ecab937804df451449ecd2b2d98e967c50cd57481a56ce7",
     "is_verified": true
   },
   {
@@ -310,5 +310,31 @@
     "uid": "usr_19",
     "name": "Alex Rivera",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea"
+  },
+  {
+    "id": 20,
+    "email": "riyabondre435@gmail.com",
+    "fullName": "riyabondre435",
+    "passwordHash": "3a59c0d6edbf6dac4cf20beb70902824e814c1b8389f8133b704f2c94f83badf",
+    "company": "AvaHire Partner",
+    "website": "",
+    "designation": "Talent Recruiter",
+    "phone": "+91 98000 00000",
+    "isVerified": true,
+    "createdAt": "2026-09-16T15:12:07.441Z",
+    "updatedAt": "2026-09-16T15:12:07.441Z"
+  },
+  {
+    "id": 21,
+    "email": "test.recruiter.unique99@example.com",
+    "fullName": "Test Recruiter",
+    "passwordHash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
+    "company": "AvaHire AI",
+    "website": "",
+    "designation": "Talent Acquisition",
+    "phone": "",
+    "isVerified": true,
+    "createdAt": "2026-09-16T15:33:39.911Z",
+    "updatedAt": "2026-09-16T15:33:39.911Z"
   }
 ]
