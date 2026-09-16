@@ -12,7 +12,10 @@ try {
   }
 } catch (e) {}
 
-const sqlHost = process.env.AWS_RDS_HOST || awsStoredConfig.rdsHost || process.env.SQL_HOST || process.env.PGHOST || "localhost";
+const rawDbUrl = (process.env.AWS_RDS_URL || process.env.DATABASE_URL || "").trim();
+const rawHostFromUrl = rawDbUrl && !rawDbUrl.includes("://") ? rawDbUrl : null;
+
+const sqlHost = process.env.AWS_RDS_HOST || awsStoredConfig.rdsHost || rawHostFromUrl || process.env.SQL_HOST || process.env.PGHOST || "localhost";
 const sqlPort = parseInt(process.env.AWS_RDS_PORT || awsStoredConfig.rdsPort || process.env.SQL_PORT || process.env.PGPORT || "5432", 10);
 const sqlDb = process.env.AWS_RDS_DB || awsStoredConfig.rdsDatabase || process.env.SQL_DB_NAME || process.env.PGDATABASE || "avahire_db";
 const sqlUser = process.env.AWS_RDS_USER || awsStoredConfig.rdsUser || process.env.SQL_USER || process.env.PGUSER || "postgres";
