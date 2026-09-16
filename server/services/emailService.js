@@ -56,8 +56,9 @@ function getSesSenderAddress(customName = "AvaHire AI") {
 
 function getFormattedFrom(customName) {
   const awsCfg = getStoredAwsConfig();
-  const user = (process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
-  const rawFrom = (process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || process.env.SMTP_FROM || "").trim();
+  // Prioritize configured SMTP credentials over AWS SES
+  const user = (process.env.SMTP_USER || process.env.GMAIL_USER || process.env.EMAIL_USER || process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || "").trim();
+  const rawFrom = (process.env.SMTP_FROM || process.env.AWS_SES_FROM_EMAIL || awsCfg.sesSender || "").trim();
 
   if (rawFrom.includes("<") && rawFrom.includes(">")) {
     return rawFrom;
@@ -65,42 +66,16 @@ function getFormattedFrom(customName) {
   if (rawFrom.includes("@")) {
     return `"${customName || "AvaHire AI"}" <${rawFrom}>`;
   }
-  const displayName = rawFrom || customName || "AvaHire AI";
+  const displayName = customName || "AvaHire AI";
   if (user) {
+    if (user.includes("<") && user.includes(">")) return user;
     return `"${displayName}" <${user}>`;
   }
   return `"${displayName}" <salonighode@gmail.com>`;
 }
 
 function getTransporter() {
-  const awsCfg = getStoredAwsConfig();
-  const rawRegion = (process.env.AWS_SES_REGION || awsCfg.sesRegion || process.env.AWS_REGION || awsCfg.region || "eu-north-1").trim();
-  const region = rawRegion.replace(/([0-9]+)[a-z]$/i, "$1") || "eu-north-1";
-
-  // 1. AWS SES SMTP Transporter
-  const sesHost = (process.env.AWS_SES_HOST || `email-smtp.${region}.amazonaws.com`).trim();
-  const sesUser = (process.env.AWS_SES_SMTP_USER || awsCfg.sesSmtpUser || process.env.AWS_SES_USER || "").trim();
-  const sesPass = (process.env.AWS_SES_SMTP_PASSWORD || awsCfg.sesSmtpPassword || process.env.AWS_SES_PASSWORD || "").trim();
-
-  if (sesUser && sesPass) {
-    return nodemailer.createTransport({
-      host: sesHost,
-      port: parseInt(process.env.AWS_SES_PORT || "587", 10),
-      secure: process.env.AWS_SES_PORT === "465",
-      auth: {
-        user: sesUser,
-        pass: sesPass,
-      },
-      connectionTimeout: 12000,
-      greetingTimeout: 10000,
-      socketTimeout: 12000,
-      tls: {
-        rejectUnauthorized: false,
-      },
-    });
-  }
-
-  // 2. Generic SMTP / Gmail Transporter
+  // 1. Primary: Given SMTP / Gmail Transporter from .env
   const rawHost = (process.env.SMTP_HOST || "").trim();
   const rawPort = process.env.SMTP_PORT;
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.GMAIL_USER || "").trim();
@@ -148,12 +123,39 @@ function getTransporter() {
     });
   }
 
+  // 2. Secondary fallback: AWS SES SMTP Transporter (if configured)
+  const awsCfg = getStoredAwsConfig();
+  const rawRegion = (process.env.AWS_SES_REGION || awsCfg.sesRegion || process.env.AWS_REGION || awsCfg.region || "eu-north-1").trim();
+  const region = rawRegion.replace(/([0-9]+)[a-z]$/i, "$1") || "eu-north-1";
+
+  const sesHost = (process.env.AWS_SES_HOST || `email-smtp.${region}.amazonaws.com`).trim();
+  const sesUser = (process.env.AWS_SES_SMTP_USER || awsCfg.sesSmtpUser || process.env.AWS_SES_USER || "").trim();
+  const sesPass = (process.env.AWS_SES_SMTP_PASSWORD || awsCfg.sesSmtpPassword || process.env.AWS_SES_PASSWORD || "").trim();
+
+  if (sesUser && sesPass) {
+    return nodemailer.createTransport({
+      host: sesHost,
+      port: parseInt(process.env.AWS_SES_PORT || "587", 10),
+      secure: process.env.AWS_SES_PORT === "465",
+      auth: {
+        user: sesUser,
+        pass: sesPass,
+      },
+      connectionTimeout: 12000,
+      greetingTimeout: 10000,
+      socketTimeout: 12000,
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
+  }
+
   return null;
 }
 
 /**
- * Unified dispatch pipeline prioritizing native AWS SES REST API (HTTPS port 443),
- * with fallback to AWS SES SMTP, and fallback to In-App Portal Mailbox.
+ * Unified dispatch pipeline prioritizing the given SMTP service (Nodemailer),
+ * with fallback to AWS SES (if configured), and fallback to In-App Portal Mailbox.
  */
 async function dispatchEmail({
   to,
@@ -168,14 +170,55 @@ async function dispatchEmail({
   templateId = null,
   metadata = {},
 }) {
-  const awsCfg = getStoredAwsConfig();
-  const sesClient = getAwsSesClient();
   const fromAddress = from || getFormattedFrom("AvaHire AI");
-  const sesSender = getSesSenderAddress("AvaHire AI");
 
-  // Step 1: AWS SES Native SDK via HTTPS (Port 443)
+  // Step 1: PRIMARY - Given SMTP Transporter (Gmail / Custom SMTP)
+  const transporter = getTransporter();
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail({
+        from: fromAddress,
+        to,
+        replyTo: replyTo || undefined,
+        subject,
+        html,
+        text: text || undefined,
+      });
+
+      console.log(`[SMTP] Successfully delivered email to ${to} via SMTP. MessageId: ${info.messageId}`);
+      const stored = storeDispatchedEmail({
+        recipient: to,
+        recipientName,
+        subject,
+        body: text || subject,
+        html,
+        type,
+        templateId,
+        senderEmail: fromAddress,
+        userEmail: userEmail || to,
+        status: "Delivered via SMTP",
+        mode: "live_smtp",
+        messageId: info.messageId,
+        metadata: { ...metadata, engine: "smtp_nodemailer" },
+      });
+
+      return {
+        success: true,
+        mode: "live_smtp",
+        messageId: info.messageId,
+        recipient: to,
+        record: stored,
+      };
+    } catch (smtpErr) {
+      console.warn(`[SMTP-WARN] SMTP delivery notice: ${smtpErr.message}. Checking AWS SES fallback...`);
+    }
+  }
+
+  // Step 2: Fallback to AWS SES Native SDK if configured
+  const sesClient = getAwsSesClient();
   if (sesClient) {
     try {
+      const sesSender = getSesSenderAddress("AvaHire AI");
       const sendCmd = new SendEmailCommand({
         Source: sesSender,
         Destination: {
@@ -192,7 +235,7 @@ async function dispatchEmail({
       });
 
       const sesResult = await sesClient.send(sendCmd);
-      console.log(`[AWS-SES] Successfully delivered email to ${to}. MessageId: ${sesResult.MessageId}`);
+      console.log(`[AWS-SES] Delivered email to ${to} via AWS SES fallback. MessageId: ${sesResult.MessageId}`);
 
       const stored = storeDispatchedEmail({
         recipient: to,
@@ -207,7 +250,7 @@ async function dispatchEmail({
         status: "Delivered via AWS SES",
         mode: "aws_ses",
         messageId: sesResult.MessageId,
-        metadata: { ...metadata, engine: "aws_ses_sdk", region: awsCfg.region || "eu-north-1" },
+        metadata: { ...metadata, engine: "aws_ses_sdk" },
       });
 
       return {
@@ -218,54 +261,12 @@ async function dispatchEmail({
         record: stored,
       };
     } catch (sesErr) {
-      console.warn(`[AWS-SES-WARN] AWS SES SDK delivery notice (${sesErr.name}: ${sesErr.message}). Trying SMTP fallback...`);
-    }
-  }
-
-  // Step 2: AWS SES SMTP / Nodemailer Transport
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      const info = await transporter.sendMail({
-        from: fromAddress,
-        to,
-        replyTo: replyTo || undefined,
-        subject,
-        html,
-        text: text || undefined,
-      });
-
-      console.log(`[SMTP] Successfully delivered email to ${to}. MessageId: ${info.messageId}`);
-      const stored = storeDispatchedEmail({
-        recipient: to,
-        recipientName,
-        subject,
-        body: text || subject,
-        html,
-        type,
-        templateId,
-        senderEmail: fromAddress,
-        userEmail: userEmail || to,
-        status: "Delivered via AWS SES SMTP",
-        mode: "live_smtp",
-        messageId: info.messageId,
-        metadata: { ...metadata, engine: "aws_ses_smtp" },
-      });
-
-      return {
-        success: true,
-        mode: "live_smtp",
-        messageId: info.messageId,
-        recipient: to,
-        record: stored,
-      };
-    } catch (smtpErr) {
-      console.warn(`[SMTP-WARN] SMTP delivery notice: ${smtpErr.message}. Falling back to In-App Portal Mailbox.`);
+      console.warn(`[AWS-SES-WARN] AWS SES fallback notice (${sesErr.message}). Falling back to In-App Mailbox.`);
     }
   }
 
   // Step 3: Resilient In-App Portal Mailbox Fallback (always guarantees persistence and zero blockers)
-  console.log(`[AWS-SES-PORTAL] Email dispatched to In-App Mailbox for ${to}: "${subject}"`);
+  console.log(`[PORTAL-MAILBOX] Email dispatched to In-App Mailbox for ${to}: "${subject}"`);
   const stored = storeDispatchedEmail({
     recipient: to,
     recipientName,
@@ -277,15 +278,15 @@ async function dispatchEmail({
     senderEmail: fromAddress,
     userEmail: userEmail || to,
     status: "Delivered to In-App Mailbox",
-    mode: "aws_ses_portal",
-    messageId: `ses-portal-${Date.now()}`,
-    metadata: { ...metadata, engine: "aws_ses_portal" },
+    mode: "portal_mailbox",
+    messageId: `portal-${Date.now()}`,
+    metadata: { ...metadata, engine: "portal_mailbox" },
   });
 
   return {
     success: true,
-    mode: "aws_ses_portal",
-    messageId: `ses-portal-${Date.now()}`,
+    mode: "portal_mailbox",
+    messageId: `portal-${Date.now()}`,
     recipient: to,
     record: stored,
   };
@@ -717,6 +718,37 @@ async function sendPasswordResetEmail({ toEmail, fullName, resetLink, token }) {
   };
 }
 
+async function verifySmtpConnection() {
+  const transporter = getTransporter();
+  if (!transporter) {
+    return {
+      success: false,
+      configured: false,
+      message: "SMTP is not configured in .env (missing SMTP_USER or SMTP_PASS)",
+    };
+  }
+  try {
+    await transporter.verify();
+    return {
+      success: true,
+      configured: true,
+      provider: "SMTP (Google/Gmail)",
+      user: process.env.SMTP_USER,
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      from: getFormattedFrom(),
+      message: `SMTP connected and verified successfully (${process.env.SMTP_USER})`,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      configured: true,
+      provider: "SMTP",
+      error: err.message,
+    };
+  }
+}
+
 module.exports = {
   sendRegistrationSuccessEmail,
   sendVerificationEmail,
@@ -725,5 +757,7 @@ module.exports = {
   sendPasswordResetEmail,
   storeDispatchedEmail,
   dispatchEmail,
+  verifySmtpConnection,
+  getTransporter,
   getAwsSesClient,
 };
