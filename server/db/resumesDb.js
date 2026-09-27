@@ -198,16 +198,36 @@ class ResumesDatabase {
 
   findDuplicate(resumeData) {
     const list = readData(COLLECTION, []);
-    if (resumeData.email) {
-      const byEmail = list.find(r => r.email && r.email.toLowerCase() === resumeData.email.toLowerCase());
-      if (byEmail) return byEmail;
-    }
-    if (resumeData.name && resumeData.resumeFileName) {
-      const byNameAndFile = list.find(r =>
-        r.name && r.name.toLowerCase() === resumeData.name.toLowerCase() &&
-        r.resumeFileName && r.resumeFileName.toLowerCase() === resumeData.resumeFileName.toLowerCase()
-      );
-      if (byNameAndFile) return byNameAndFile;
+    const normEmail = (resumeData.email || "").trim().toLowerCase();
+    const normPhone = (resumeData.phone || "").replace(/\D/g, "");
+    const normName = (resumeData.name || "").trim().toLowerCase();
+    const normFile = (resumeData.resumeFileName || "").trim().toLowerCase();
+
+    for (const r of list) {
+      if (!r) continue;
+      // 1. By email match (ignoring generic example.com)
+      if (normEmail && !normEmail.endsWith("@example.com") && r.email && r.email.trim().toLowerCase() === normEmail) {
+        return r;
+      }
+      // 2. By phone match (if 10+ digits)
+      if (normPhone.length >= 10 && r.phone) {
+        const storedPhone = r.phone.replace(/\D/g, "");
+        if (storedPhone.length >= 10 && storedPhone.slice(-10) === normPhone.slice(-10)) {
+          return r;
+        }
+      }
+      // 3. By candidate name and exact filename
+      if (normName && normFile && r.name && r.resumeFileName) {
+        if (r.name.trim().toLowerCase() === normName && r.resumeFileName.trim().toLowerCase() === normFile) {
+          return r;
+        }
+      }
+      // 4. By exact candidate name if unique and matching role
+      if (normName && normName !== "candidate" && r.name && r.name.trim().toLowerCase() === normName) {
+        if (r.role && resumeData.role && r.role.toLowerCase() === resumeData.role.toLowerCase()) {
+          return r;
+        }
+      }
     }
     return null;
   }
@@ -216,7 +236,11 @@ class ResumesDatabase {
     // Check for duplicate candidate to update rather than creating multiple duplicate rows
     const existing = this.findDuplicate(resumeData);
     if (existing) {
-      return this.update(existing.id, resumeData);
+      const updated = this.update(existing.id, {
+        ...resumeData,
+        updatedAt: new Date().toISOString()
+      });
+      return { ...updated, isDuplicateUpdated: true };
     }
 
     const list = readData(COLLECTION, []);

@@ -1,1 +1,1099 @@
-[]
+[
+  {
+    "id": "c-1790525484889",
+    "name": "SAHIB KHAN",
+    "email": "24billions@mail.com",
+    "phone": "+918954400000",
+    "location": "New Delhi, India",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Business Analytics",
+    "domain": "Business Analytics",
+    "secondaryDomains": [
+      "UI/UX Design",
+      "Product Management"
+    ],
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [
+      "Graphic Designer",
+      "Communication Skills",
+      "Teamwork"
+    ],
+    "extraSkillsCount": 13,
+    "allSkills": [
+      "Graphic Designer",
+      "Communication Skills",
+      "Teamwork",
+      "Adaptability",
+      "Problem Solving",
+      "Time Management",
+      "Organizational Skills",
+      "Initiative",
+      "Dependability",
+      "Positive Attitude",
+      "Computer Skills",
+      "Internet Browsing",
+      "Email Communication",
+      "File Management",
+      "Hindi",
+      "English",
+      "French"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "Graphic Designer",
+        "normalized": "Graphic Designer",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Communication Skills",
+        "normalized": "Communication Skills",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Teamwork",
+        "normalized": "Teamwork",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Adaptability",
+        "normalized": "Adaptability",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Problem Solving",
+        "normalized": "Problem Solving",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Time Management",
+        "normalized": "Time Management",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Organizational Skills",
+        "normalized": "Organizational Skills",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Initiative",
+        "normalized": "Initiative",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Dependability",
+        "normalized": "Dependability",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Positive Attitude",
+        "normalized": "Positive Attitude",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Computer Skills",
+        "normalized": "Computer Skills",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Internet Browsing",
+        "normalized": "Internet Browsing",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Email Communication",
+        "normalized": "Email Communication",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "File Management",
+        "normalized": "File Management",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "Hindi",
+        "normalized": "Hindi",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "English",
+        "normalized": "English",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      },
+      {
+        "original": "French",
+        "normalized": "French",
+        "category": "Domain Specific",
+        "domains": {},
+        "confidence": 0.85
+      }
+    ],
+    "education": "Bachelor of Technology",
+    "educationEntries": [
+      {
+        "degree": "Bachelor of Technology",
+        "institution": "Sunshine Engineering College, Mumbai, Maharashtra",
+        "field": "Computer Science",
+        "startYear": null,
+        "endYear": "2022",
+        "grade": null
+      },
+      {
+        "degree": "Higher Secondary Education (12th Grade)",
+        "institution": "Golden Valley Senior Secondary School, Pune, Maharashtra",
+        "field": "",
+        "startYear": null,
+        "endYear": "2018",
+        "grade": null
+      },
+      {
+        "degree": "Secondary Education (10th Grade)",
+        "institution": "Bright Horizon Middle School, Pune, Maharashtra",
+        "field": "",
+        "startYear": null,
+        "endYear": "2016",
+        "grade": null
+      }
+    ],
+    "experienceEntries": [],
+    "score": 39,
+    "atsScore": 39,
+    "matchScore": 39,
+    "skillsMatchPct": 20,
+    "status": "Rejected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 0,
+        "max": 30,
+        "percentage": 0
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 3,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9.5,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 5,
+        "max": 10,
+        "candidateDomain": "Business Analytics",
+        "jdDomain": "Data Science"
+      },
+      "resumeQuality": {
+        "score": 4,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 4,
+      "issues": [
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 17 classified technical competencies.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [],
+    "missingSkills": [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning",
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingRequiredSkills": [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning",
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Academic or foundational interest in Business Analytics",
+        "Broad alignment with the analytical domain"
+      ],
+      "missingSkills": [
+        "Core competencies: Python, SQL, Machine Learning, TensorFlow, Scikit-Learn, and Docker/AWS",
+        "Complete lack of required senior-level data science and engineering experience (0 years presented)"
+      ],
+      "experienceMatch": "Candidate presents 0 years of experience, failing to meet the required threshold for a senior-level appointment.",
+      "verdict": "Unqualified for Senior Data Scientist; definitive rejection due to zero core technical skill match and lack of experience."
+    },
+    "summary": "Sahib Khan does not meet the baseline prerequisites for the Senior Data Scientist role, exhibiting a 0% match across critical technical competencies such as Python, Machine Learning, and cloud infrastructure. With zero years of professional experience, the candidate cannot be considered for a senior-level position within the Data & AI department. Immediate rejection is recommended.",
+    "aiAnalysis": {
+      "summary": "Sahib Khan does not meet the baseline prerequisites for the Senior Data Scientist role, exhibiting a 0% match across critical technical competencies such as Python, Machine Learning, and cloud infrastructure. With zero years of professional experience, the candidate cannot be considered for a senior-level position within the Data & AI department. Immediate rejection is recommended.",
+      "keyPoints": {
+        "strengths": [
+          "Academic or foundational interest in Business Analytics",
+          "Broad alignment with the analytical domain"
+        ],
+        "missingSkills": [
+          "Core competencies: Python, SQL, Machine Learning, TensorFlow, Scikit-Learn, and Docker/AWS",
+          "Complete lack of required senior-level data science and engineering experience (0 years presented)"
+        ],
+        "experienceMatch": "Candidate presents 0 years of experience, failing to meet the required threshold for a senior-level appointment.",
+        "verdict": "Unqualified for Senior Data Scientist; definitive rejection due to zero core technical skill match and lack of experience."
+      },
+      "breakdown": {
+        "requiredSkills": {
+          "score": 0,
+          "max": 30,
+          "percentage": 0
+        },
+        "preferredSkills": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80
+        },
+        "experience": {
+          "score": 6,
+          "max": 20,
+          "candidateYears": 0,
+          "requiredYears": 3,
+          "status": "SHORTFALL"
+        },
+        "education": {
+          "score": 9.5,
+          "max": 10
+        },
+        "keywords": {
+          "score": 4,
+          "max": 10
+        },
+        "domainRelevance": {
+          "score": 5,
+          "max": 10,
+          "candidateDomain": "Business Analytics",
+          "jdDomain": "Data Science"
+        },
+        "resumeQuality": {
+          "score": 4,
+          "max": 5
+        },
+        "certifications": {
+          "score": 2,
+          "max": 5
+        }
+      },
+      "matchedSkills": [],
+      "missingSkills": [
+        "Python",
+        "SQL",
+        "Machine Learning",
+        "Deep Learning",
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingRequiredSkills": [
+        "Python",
+        "SQL",
+        "Machine Learning",
+        "Deep Learning",
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingPreferredSkills": [],
+      "atsScore": 39,
+      "matchScore": 39,
+      "skillsMatchPct": 20,
+      "status": "Rejected"
+    },
+    "resumeData": {
+      "fileName": "resume1.jpeg",
+      "rawText": "Fresher Resume\nSAHIB KHAN\nGraphic Designer\nContact\nPhone\n+91 8954400000\nEmail\n24billions@mail.com\nAddress\nNew Delhi, India\nPersonal Skills\nCommunication Skills\nTeamwork\nAdaptability\nProblem Solving\nTime Management\nOrganizational Skills\nInitiative\nDependability\nPositive Attitude\nLanguage\nHindi\nEnglish\nFrench\nCareer Objective\nEnthusiastic individual eager to start a promising career. Looking for an entry-level position where I can contribute positively to a team and gain valuable experience, whether it's in sales, administration, or any other field.\nEducation\nBachelor of Technology in Computer Science\nSunshine Engineering College, Mumbai, Maharashtra\nMay 2022\nHigher Secondary Education (12th Grade)\nGolden Valley Senior Secondary School, Pune, Maharashtra\nMay 2018\nSecondary Education (10th Grade)\nBright Horizon Middle School, Pune, Maharashtra\nMay 2016\nTechnical Skills\nComputer Skills\nInternet Browsing\nEmail Communication\nFile Management\nHOBBIES\nReading Books\nSports and Fitness\nMusic\nCooking",
+      "education": [
+        {
+          "degree": "Bachelor of Technology",
+          "institution": "Sunshine Engineering College, Mumbai, Maharashtra",
+          "field": "Computer Science",
+          "startYear": null,
+          "endYear": "2022",
+          "grade": null
+        },
+        {
+          "degree": "Higher Secondary Education (12th Grade)",
+          "institution": "Golden Valley Senior Secondary School, Pune, Maharashtra",
+          "field": "",
+          "startYear": null,
+          "endYear": "2018",
+          "grade": null
+        },
+        {
+          "degree": "Secondary Education (10th Grade)",
+          "institution": "Bright Horizon Middle School, Pune, Maharashtra",
+          "field": "",
+          "startYear": null,
+          "endYear": "2016",
+          "grade": null
+        }
+      ],
+      "educationEntries": [
+        {
+          "degree": "Bachelor of Technology",
+          "institution": "Sunshine Engineering College, Mumbai, Maharashtra",
+          "field": "Computer Science",
+          "startYear": null,
+          "endYear": "2022",
+          "grade": null
+        },
+        {
+          "degree": "Higher Secondary Education (12th Grade)",
+          "institution": "Golden Valley Senior Secondary School, Pune, Maharashtra",
+          "field": "",
+          "startYear": null,
+          "endYear": "2018",
+          "grade": null
+        },
+        {
+          "degree": "Secondary Education (10th Grade)",
+          "institution": "Bright Horizon Middle School, Pune, Maharashtra",
+          "field": "",
+          "startYear": null,
+          "endYear": "2016",
+          "grade": null
+        }
+      ],
+      "experienceEntries": [],
+      "projects": [],
+      "certifications": [],
+      "resumeQuality": {
+        "score": 4,
+        "issues": [
+          "Work experience section could not be clearly identified or is empty."
+        ],
+        "warnings": [],
+        "strengths": [
+          "Valid email address detected.",
+          "Rich skill profile with 17 classified technical competencies.",
+          "Academic background and degree credentials clearly stated."
+        ]
+      },
+      "requiresOcr": false,
+      "ocrWarning": null,
+      "s3Url": null,
+      "storageProvider": "Local"
+    },
+    "uploadedDate": "27 Sept 2026",
+    "jobId": "job-ds-101",
+    "targetJobId": "job-ds-101",
+    "targetJobTitle": "Senior Data Scientist",
+    "resumeFileName": "resume1.jpeg",
+    "rawText": "Fresher Resume\nSAHIB KHAN\nGraphic Designer\nContact\nPhone\n+91 8954400000\nEmail\n24billions@mail.com\nAddress\nNew Delhi, India\nPersonal Skills\nCommunication Skills\nTeamwork\nAdaptability\nProblem Solving\nTime Management\nOrganizational Skills\nInitiative\nDependability\nPositive Attitude\nLanguage\nHindi\nEnglish\nFrench\nCareer Objective\nEnthusiastic individual eager to start a promising career. Looking for an entry-level position where I can contribute positively to a team and gain valuable experience, whether it's in sales, administration, or any other field.\nEducation\nBachelor of Technology in Computer Science\nSunshine Engineering College, Mumbai, Maharashtra\nMay 2022\nHigher Secondary Education (12th Grade)\nGolden Valley Senior Secondary School, Pune, Maharashtra\nMay 2018\nSecondary Education (10th Grade)\nBright Horizon Middle School, Pune, Maharashtra\nMay 2016\nTechnical Skills\nComputer Skills\nInternet Browsing\nEmail Communication\nFile Management\nHOBBIES\nReading Books\nSports and Fitness\nMusic\nCooking",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": "resumes/1790525494588_resume1.jpeg",
+    "s3Bucket": "avahire-resumes-storage",
+    "createdAt": "2026-09-27T16:11:24.890Z",
+    "updatedAt": "2026-09-27T16:11:34.595Z",
+    "categorizedSkills": {
+      "technical": [],
+      "soft": [],
+      "tools": [
+        "Graphic Designer",
+        "Communication Skills",
+        "Teamwork",
+        "Adaptability",
+        "Problem Solving",
+        "Time Management",
+        "Organizational Skills",
+        "Initiative",
+        "Dependability",
+        "Positive Attitude",
+        "Computer Skills",
+        "Internet Browsing",
+        "Email Communication",
+        "File Management",
+        "Hindi",
+        "English",
+        "French"
+      ],
+      "databases": [],
+      "cloud": []
+    },
+    "projects": [],
+    "certifications": [],
+    "requiresOcr": false,
+    "ocrWarning": null,
+    "currentRole": "Professional"
+  },
+  {
+    "id": "c-1790524508158",
+    "name": "RIYA BONDRE",
+    "email": "riyabondre2@gmail.com",
+    "phone": "+91-9420689837",
+    "location": "Remote / Not Specified",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Data Science",
+    "domain": "Data Science",
+    "secondaryDomains": [
+      "Machine Learning",
+      "Software Development",
+      "Artificial Intelligence"
+    ],
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [
+      "Python",
+      "SQL",
+      "HTML/CSS"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "Python",
+      "SQL",
+      "HTML/CSS",
+      "Machine Learning",
+      "Deep Learning",
+      "Natural Language Processing"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "python",
+        "normalized": "Python",
+        "category": "Programming Languages",
+        "domains": {
+          "Data Science": 8,
+          "Machine Learning": 8,
+          "Software Development": 7,
+          "Web Development": 6,
+          "Data Analytics": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "sql",
+        "normalized": "SQL",
+        "category": "Databases",
+        "domains": {
+          "Data Analytics": 9,
+          "Data Science": 8,
+          "Software Development": 8,
+          "Finance": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "html",
+        "normalized": "HTML/CSS",
+        "category": "Frontend",
+        "domains": {
+          "Web Development": 10,
+          "Software Development": 7,
+          "UI/UX Design": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "machine learning",
+        "normalized": "Machine Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 10,
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "neural networks",
+        "normalized": "Deep Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "nlp",
+        "normalized": "Natural Language Processing",
+        "category": "Data Science & AI",
+        "domains": {
+          "Artificial Intelligence": 10,
+          "Machine Learning": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      }
+    ],
+    "education": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+    "educationEntries": [
+      {
+        "degree": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+        "institution": "University / College",
+        "graduationYear": "2027",
+        "gpa": null
+      },
+      {
+        "degree": "Methodology",
+        "institution": "Operating Systems",
+        "graduationYear": null,
+        "gpa": null
+      }
+    ],
+    "experienceEntries": [],
+    "score": 56,
+    "atsScore": 56,
+    "matchScore": 56,
+    "skillsMatchPct": 40,
+    "status": "Review",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 12,
+        "max": 30,
+        "percentage": 40
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 3,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9.5,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 10,
+        "max": 10,
+        "candidateDomain": "Data Science",
+        "jdDomain": "Data Science"
+      },
+      "resumeQuality": {
+        "score": 4,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 4,
+      "issues": [
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 6 classified technical competencies.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning"
+    ],
+    "missingSkills": [
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingRequiredSkills": [
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Foundational background in the Data Science domain",
+        "Demonstrated alignment with core basics including Python, SQL, and general Machine Learning concepts"
+      ],
+      "missingSkills": [
+        "Absence of key machine learning and deep learning frameworks (TensorFlow, Scikit-Learn, PyTorch)",
+        "Lacks hands-on MLOps and cloud engineering tools (Docker, AWS, GCP)",
+        "Severe experience deficit: 0 years vs. the multi-year tenure required for a Senior position"
+      ],
+      "experienceMatch": "The candidate has 0 years of experience, failing to meet the minimum seniority, production, and leadership requirements of a Senior Data Scientist.",
+      "verdict": "Reject for Senior role; consider redirecting to an Entry-Level Data Analyst or Intern Data Scientist pipeline."
+    },
+    "summary": "Riya Bondre demonstrates baseline theoretical alignment in Python and data science concepts, achieving a 56/100 ATS score. However, with 0 years of professional experience and a 40% match on critical skills—lacking core frameworks like TensorFlow and cloud/containerization tools like AWS and Docker—she is fundamentally underqualified for a senior-level position. She should be screened out for this requisition and routed toward junior or intern talent pools.",
+    "aiAnalysis": {
+      "summary": "Riya Bondre demonstrates baseline theoretical alignment in Python and data science concepts, achieving a 56/100 ATS score. However, with 0 years of professional experience and a 40% match on critical skills—lacking core frameworks like TensorFlow and cloud/containerization tools like AWS and Docker—she is fundamentally underqualified for a senior-level position. She should be screened out for this requisition and routed toward junior or intern talent pools.",
+      "keyPoints": {
+        "strengths": [
+          "Foundational background in the Data Science domain",
+          "Demonstrated alignment with core basics including Python, SQL, and general Machine Learning concepts"
+        ],
+        "missingSkills": [
+          "Absence of key machine learning and deep learning frameworks (TensorFlow, Scikit-Learn, PyTorch)",
+          "Lacks hands-on MLOps and cloud engineering tools (Docker, AWS, GCP)",
+          "Severe experience deficit: 0 years vs. the multi-year tenure required for a Senior position"
+        ],
+        "experienceMatch": "The candidate has 0 years of experience, failing to meet the minimum seniority, production, and leadership requirements of a Senior Data Scientist.",
+        "verdict": "Reject for Senior role; consider redirecting to an Entry-Level Data Analyst or Intern Data Scientist pipeline."
+      },
+      "breakdown": {
+        "requiredSkills": {
+          "score": 12,
+          "max": 30,
+          "percentage": 40
+        },
+        "preferredSkills": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80
+        },
+        "experience": {
+          "score": 6,
+          "max": 20,
+          "candidateYears": 0,
+          "requiredYears": 3,
+          "status": "SHORTFALL"
+        },
+        "education": {
+          "score": 9.5,
+          "max": 10
+        },
+        "keywords": {
+          "score": 4,
+          "max": 10
+        },
+        "domainRelevance": {
+          "score": 10,
+          "max": 10,
+          "candidateDomain": "Data Science",
+          "jdDomain": "Data Science"
+        },
+        "resumeQuality": {
+          "score": 4,
+          "max": 5
+        },
+        "certifications": {
+          "score": 2,
+          "max": 5
+        }
+      },
+      "matchedSkills": [
+        "Python",
+        "SQL",
+        "Machine Learning",
+        "Deep Learning"
+      ],
+      "missingSkills": [
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingRequiredSkills": [
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingPreferredSkills": [],
+      "atsScore": 56,
+      "matchScore": 56,
+      "skillsMatchPct": 40,
+      "status": "Review"
+    },
+    "resumeData": {
+      "fileName": "resume riya.docx",
+      "rawText": "RIYA BONDRE\n\n +91-9420689837 riyabondre2@gmail.com\n\nSUMMARY\n\nComputer Science Engineering student currently pursuing B.Tech, with foundational knowledge of Python, SQL, and data analysis. Seeking entry-level or internship opportunities to apply analytical skills and gain practical industry experience.\n\nSKILLS\n\nProgramming Language: Python, SQL., HTML\n\nTools And Technologies: Google colab, Jupyter Notebook, VS Code\n\nMachine Learning: Supervised and Unsupervised Learning, Model Evaluation, NLP\n\nEDUCATION\n\nBachelor of Technology in Computer Science Expected Graduation:2027\n\nG.H Raisoni University CGPA: 7.65 / 10 \n\nPROJECT\n\nAI Resume Analyzer With Job Description Matching\n\n Developed an AI-powered web application using Python and Streamlit for resume analysis.\n\n Implemented NLP-based matching to compare resumes with job descriptions and generate compatibility scores.\n\n Identified skill gaps and provided personalized recommendations to improve job\n\nsuitability.\n\nCOURSEWOEK\n\nDatabase Management System, Data Structures and Algorithmt, Object-Oriented \n\nMethodology, Operating Systems, Computer Networks, Artificial Neural Networks,\n\nNLP",
+      "education": [
+        {
+          "degree": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+          "institution": "University / College",
+          "graduationYear": "2027",
+          "gpa": null
+        },
+        {
+          "degree": "Methodology",
+          "institution": "Operating Systems",
+          "graduationYear": null,
+          "gpa": null
+        }
+      ],
+      "educationEntries": [
+        {
+          "degree": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+          "institution": "University / College",
+          "graduationYear": "2027",
+          "gpa": null
+        },
+        {
+          "degree": "Methodology",
+          "institution": "Operating Systems",
+          "graduationYear": null,
+          "gpa": null
+        }
+      ],
+      "experienceEntries": [],
+      "projects": [],
+      "certifications": [],
+      "resumeQuality": {
+        "score": 4,
+        "issues": [
+          "Work experience section could not be clearly identified or is empty."
+        ],
+        "warnings": [],
+        "strengths": [
+          "Valid email address detected.",
+          "Rich skill profile with 6 classified technical competencies.",
+          "Academic background and degree credentials clearly stated."
+        ]
+      },
+      "requiresOcr": false,
+      "ocrWarning": null,
+      "s3Url": null,
+      "storageProvider": "Local"
+    },
+    "uploadedDate": "27 Sept 2026",
+    "jobId": "job-ds-101",
+    "targetJobId": "job-ds-101",
+    "targetJobTitle": "Senior Data Scientist",
+    "resumeFileName": "resume riya.docx",
+    "rawText": "RIYA BONDRE\n\n +91-9420689837 riyabondre2@gmail.com\n\nSUMMARY\n\nComputer Science Engineering student currently pursuing B.Tech, with foundational knowledge of Python, SQL, and data analysis. Seeking entry-level or internship opportunities to apply analytical skills and gain practical industry experience.\n\nSKILLS\n\nProgramming Language: Python, SQL., HTML\n\nTools And Technologies: Google colab, Jupyter Notebook, VS Code\n\nMachine Learning: Supervised and Unsupervised Learning, Model Evaluation, NLP\n\nEDUCATION\n\nBachelor of Technology in Computer Science Expected Graduation:2027\n\nG.H Raisoni University CGPA: 7.65 / 10 \n\nPROJECT\n\nAI Resume Analyzer With Job Description Matching\n\n Developed an AI-powered web application using Python and Streamlit for resume analysis.\n\n Implemented NLP-based matching to compare resumes with job descriptions and generate compatibility scores.\n\n Identified skill gaps and provided personalized recommendations to improve job\n\nsuitability.\n\nCOURSEWOEK\n\nDatabase Management System, Data Structures and Algorithmt, Object-Oriented \n\nMethodology, Operating Systems, Computer Networks, Artificial Neural Networks,\n\nNLP",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": "resumes/1790524508111_resume_riya.docx",
+    "s3Bucket": "avahire-resumes-storage",
+    "createdAt": "2026-09-27T15:55:08.177Z",
+    "updatedAt": "2026-09-27T15:55:08.177Z"
+  },
+  {
+    "id": "c-1790522735426",
+    "name": "Candidate",
+    "email": "",
+    "phone": "",
+    "location": "Remote / Not Specified",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Software Development",
+    "domain": "Software Development",
+    "secondaryDomains": [],
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [],
+    "extraSkillsCount": 0,
+    "allSkills": [],
+    "all_normalized_skills": [],
+    "education": "Bachelor's Degree",
+    "educationEntries": [],
+    "experienceEntries": [],
+    "score": 39,
+    "atsScore": 39,
+    "matchScore": 39,
+    "skillsMatchPct": 20,
+    "status": "Rejected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 0,
+        "max": 30,
+        "percentage": 0
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 3,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 5,
+        "max": 10,
+        "candidateDomain": "Software Development",
+        "jdDomain": "Data Science"
+      },
+      "resumeQuality": {
+        "score": 4.5,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 1,
+      "issues": [
+        "Missing contact email address.",
+        "No telephone or mobile number detected.",
+        "Low technical skill density detected in resume.",
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [
+        "Scanned image or flattened PDF detected. The document contains insufficient text streams and requires OCR for complete data extraction."
+      ],
+      "strengths": []
+    },
+    "matchedSkills": [],
+    "missingSkills": [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning",
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingRequiredSkills": [
+      "Python",
+      "SQL",
+      "Machine Learning",
+      "Deep Learning",
+      "TensorFlow",
+      "PyTorch",
+      "Scikit-Learn",
+      "AWS",
+      "Google Cloud Platform",
+      "Docker"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Foundational domain alignment within general software development",
+        "Transferable baseline interest in engineering and technical concepts"
+      ],
+      "missingSkills": [
+        "Core AI/ML competencies: Python, Machine Learning, TensorFlow, Scikit-Learn, and SQL",
+        "Infrastructure and deployment tools: Docker, AWS, and GCP",
+        "Significant experience deficit with 0 years against senior-level prerequisites"
+      ],
+      "experienceMatch": "Candidate possesses 0 years of relevant professional experience, falling critically short of senior-level requirements.",
+      "verdict": "Reject: Unqualified due to a 0% core skill match and zero professional experience in Data Science."
+    },
+    "summary": "The candidate is not qualified for the Senior Data Scientist position, presenting a 0% match across mandatory machine learning, programming, and cloud technologies. With 0 years of professional experience, the applicant lacks the technical depth and senior-level expertise required for the Data & AI department. Rejection is firmly recommended.",
+    "aiAnalysis": {
+      "summary": "The candidate presents an entry-level software development profile with 0 years of relevant professional experience, yielding a 0% match against the core technical stack. Critical proficiencies in Python, Machine Learning, SQL, and cloud infrastructure are entirely absent. Given the seniority of the role, the candidate is unsuitable and is rejected.",
+      "keyPoints": {
+        "strengths": [
+          "Foundational exposure to general software development concepts",
+          "Transferable technical baseline suitable for entry-level engineering pathways"
+        ],
+        "missingSkills": [
+          "Python, SQL, Machine Learning, TensorFlow, Scikit-Learn, Docker, AWS",
+          "Severe experience gap: 0 years vs. senior-level track record required"
+        ],
+        "experienceMatch": "Candidate possesses 0 years of professional experience, completely failing to meet the multi-year requirement for a senior-level position.",
+        "verdict": "Definitive Reject: Candidate fails core technical requirements and lacks the requisite seniority and experience."
+      },
+      "breakdown": {
+        "requiredSkills": {
+          "score": 0,
+          "max": 30,
+          "percentage": 0
+        },
+        "preferredSkills": {
+          "score": 8,
+          "max": 10,
+          "percentage": 80
+        },
+        "experience": {
+          "score": 6,
+          "max": 20,
+          "candidateYears": 0,
+          "requiredYears": 3,
+          "status": "SHORTFALL"
+        },
+        "education": {
+          "score": 5,
+          "max": 10
+        },
+        "keywords": {
+          "score": 4,
+          "max": 10
+        },
+        "domainRelevance": {
+          "score": 5,
+          "max": 10,
+          "candidateDomain": "Software Development",
+          "jdDomain": "Data Science"
+        },
+        "resumeQuality": {
+          "score": 1,
+          "max": 5
+        },
+        "certifications": {
+          "score": 2,
+          "max": 5
+        }
+      },
+      "matchedSkills": [],
+      "missingSkills": [
+        "Python",
+        "SQL",
+        "Machine Learning",
+        "Deep Learning",
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingRequiredSkills": [
+        "Python",
+        "SQL",
+        "Machine Learning",
+        "Deep Learning",
+        "TensorFlow",
+        "PyTorch",
+        "Scikit-Learn",
+        "AWS",
+        "Google Cloud Platform",
+        "Docker"
+      ],
+      "missingPreferredSkills": [],
+      "atsScore": 31,
+      "matchScore": 31,
+      "skillsMatchPct": 20,
+      "status": "Rejected"
+    },
+    "resumeData": {
+      "fileName": "appointment 1.pdf",
+      "rawText": "-- 1 of 1 --",
+      "education": [],
+      "educationEntries": [],
+      "experienceEntries": [],
+      "projects": [],
+      "certifications": [],
+      "resumeQuality": {
+        "score": 1,
+        "issues": [
+          "Missing contact email address.",
+          "No telephone or mobile number detected.",
+          "Low technical skill density detected in resume.",
+          "Work experience section could not be clearly identified or is empty."
+        ],
+        "warnings": [
+          "Scanned image or flattened PDF detected. The document contains insufficient text streams and requires OCR for complete data extraction."
+        ],
+        "strengths": []
+      },
+      "requiresOcr": true,
+      "ocrWarning": "Scanned image or flattened PDF detected. The document contains insufficient text streams and requires OCR for complete data extraction.",
+      "s3Url": null,
+      "storageProvider": "Local"
+    },
+    "uploadedDate": "27 Sept 2026",
+    "jobId": "job-ds-101",
+    "targetJobId": "job-ds-101",
+    "targetJobTitle": "Senior Data Scientist",
+    "resumeFileName": "appointment 1.pdf",
+    "rawText": "-- 1 of 1 --",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": "resumes/1790522735391_appointment_1.pdf",
+    "s3Bucket": "avahire-resumes-storage",
+    "createdAt": "2026-09-27T15:25:35.477Z",
+    "updatedAt": "2026-09-27T15:26:36.457Z",
+    "currentRole": "Professional"
+  }
+]

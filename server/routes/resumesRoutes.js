@@ -10,29 +10,37 @@ const { parseResume } = require("../services/resumeParserService");
 const { ALL_DOMAINS } = require("../services/domainClassifier");
 const emailService = require("../services/emailService");
 
-const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
+const ALLOWED_RESUME_EXTENSIONS = [
+  ".pdf", ".docx", ".doc", ".txt", ".rtf",
+  ".jpg", ".jpeg", ".png", ".webp"
+];
 const ALLOWED_RESUME_MIMES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
   "text/plain",
   "application/rtf",
-  "text/rtf"
+  "text/rtf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp"
 ];
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname || "").toLowerCase();
     const mime = (file.mimetype || "").toLowerCase();
 
+    const isImage = [".jpg", ".jpeg", ".png", ".webp"].includes(ext) || mime.startsWith("image/");
     const hasValidExt = ALLOWED_RESUME_EXTENSIONS.includes(ext);
     const hasValidMime = ALLOWED_RESUME_MIMES.includes(mime) || (mime.startsWith("text/") && ext !== ".csv" && ext !== ".tsv" && ext !== ".json");
 
-    if (!hasValidExt && !hasValidMime) {
+    if (!isImage && !hasValidExt && !hasValidMime) {
       return cb(
-        new Error(`Invalid document type "${ext || file.originalname}". Only resume documents (.pdf, .docx, .doc, .txt) are accepted.`)
+        new Error(`Invalid document type "${ext || file.originalname}". Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG.`)
       );
     }
     cb(null, true);
@@ -45,7 +53,7 @@ const handleUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
+        error: err.message || "Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG."
       });
     }
     next();
@@ -53,11 +61,11 @@ const handleUpload = (req, res, next) => {
 };
 
 const handleMultipleUpload = (req, res, next) => {
-  upload.array("resumes", 20)(req, res, (err) => {
+  upload.array("resumes", 50)(req, res, (err) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
+        error: err.message || "Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG."
       });
     }
     next();
@@ -252,7 +260,10 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
     });
   } catch (err) {
     console.error("Upload and screen error:", err);
-    res.status(500).json({ success: false, error: err.message });
+    const isInvalidResume = err.message === "No valid resume detected." || (err.message && err.message.toLowerCase().includes("no valid resume"));
+    const statusCode = isInvalidResume ? 400 : 500;
+    const errorMsg = isInvalidResume ? "No valid resume detected." : (err.message || "Failed to process resume.");
+    res.status(statusCode).json({ success: false, error: errorMsg });
   }
 });
 
@@ -361,10 +372,18 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           rawText: parsed.raw_text?.slice(0, 3000)
         });
 
-        results.push(candidateRecord);
+        results.push({
+          ...candidateRecord,
+          uploadFileName: originalName
+        });
       } catch (fileErr) {
         console.error(`Error parsing file ${originalName}:`, fileErr);
-        errors.push({ filename: originalName, error: fileErr.message });
+        const isInvalidResume = fileErr.message === "No valid resume detected." || (fileErr.message && fileErr.message.toLowerCase().includes("no valid resume"));
+        errors.push({
+          filename: originalName,
+          error: isInvalidResume ? "No valid resume detected." : (fileErr.message || "Failed to process resume."),
+          status: isInvalidResume ? "Invalid" : "Failed"
+        });
       }
     }
 

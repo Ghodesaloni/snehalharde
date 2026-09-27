@@ -12,6 +12,7 @@ const { extractResumeText, cleanExtractedText } = require("./textExtractor");
 const { detectResumeSections } = require("./sectionDetector");
 const { normalizeSkill, extractNormalizedSkills, SKILL_DEFINITIONS } = require("./skillTaxonomy");
 const { classifyCandidateDomain } = require("./domainClassifier");
+const { isImageResume, processResumeImage } = require("./imageResumeService");
 
 // Common email regex (RFC 5322 compliant subset)
 const EMAIL_REGEX = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b/;
@@ -340,9 +341,28 @@ function evaluateResumeQuality(parsed, requiresOcr, ocrWarning) {
  * @returns {Promise<Object>} Structured Resume Object conforming to specification
  */
 async function parseResume(fileBuffer, mimeType = "", filename = "") {
-  // Step 1 & 2: Text extraction & Cleaning
-  const extraction = await extractResumeText(fileBuffer, mimeType, filename);
-  const { cleanText, requiresOcr, ocrWarning } = extraction;
+  let cleanText = "";
+  let requiresOcr = false;
+  let ocrWarning = null;
+  let imageResult = null;
+
+  // Step 1: Detect Image Resumes (Screenshots, WhatsApp shares, JPG, JPEG, PNG, etc.)
+  if (isImageResume(filename, mimeType)) {
+    // Process image with OCR + document understanding & strict resume validation
+    imageResult = await processResumeImage(fileBuffer, mimeType, filename);
+    cleanText = imageResult.cleanText;
+  } else {
+    // Standard Document Text extraction & Cleaning (PDF, DOCX, TXT, RTF)
+    const extraction = await extractResumeText(fileBuffer, mimeType, filename);
+    cleanText = extraction.cleanText;
+    requiresOcr = extraction.requiresOcr;
+    ocrWarning = extraction.ocrWarning;
+  }
+
+  // Step 2: Validate extracted resume text
+  if (!cleanText || cleanText.trim().length < 40) {
+    throw new Error("No valid resume detected.");
+  }
 
   // Step 3: Section Detection
   const sections = detectResumeSections(cleanText);
@@ -354,11 +374,30 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
   const githubMatch = cleanText.match(GITHUB_REGEX);
   const portfolioMatch = cleanText.match(PORTFOLIO_REGEX);
 
-  const candidateName = extractCandidateName(sections.contactHeader, cleanText);
-  const location = extractLocation(sections.contactHeader || cleanText);
+  let candidateName = imageResult?.candidate?.name || extractCandidateName(sections.contactHeader, cleanText);
+  if (!candidateName || candidateName === "Candidate") {
+    candidateName = extractCandidateName(sections.contactHeader, cleanText);
+  }
+
+  const location = imageResult?.candidate?.location || extractLocation(sections.contactHeader || cleanText);
+  const email = imageResult?.candidate?.email || (emailMatch ? emailMatch[0] : null);
+  const phone = imageResult?.candidate?.phone || (phoneMatch ? phoneMatch[0] : null);
+  const linkedin = imageResult?.candidate?.linkedin || (linkedInMatch ? linkedInMatch[0] : null);
+  const github = imageResult?.candidate?.github || (githubMatch ? githubMatch[0] : null);
+  const portfolio = portfolioMatch ? portfolioMatch[0] : null;
 
   // Step 5: Skill Extraction & Categorization
   const normalizedSkills = extractNormalizedSkills(cleanText);
+  if (imageResult?.skills && Array.isArray(imageResult.skills)) {
+    for (const rawSkill of imageResult.skills) {
+      if (rawSkill && typeof rawSkill === "string") {
+        const norm = normalizeSkill(rawSkill.trim());
+        if (!normalizedSkills.some(s => s.normalized.toLowerCase() === norm.normalized.toLowerCase())) {
+          normalizedSkills.push(norm);
+        }
+      }
+    }
+  }
 
   const categorizedSkills = {
     technical: [],
@@ -383,7 +422,22 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
   }
 
   // Step 6: Extract Experience & Education
-  const experienceEntries = extractExperience(sections.experience);
+  let experienceEntries = [];
+  if (imageResult?.experience && imageResult.experience.length > 0) {
+    experienceEntries = imageResult.experience.map(e => ({
+      title: e.title || "Professional",
+      company: e.company || "Company",
+      location: e.location || "",
+      startDate: e.startDate || "",
+      endDate: e.endDate || "",
+      duration: e.duration || "",
+      description: e.description || "",
+      current: !!e.current
+    }));
+  } else {
+    experienceEntries = extractExperience(sections.experience);
+  }
+
   const totalExpYears = calculateTotalExperienceYears(experienceEntries);
 
   // Format experience display (e.g. "3.2 Years" or fallback to explicit search)
@@ -395,9 +449,22 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
     }
   }
 
-  const educationEntries = extractEducation(sections.education);
-  const projects = extractProjects(sections.projects);
-  const certifications = extractCertifications(sections.certifications);
+  let educationEntries = [];
+  if (imageResult?.education && imageResult.education.length > 0) {
+    educationEntries = imageResult.education.map(ed => ({
+      degree: ed.degree || "Bachelor's Degree",
+      institution: ed.institution || "University",
+      field: ed.field || "",
+      startYear: ed.startYear || null,
+      endYear: ed.endYear || null,
+      grade: ed.grade || null
+    }));
+  } else {
+    educationEntries = extractEducation(sections.education);
+  }
+
+  const projects = imageResult?.projects?.length > 0 ? imageResult.projects : extractProjects(sections.projects);
+  const certifications = imageResult?.certifications?.length > 0 ? imageResult.certifications : extractCertifications(sections.certifications);
 
   // Step 7: Domain Classification
   const primaryRole = experienceEntries[0]?.title || "Professional";
@@ -406,7 +473,7 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
       role: primaryRole,
       currentRole: primaryRole,
       education: educationEntries[0]?.degree || "",
-      summary: sections.summary,
+      summary: imageResult?.summary || sections.summary,
       experience: experienceEntries
     },
     cleanText,
@@ -414,21 +481,22 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
   );
 
   // Professional summary fallback
-  let summary = sections.summary;
+  let summary = imageResult?.summary || sections.summary;
   if (!summary) {
     summary = `${candidateName} is an experienced ${primaryRole} specializing in ${normalizedSkills.slice(0, 4).map(s => s.normalized).join(", ")}.`;
   }
 
   // Step 8: Resume Quality Assessment
+  // Note: Candidate photos are explicitly identified but NEVER saved as candidate photo
   const intermediate = {
     candidate: {
       name: candidateName,
-      email: emailMatch ? emailMatch[0] : null,
-      phone: phoneMatch ? phoneMatch[0] : null,
+      email,
+      phone,
       location,
-      linkedin: linkedInMatch ? linkedInMatch[0] : null,
-      github: githubMatch ? githubMatch[0] : null,
-      portfolio: portfolioMatch ? portfolioMatch[0] : null
+      linkedin,
+      github,
+      portfolio
     },
     professional_summary: summary,
     domains: {
@@ -446,7 +514,10 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
     certifications,
     raw_text: cleanText,
     requires_ocr: requiresOcr,
-    ocr_warning: ocrWarning
+    ocr_warning: ocrWarning,
+    isImageResume: !!imageResult,
+    hasCandidatePhoto: !!imageResult?.hasCandidatePhoto,
+    isScreenshotOrWhatsApp: !!imageResult?.isScreenshotOrWhatsApp
   };
 
   const resumeQuality = evaluateResumeQuality(intermediate, requiresOcr, ocrWarning);
