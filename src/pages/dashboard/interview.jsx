@@ -24,7 +24,7 @@ import {
     Users,
     Briefcase
 } from "lucide-react";
-import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
+import { getStoredInterviews, saveInterviews, addOrUpdateInterview, removeInterview } from "@/utils/interviewStore";
 import { interviewsApi } from "@/services/api";
 
 const Interviews = () => {
@@ -59,6 +59,12 @@ const Interviews = () => {
             setInterviews(getStoredInterviews());
         };
         fetchInterviews();
+
+        const handleSync = () => {
+            fetchInterviews();
+        };
+        window.addEventListener("avahire_interviews_updated", handleSync);
+        return () => window.removeEventListener("avahire_interviews_updated", handleSync);
     }, []);
 
     const filteredInterviews = useMemo(() => {

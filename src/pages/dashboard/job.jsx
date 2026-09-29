@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { jobsApi } from "@/services/api";
@@ -19,7 +19,10 @@ import {
     AlignLeft,
     Sparkles,
     Video,
-    ArrowRight
+    ArrowRight,
+    Upload,
+    Loader2,
+    Trash2
 } from "lucide-react";
 
 const seedJobs = [];
@@ -40,7 +43,11 @@ const SUGGESTED_SKILLS = [
     "Git",
     "FastAPI",
     "MongoDB",
-    "PostgreSQL"
+    "PostgreSQL",
+    "Java",
+    "Kubernetes",
+    "Next.js",
+    "Express"
 ];
 
 const defaultFormState = {
@@ -57,6 +64,199 @@ const defaultFormState = {
     keySkills: []
 };
 
+// Client-side text parser for job descriptions
+const parseJobDescriptionClientSide = (text = "", filename = "") => {
+    if (!text) {
+        const fallbackTitle = filename ? filename.replace(/\.(pdf|docx?|txt|rtf)$/i, "").replace(/[_-]/g, " ") : "New Job Opening";
+        return {
+            title: fallbackTitle,
+            dept: "Engineering",
+            jobLevel: "Mid Level",
+            reportsTo: "Engineering Manager",
+            loc: "Karnataka",
+            isRemotePosition: false,
+            workMode: "On-site",
+            type: "Full-time",
+            expLevel: "3-5 Years",
+            description: "",
+            keySkills: []
+        };
+    }
+
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const lowerText = text.toLowerCase();
+
+    // 1. Extract Job Title
+    let title = "";
+    const titlePatterns = [
+        /(?:job\s*title|position|role|designation|hiring\s*for)\s*[:\-–]\s*([^\n\r,;]+)/i,
+        /(?:we\s*are\s*hiring|opening\s*for|looking\s*for\s*(?:a|an)?)\s+([A-Za-z0-9\s\/\-\+\#\.]+?(?:engineer|developer|architect|lead|manager|designer|specialist|analyst|associate|intern|consultant|director|officer|executive|scientist|administrator))/i
+    ];
+
+    for (const p of titlePatterns) {
+        const m = text.match(p);
+        if (m && m[1] && m[1].trim().length > 2 && m[1].trim().length < 80) {
+            title = m[1].trim().replace(/^[:\-–\s]+/, "");
+            break;
+        }
+    }
+
+    if (!title && lines.length > 0) {
+        for (let i = 0; i < Math.min(lines.length, 6); i++) {
+            const line = lines[i];
+            if (
+                line.length > 4 &&
+                line.length < 65 &&
+                !/^(company|location|date|page|about\s*us|job\s*description|overview|requirements)/i.test(line) &&
+                /(engineer|developer|designer|manager|lead|analyst|architect|specialist|officer|consultant|scientist|intern|associate)/i.test(line)
+            ) {
+                title = line.replace(/^[:\-–\s]+/, "");
+                break;
+            }
+        }
+    }
+
+    if (!title && lines.length > 0) {
+        title = lines[0].slice(0, 60);
+    }
+
+    if (!title) {
+        title = filename ? filename.replace(/\.(pdf|docx?|txt|rtf)$/i, "").replace(/[_-]/g, " ") : "Software Engineer";
+    }
+
+    // 2. Extract Department
+    let dept = "Engineering";
+    if (/(design|ui\/ux|graphic|visual|product\s*design)/i.test(lowerText) || /(designer)/i.test(title)) {
+        dept = "Design";
+    } else if (/(product\s*manager|product\s*owner|scrum\s*master)/i.test(lowerText) || /(product)/i.test(title)) {
+        dept = "Product";
+    } else if (/(marketing|seo|growth|content|social\s*media|brand)/i.test(lowerText)) {
+        dept = "Marketing";
+    } else if (/(sales|business\s*development|bdr|sdr|account\s*executive)/i.test(lowerText)) {
+        dept = "Sales";
+    } else if (/(human\s*resources|talent\s*acquisition|recruiter|people\s*ops|hr)/i.test(lowerText)) {
+        dept = "Human Resources";
+    } else if (/(finance|accounting|audit|tax|treasury)/i.test(lowerText)) {
+        dept = "Finance";
+    } else if (/(operations|logistics|supply\s*chain|procurement)/i.test(lowerText)) {
+        dept = "Operations";
+    }
+
+    // 3. Extract Job Level
+    let jobLevel = "Mid Level";
+    const titleLower = title.toLowerCase();
+    if (/(director|vp|vice\s*president|head\s*of|chief|cxo)/i.test(titleLower) || /(director|vp)/i.test(lowerText)) {
+        jobLevel = "Director / Executive";
+    } else if (/(lead|principal|architect|staff)/i.test(titleLower)) {
+        jobLevel = "Lead / Principal";
+    } else if (/(senior|sr\b|senior\s*level)/i.test(titleLower) || /(senior|sr\.)/i.test(lowerText)) {
+        jobLevel = "Senior Level";
+    } else if (/(junior|jr\b|intern|trainee|fresher|entry\s*level|graduate)/i.test(titleLower) || /(entry\s*level|internship)/i.test(lowerText)) {
+        jobLevel = "Entry Level / Junior";
+    }
+
+    // 4. Extract Experience Level
+    let expLevel = "3-5 Years";
+    const expMatch =
+        text.match(/(?:experience|exp|years\s*of\s*experience)\s*[:\-–]?\s*(\d+)\s*(?:-|to|\+)?\s*(\d*)\s*(?:years?|yrs?|yr)/i) ||
+        text.match(/(\d+)\s*(?:-|to|\+)\s*(\d*)\s*(?:years?|yrs?|yr)\s*(?:of)?\s*(?:relevant)?\s*experience/i);
+
+    if (expMatch) {
+        const minExp = parseInt(expMatch[1], 10);
+        const maxExp = expMatch[2] ? parseInt(expMatch[2], 10) : minExp;
+        const avgExp = (minExp + maxExp) / 2;
+
+        if (avgExp <= 1) {
+            expLevel = "0-1 Years";
+        } else if (avgExp <= 3) {
+            expLevel = "1-3 Years";
+        } else if (avgExp <= 5) {
+            expLevel = "3-5 Years";
+        } else if (avgExp <= 8) {
+            expLevel = "5-8 Years";
+        } else {
+            expLevel = "8+ Years";
+        }
+    } else if (jobLevel === "Entry Level / Junior") {
+        expLevel = "0-1 Years";
+    } else if (jobLevel === "Senior Level") {
+        expLevel = "5-8 Years";
+    } else if (jobLevel === "Lead / Principal" || jobLevel === "Director / Executive") {
+        expLevel = "8+ Years";
+    }
+
+    // 5. Extract Work Mode & Remote Status
+    let workMode = "On-site";
+    let isRemotePosition = false;
+    if (/(100%\s*remote|fully\s*remote|remote\s*position|work\s*from\s*anywhere|wfh)/i.test(lowerText)) {
+        workMode = "Remote";
+        isRemotePosition = true;
+    } else if (/(\bhybrid\b|hybrid\s*work|partly\s*remote)/i.test(lowerText)) {
+        workMode = "Hybrid";
+    } else if (/\bremote\b/i.test(lowerText) && !/non-remote|no\s*remote/i.test(lowerText)) {
+        workMode = "Remote";
+        isRemotePosition = true;
+    }
+
+    // 6. Extract Location
+    let loc = "Karnataka";
+    if (isRemotePosition || workMode === "Remote") {
+        loc = "Remote";
+    } else {
+        if (/(bangalore|bengaluru)/i.test(lowerText)) loc = "Karnataka";
+        else if (/(mumbai|pune|nagpur)/i.test(lowerText)) loc = "Maharashtra";
+        else if (/(delhi|ncr|new\s*delhi)/i.test(lowerText)) loc = "Delhi";
+        else if (/(hyderabad)/i.test(lowerText)) loc = "Telangana";
+        else if (/(chennai|coimbatore)/i.test(lowerText)) loc = "Tamil Nadu";
+        else if (/(gurgaon|gurugram|noida)/i.test(lowerText)) loc = "Haryana";
+        else if (/(kolkata)/i.test(lowerText)) loc = "West Bengal";
+        else if (/(ahmedabad|surat)/i.test(lowerText)) loc = "Gujarat";
+        else if (/(kochi|trivandrum|thiruvananthapuram)/i.test(lowerText)) loc = "Kerala";
+    }
+
+    // 7. Extract Employment Type
+    let type = "Full-time";
+    if (/(part\s*time|part-time)/i.test(lowerText)) {
+        type = "Part-time";
+    } else if (/(contract|freelance|consultant|fixed\s*term)/i.test(lowerText)) {
+        type = "Contract";
+    } else if (/(internship|intern\b)/i.test(lowerText)) {
+        type = "Internship";
+    }
+
+    // 8. Extract Skills
+    const keySkills = [];
+    for (const skill of SUGGESTED_SKILLS) {
+        const escaped = skill.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        const regex = new RegExp(`(?:^|[^a-zA-Z0-9+#.])${escaped}(?:$|[^a-zA-Z0-9+#.])`, "i");
+        if (regex.test(text)) {
+            if (!keySkills.includes(skill)) {
+                keySkills.push(skill);
+            }
+        }
+    }
+
+    // 9. Format Clean Description
+    let description = text.trim();
+    if (description.length > 3000) {
+        description = description.slice(0, 3000) + "...";
+    }
+
+    return {
+        title,
+        dept,
+        jobLevel,
+        reportsTo: dept === "Engineering" ? "Engineering Manager" : `${dept} Manager`,
+        loc,
+        isRemotePosition,
+        workMode,
+        type,
+        expLevel,
+        description,
+        keySkills: keySkills.slice(0, 10)
+    };
+};
+
 const Jobs = () => {
     const [jobs, setJobs] = useState(seedJobs);
     const [q, setQ] = useState("");
@@ -65,6 +265,9 @@ const Jobs = () => {
     const [skillInput, setSkillInput] = useState("");
     const [selectedJobView, setSelectedJobView] = useState(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isParsingDoc, setIsParsingDoc] = useState(false);
+    const [uploadedDocName, setUploadedDocName] = useState("");
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         const loadJobs = async () => {
@@ -79,6 +282,27 @@ const Jobs = () => {
         };
         loadJobs();
     }, []);
+
+    const handleDeleteJob = async (jobId, jobTitle) => {
+        if (!window.confirm(`Are you sure you want to delete the job "${jobTitle || 'Selected Job'}"? This action cannot be undone.`)) {
+            return;
+        }
+        try {
+            await jobsApi.delete(jobId);
+            setJobs((prev) => prev.filter((j) => j.id !== jobId));
+            if (selectedJobView && selectedJobView.id === jobId) {
+                setSelectedJobView(null);
+            }
+            toast.success(`Job "${jobTitle || 'Job'}" deleted successfully`);
+        } catch (err) {
+            console.error("Failed to delete job:", err);
+            setJobs((prev) => prev.filter((j) => j.id !== jobId));
+            if (selectedJobView && selectedJobView.id === jobId) {
+                setSelectedJobView(null);
+            }
+            toast.success(`Job removed successfully`);
+        }
+    };
 
     const safeJobs = Array.isArray(jobs) ? jobs : [];
     const filtered = safeJobs.filter((j) => {
@@ -120,6 +344,83 @@ const Jobs = () => {
         if (e.key === "Enter" || e.key === ",") {
             e.preventDefault();
             handleAddSkill();
+        }
+    };
+
+    // Document Upload & Auto-fill Handler
+    const handleFileUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsParsingDoc(true);
+        toast.info(`Reading and analyzing document "${file.name}"...`);
+
+        try {
+            let parsedData = null;
+
+            // 1. Try server-side parser
+            const formData = new FormData();
+            formData.append("document", file);
+            try {
+                const res = await jobsApi.parseDocument(formData);
+                if (res && res.data) {
+                    parsedData = res.data;
+                }
+            } catch (apiErr) {
+                console.warn("Backend document parser fallback:", apiErr);
+            }
+
+            // 2. Client-side fallback if server didn't return data
+            if (!parsedData) {
+                let textContent = "";
+                if (file.type === "text/plain" || file.name.endsWith(".txt") || file.name.endsWith(".rtf")) {
+                    textContent = await file.text();
+                } else {
+                    const buffer = await file.arrayBuffer();
+                    const bytes = new Uint8Array(buffer);
+                    let rawStr = "";
+                    for (let i = 0; i < bytes.length; i++) {
+                        const b = bytes[i];
+                        if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
+                            rawStr += String.fromCharCode(b);
+                        } else if (rawStr.length > 0 && rawStr[rawStr.length - 1] !== " ") {
+                            rawStr += " ";
+                        }
+                    }
+                    textContent = rawStr;
+                }
+                parsedData = parseJobDescriptionClientSide(textContent, file.name);
+            }
+
+            if (parsedData) {
+                setForm(prev => ({
+                    ...prev,
+                    title: parsedData.title || prev.title || file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " "),
+                    dept: parsedData.dept || prev.dept,
+                    jobLevel: parsedData.jobLevel || prev.jobLevel,
+                    reportsTo: parsedData.reportsTo || prev.reportsTo,
+                    loc: parsedData.loc || prev.loc,
+                    isRemotePosition: parsedData.isRemotePosition ?? prev.isRemotePosition,
+                    workMode: parsedData.workMode || prev.workMode,
+                    type: parsedData.type || prev.type,
+                    expLevel: parsedData.expLevel || prev.expLevel,
+                    description: parsedData.description || prev.description,
+                    keySkills: Array.isArray(parsedData.keySkills) && parsedData.keySkills.length > 0
+                        ? parsedData.keySkills
+                        : prev.keySkills
+                }));
+
+                setUploadedDocName(file.name);
+                toast.success(`Job description parsed! Title, requirements, experience (${parsedData.expLevel || "detected"}), and role description filled automatically.`);
+            }
+        } catch (err) {
+            console.error("Document upload error:", err);
+            toast.error("Failed to read document file. Please fill the fields manually.");
+        } finally {
+            setIsParsingDoc(false);
+            if (e.target) {
+                e.target.value = "";
+            }
         }
     };
 
@@ -322,18 +623,19 @@ const Jobs = () => {
                                     >
                                         Candidates
                                     </Link>
-                                    <Link
-                                        to="/app/resumes"
-                                        className="text-slate-600 hover:text-violet-600 font-semibold px-2 py-1 rounded-lg hover:bg-slate-50 transition"
-                                        title="Screen Resumes"
-                                    >
-                                        Resumes
-                                    </Link>
                                     <button
                                         onClick={() => setSelectedJobView(j)}
                                         className="text-violet-600 font-bold hover:text-violet-700 px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 transition cursor-pointer"
                                     >
                                         Details
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteJob(j.id, j.title)}
+                                        className="text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition cursor-pointer flex items-center gap-1"
+                                        title="Delete Job"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
                                     </button>
                                 </div>
                             </div>
@@ -430,20 +732,14 @@ const Jobs = () => {
                                     <Users className="w-3.5 h-3.5" />
                                     <span>View Applicants ({selectedJobView.candidates || 0})</span>
                                 </Link>
-                                <Link
-                                    to="/app/resumes"
-                                    className="px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                                <button
+                                    onClick={() => handleDeleteJob(selectedJobView.id, selectedJobView.title)}
+                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                    title="Delete Job"
                                 >
-                                    <FileText className="w-3.5 h-3.5" />
-                                    <span>Screen Resumes</span>
-                                </Link>
-                                <Link
-                                    to={`/app/interviews?job=${encodeURIComponent(selectedJobView.title)}`}
-                                    className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5"
-                                >
-                                    <Video className="w-3.5 h-3.5" />
-                                    <span>Schedule Interview</span>
-                                </Link>
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete Job</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -455,7 +751,7 @@ const Jobs = () => {
                 <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in" data-testid="new-job-modal">
                     <div className="bg-white rounded-3xl w-full max-w-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="flex items-start justify-between pb-6 border-b border-slate-100">
+                        <div className="flex items-start justify-between pb-6 border-b border-slate-100 gap-3">
                             <div className="flex items-center gap-3.5">
                                 <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shrink-0">
                                     <FileText className="w-5 h-5" />
@@ -469,13 +765,64 @@ const Jobs = () => {
                                     </p>
                                 </div>
                             </div>
-                            <button
-                                onClick={() => setModal(false)}
-                                className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+
+                            {/* Top Right Actions: Upload Document Button & Close */}
+                            <div className="flex items-center gap-2 shrink-0">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    accept=".pdf,.doc,.docx,.txt,.rtf"
+                                    className="hidden"
+                                    id="jd-document-upload-input"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isParsingDoc}
+                                    className="px-3.5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md shadow-violet-500/20 transition active:scale-95 cursor-pointer disabled:opacity-50"
+                                    title="Upload Job Description document (PDF, DOCX, TXT) to auto-fill form"
+                                >
+                                    {isParsingDoc ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Reading...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-3.5 h-3.5" />
+                                            <span>Upload Document</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setModal(false)}
+                                    className="text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Document Upload Success Banner */}
+                        {uploadedDocName && (
+                            <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center justify-between text-xs text-emerald-800 animate-in fade-in">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <span>
+                                        Auto-filled form from document: <strong className="font-bold text-emerald-950">{uploadedDocName}</strong>
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setUploadedDocName("")}
+                                    className="text-emerald-700 hover:text-emerald-950 p-1 rounded-md hover:bg-emerald-100/50"
+                                    title="Dismiss"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
 
                         {/* Modal Form */}
                         <form onSubmit={submit} className="mt-6 space-y-5">

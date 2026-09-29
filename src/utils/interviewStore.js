@@ -33,6 +33,9 @@ export const saveInterviews = (interviews) => {
     try {
         if (!Array.isArray(interviews)) return;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(interviews));
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("avahire_interviews_updated"));
+        }
     } catch (e) {
         console.error("Error saving interviews", e);
     }
@@ -79,4 +82,27 @@ export const addOrUpdateInterview = (interviewData) => {
     }
 
     return interviewData;
+};
+
+export const removeInterview = (idOrCode) => {
+    if (!idOrCode) return [];
+    const list = getStoredInterviews();
+    const query = String(idOrCode).toLowerCase();
+    const filtered = list.filter(
+        (iv) =>
+            iv.id !== idOrCode &&
+            iv.linkCode !== idOrCode &&
+            iv.id?.toLowerCase() !== query &&
+            iv.linkCode?.toLowerCase() !== query &&
+            iv.candidateId?.toLowerCase() !== query
+    );
+    saveInterviews(filtered);
+
+    // Sync deletion with backend API
+    try {
+        interviewsApi.delete(idOrCode).catch(() => {});
+    } catch (err) {
+        console.warn("Could not delete interview from backend:", err);
+    }
+    return filtered;
 };

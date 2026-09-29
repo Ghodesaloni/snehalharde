@@ -172,6 +172,12 @@ export const jobsApi = {
   delete: async (id) => {
     const res = await api.delete(`/jobs/${id}`);
     return res.data;
+  },
+  parseDocument: async (formData) => {
+    const res = await api.post("/jobs/parse-document", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    return res.data;
   }
 };
 

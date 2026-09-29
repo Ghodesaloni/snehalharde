@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { candidatesApi } from "@/services/api";
@@ -32,14 +32,9 @@ import {
     User,
     Users,
     Database,
-    Plus,
     Trash2,
-    ExternalLink,
-    Copy,
-    Share2,
     Briefcase,
-    FileText,
-    ArrowRight
+    FileText
 } from "lucide-react";
 
 const initialCandidates = [];
@@ -59,17 +54,84 @@ const Candidates = () => {
     const [searchQuery, setSearchQuery] = useState(searchQueryParam);
     const [pageSize, setPageSize] = useState(5);
     const [showFilterModal, setShowFilterModal] = useState(false);
-    const [copiedCandidateId, setCopiedCandidateId] = useState(null);
 
     // Expanded candidate accordion / downward drawer state
     const [expandedCandidateId, setExpandedCandidateId] = useState(null);
     const [drawerTab, setDrawerTab] = useState("transcript"); // "transcript" | "evaluation" | "scores"
 
-    // Audio player simulated state
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [playbackSpeed, setPlaybackSpeed] = useState("1x");
+    // Real Audio Player State for Interview Recording Playback
+    const audioRef = useRef(null);
+    const [playingAudioCandidateId, setPlayingAudioCandidateId] = useState(null);
+    const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+    const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+    const [audioDuration, setAudioDuration] = useState(0);
     const [isMuted, setIsMuted] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState("1x");
     const [currentCandidateNotes, setCurrentCandidateNotes] = useState({});
+
+    const formatAudioTime = (secs) => {
+        if (isNaN(secs) || secs < 0) return "00:00";
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    };
+
+    const handleTogglePlayAudio = (candidate) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        if (playingAudioCandidateId === candidate.id) {
+            if (isAudioPlaying) {
+                audio.pause();
+                setIsAudioPlaying(false);
+            } else {
+                audio.play().catch(() => {});
+                setIsAudioPlaying(true);
+            }
+        } else {
+            audio.pause();
+            const src = candidate.audioUrl || "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+            audio.src = src;
+            audio.playbackRate = playbackSpeed === "2x" ? 2.0 : (playbackSpeed === "1.5x" ? 1.5 : 1.0);
+            audio.muted = isMuted;
+            setPlayingAudioCandidateId(candidate.id);
+            setAudioCurrentTime(0);
+            audio.play().then(() => {
+                setIsAudioPlaying(true);
+            }).catch((err) => {
+                console.warn("Audio playback note:", err);
+                setIsAudioPlaying(true);
+            });
+        }
+    };
+
+    const handleSeekAudio = (e) => {
+        const audio = audioRef.current;
+        if (!audio) return;
+        const dur = audioDuration || audio.duration || 60;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+        const newTime = ratio * dur;
+        audio.currentTime = newTime;
+        setAudioCurrentTime(newTime);
+    };
+
+    const handleSpeedChange = () => {
+        const nextSpeed = playbackSpeed === "1x" ? "1.5x" : playbackSpeed === "1.5x" ? "2x" : "1x";
+        setPlaybackSpeed(nextSpeed);
+        if (audioRef.current) {
+            audioRef.current.playbackRate = nextSpeed === "2x" ? 2.0 : (nextSpeed === "1.5x" ? 1.5 : 1.0);
+        }
+    };
+
+    const handleMuteToggle = () => {
+        const nextMute = !isMuted;
+        setIsMuted(nextMute);
+        if (audioRef.current) {
+            audioRef.current.muted = nextMute;
+        }
+    };
 
     useEffect(() => {
         if (jobQueryParam) setJobFilter(jobQueryParam);
@@ -89,7 +151,24 @@ const Candidates = () => {
             }
         };
         fetchCandidates();
+
+        const handleSync = () => {
+            fetchCandidates();
+        };
+        window.addEventListener("avahire_candidates_updated", handleSync);
+        return () => window.removeEventListener("avahire_candidates_updated", handleSync);
     }, []);
+
+    const parseSafeArray = (val, defaultVal = []) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") {
+            try {
+                const p = JSON.parse(val);
+                if (Array.isArray(p)) return p;
+            } catch {}
+        }
+        return defaultVal;
+    };
 
     // Sorting and Filtering
     const filteredCandidates = useMemo(() => {
@@ -114,8 +193,6 @@ const Candidates = () => {
                 return 0;
             });
     }, [candidates, sortBy, statusFilter, jobFilter, searchQuery]);
-
-    const totalCount = candidates.length || 24;
 
     const toggleExpandCandidate = (id) => {
         setExpandedCandidateId((prev) => (prev === id ? null : id));
@@ -162,7 +239,7 @@ const Candidates = () => {
 
     const handleDownloadTranscript = (candidate, e) => {
         e?.stopPropagation();
-        const content = candidate.transcript
+        const content = parseSafeArray(candidate.transcript)
             .map((t) => `[${t.time}] ${t.speaker}:\n${t.text}\n`)
             .join("\n");
         const blob = new Blob([content], { type: "text/plain" });
@@ -173,88 +250,6 @@ const Candidates = () => {
         a.click();
         URL.revokeObjectURL(url);
         toast.success("Transcript downloaded!");
-    };
-
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [isSavingCandidate, setIsSavingCandidate] = useState(false);
-    const [newCandidateForm, setNewCandidateForm] = useState({
-        name: "",
-        email: "",
-        phone: "+91 98000 00000",
-        role: "Frontend Developer",
-        score: 80,
-        status: "Under Review",
-        notes: ""
-    });
-
-    const handleCreateCandidate = async (e) => {
-        e.preventDefault();
-        if (!newCandidateForm.name.trim() || !newCandidateForm.email.trim()) {
-            toast.error("Candidate name and email are required");
-            return;
-        }
-        setIsSavingCandidate(true);
-        try {
-            const scoreNum = Number(newCandidateForm.score) || 75;
-            const newCandData = {
-                name: newCandidateForm.name.trim(),
-                email: newCandidateForm.email.trim(),
-                phone: newCandidateForm.phone.trim(),
-                role: newCandidateForm.role,
-                score: scoreNum,
-                status: newCandidateForm.status,
-                notes: newCandidateForm.notes.trim(),
-                avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-                duration: "18m 30s",
-                mode: "AI Interview",
-                summaryPoints: [
-                    { text: "Successfully completed evaluation assessment", type: "good" },
-                    { text: "Recorded in Cloud SQL PostgreSQL database", type: "good" }
-                ],
-                recommendation: "Evaluation recorded directly in PostgreSQL database.",
-                transcript: [
-                    {
-                        speaker: "AI Interviewer",
-                        time: "00:00",
-                        isAI: true,
-                        text: `Welcome ${newCandidateForm.name.trim()}! Let's start the evaluation for the ${newCandidateForm.role} position.`
-                    },
-                    {
-                        speaker: newCandidateForm.name.trim(),
-                        time: "00:15",
-                        isAI: false,
-                        text: `Thank you. I have prepared to discuss my technical projects and background in ${newCandidateForm.role}.`
-                    }
-                ],
-                evaluationBreakdown: [
-                    { category: "Technical Proficiency", score: scoreNum, weight: "40%" },
-                    { category: "Communication & Clarity", score: Math.min(100, scoreNum + 2), weight: "25%" },
-                    { category: "Problem Solving", score: Math.max(50, scoreNum - 4), weight: "20%" },
-                    { category: "System Architecture", score: Math.max(50, scoreNum - 6), weight: "15%" }
-                ]
-            };
-
-            const created = await candidatesApi.create(newCandData);
-            if (created) {
-                setCandidates((prev) => [created, ...prev]);
-                setShowAddModal(false);
-                setNewCandidateForm({
-                    name: "",
-                    email: "",
-                    phone: "+91 98000 00000",
-                    role: "Frontend Developer",
-                    score: 80,
-                    status: "Under Review",
-                    notes: ""
-                });
-                toast.success(`${created.name} saved to PostgreSQL database!`);
-            }
-        } catch (err) {
-            console.error("Failed to create candidate in PostgreSQL:", err);
-            toast.error("Failed to save candidate to database");
-        } finally {
-            setIsSavingCandidate(false);
-        }
     };
 
     const handleDeleteCandidate = async (id, name, e) => {
@@ -298,6 +293,18 @@ const Candidates = () => {
 
     return (
         <div className="space-y-5 max-w-7xl mx-auto -mt-2" data-testid="interviewed-candidates-page">
+            {/* Real Audio Controller (Hidden) */}
+            <audio
+                ref={audioRef}
+                className="hidden"
+                onTimeUpdate={() => setAudioCurrentTime(audioRef.current?.currentTime || 0)}
+                onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+                onEnded={() => {
+                    setIsAudioPlaying(false);
+                    setAudioCurrentTime(0);
+                }}
+            />
+
             {/* Top Bar / Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-wrap">
@@ -311,15 +318,6 @@ const Candidates = () => {
                 </div>
 
                 <div className="flex items-center gap-3 flex-wrap">
-                    {/* Add Candidate Button */}
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="flex items-center gap-2 px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold transition shadow-xs active:scale-[0.98]"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Add Candidate</span>
-                    </button>
-
                     {/* Sort Dropdown */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-600">
                         <span className="text-slate-400 font-medium whitespace-nowrap">Sort by:</span>
@@ -401,16 +399,6 @@ const Candidates = () => {
                         </button>
                     </div>
                 )}
-            </div>
-
-            {/* Candidate Portal Isolation Badge Banner */}
-            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs text-indigo-900">
-                <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>
-                        <strong>Candidate Link Security:</strong> Interview invitation links (<code className="bg-white/80 px-1.5 py-0.5 rounded font-mono font-bold text-violet-700">/i/:code</code>) are strictly isolated. Candidates will only see their live interview portal, and can never access recruiter or HR dashboard pages.
-                    </span>
-                </div>
             </div>
 
             {/* Candidates Card List with Downward Opening Transcript Drawer */}
@@ -529,70 +517,6 @@ const Candidates = () => {
                                 )}
                             </div>
 
-                            {/* Candidate Interview Link & HR Cross Actions Bar */}
-                            <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Candidate Link:</span>
-                                    <code className="px-2 py-0.5 rounded bg-white border border-slate-200 text-violet-700 font-mono font-semibold truncate max-w-xs sm:max-w-md">
-                                        {`${window.location.origin}/i/${candidate.linkCode || 'ava-' + candidate.id}`}
-                                    </code>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            const code = candidate.linkCode || `ava-${candidate.id}`;
-                                            const url = `${window.location.origin}/i/${code}`;
-                                            navigator.clipboard.writeText(url);
-                                            setCopiedCandidateId(candidate.id);
-                                            toast.success(`Copied candidate interview link! (${url})`);
-                                            setTimeout(() => setCopiedCandidateId(null), 2000);
-                                        }}
-                                        className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-violet-600 transition cursor-pointer"
-                                        title="Copy candidate portal URL"
-                                    >
-                                        {copiedCandidateId === candidate.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <a
-                                        href={`/i/${candidate.linkCode || 'ava-' + candidate.id}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-violet-600 transition flex items-center gap-1 font-semibold"
-                                        title="Preview what candidate sees in their isolated portal"
-                                    >
-                                        <span>Preview</span>
-                                        <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <Link
-                                        to={`/app/email?candidateEmail=${encodeURIComponent(candidate.email)}&interviewCode=${candidate.linkCode || 'ava-' + candidate.id}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold transition flex items-center gap-1"
-                                    >
-                                        <Mail className="w-3 h-3" />
-                                        <span>Send Email</span>
-                                    </Link>
-                                    <Link
-                                        to="/app/interviews"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition flex items-center gap-1"
-                                    >
-                                        <Video className="w-3 h-3" />
-                                        <span>Interviews</span>
-                                    </Link>
-                                    <Link
-                                        to="/app/resumes"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold transition flex items-center gap-1"
-                                    >
-                                        <FileText className="w-3 h-3" />
-                                        <span>Resume</span>
-                                    </Link>
-                                </div>
-                            </div>
-
                             {/* DOWNWARD EXPANDED DRAWER: Interview Transcript, Evaluation, Scores, and Audio Player */}
                             {isExpanded && (
                                 <div className="border-t border-slate-100 bg-slate-50/50 p-6 sm:p-8 space-y-6 animate-in slide-in-from-top-4 duration-300">
@@ -653,7 +577,7 @@ const Candidates = () => {
 
                                                 {/* Transcript Dialogue Items */}
                                                 <div className="space-y-4 max-h-[480px] overflow-y-auto pr-2">
-                                                    {candidate.transcript.map((msg, idx) => {
+                                                    {parseSafeArray(candidate.transcript).map((msg, idx) => {
                                                         return (
                                                             <div
                                                                 key={idx}
@@ -685,37 +609,46 @@ const Candidates = () => {
                                                 {/* Bottom Audio Player Bar */}
                                                 <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 text-xs">
                                                     <button
-                                                        onClick={() => setIsPlaying(!isPlaying)}
-                                                        className="w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shrink-0 shadow-xs transition"
+                                                        onClick={() => handleTogglePlayAudio(candidate)}
+                                                        className="w-8 h-8 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shrink-0 shadow-xs transition cursor-pointer"
+                                                        title={playingAudioCandidateId === candidate.id && isAudioPlaying ? "Pause Audio" : "Play Recorded Interview Audio"}
                                                     >
-                                                        {isPlaying ? (
-                                                            <Pause className="w-3.5 h-3.5" />
+                                                        {playingAudioCandidateId === candidate.id && isAudioPlaying ? (
+                                                             <Pause className="w-3.5 h-3.5" />
                                                         ) : (
                                                             <Play className="w-3.5 h-3.5 ml-0.5" />
                                                         )}
                                                     </button>
                                                     <span className="text-slate-500 font-mono text-[11px] shrink-0">
-                                                        {isPlaying ? "03:18" : "00:00"} / {candidate.duration}
+                                                        {playingAudioCandidateId === candidate.id ? formatAudioTime(audioCurrentTime) : "00:00"} / {candidate.duration || (audioDuration ? formatAudioTime(audioDuration) : "16m 45s")}
                                                     </span>
 
                                                     {/* Progress Scrubber */}
-                                                    <div className="flex-1 relative flex items-center">
+                                                    <div
+                                                        onClick={handleSeekAudio}
+                                                        className="flex-1 relative flex items-center cursor-pointer py-1 group"
+                                                        title="Click to seek audio"
+                                                    >
                                                         <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                                             <div
-                                                                className="h-full bg-violet-600 rounded-full transition-all duration-300"
-                                                                style={{ width: isPlaying ? "22%" : "0%" }}
+                                                                className="h-full bg-violet-600 rounded-full transition-all"
+                                                                style={{
+                                                                    width: `${playingAudioCandidateId === candidate.id && (audioDuration || audioRef.current?.duration) ? Math.min(100, (audioCurrentTime / (audioDuration || audioRef.current?.duration || 1)) * 100) : 0}%`
+                                                                }}
                                                             />
                                                         </div>
                                                         <div
-                                                            className="w-3 h-3 bg-violet-600 rounded-full absolute -top-0.5 shadow-xs transition-all"
-                                                            style={{ left: isPlaying ? "22%" : "0%" }}
+                                                            className="w-3 h-3 bg-violet-600 rounded-full absolute -top-0.5 shadow-xs transition-all opacity-0 group-hover:opacity-100"
+                                                            style={{
+                                                                left: `${playingAudioCandidateId === candidate.id && (audioDuration || audioRef.current?.duration) ? Math.min(100, (audioCurrentTime / (audioDuration || audioRef.current?.duration || 1)) * 100) : 0}%`
+                                                            }}
                                                         />
                                                     </div>
 
                                                     <button
-                                                        onClick={() => setIsMuted(!isMuted)}
-                                                        className="text-slate-400 hover:text-slate-600 transition"
-                                                        title="Mute/Unmute"
+                                                        onClick={handleMuteToggle}
+                                                        className="text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                                                        title={isMuted ? "Unmute" : "Mute"}
                                                     >
                                                         {isMuted ? (
                                                             <VolumeX className="w-4 h-4 text-rose-500" />
@@ -725,10 +658,9 @@ const Candidates = () => {
                                                     </button>
 
                                                     <button
-                                                        onClick={() =>
-                                                            setPlaybackSpeed((s) => (s === "1x" ? "1.5x" : s === "1.5x" ? "2x" : "1x"))
-                                                        }
-                                                        className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition text-[11px]"
+                                                        onClick={handleSpeedChange}
+                                                        className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold hover:bg-slate-100 transition text-[11px] cursor-pointer"
+                                                        title="Playback speed"
                                                     >
                                                         {playbackSpeed}
                                                     </button>
@@ -741,7 +673,7 @@ const Candidates = () => {
                                                 <div className="bg-white rounded-2xl border border-slate-100 p-5 space-y-3 shadow-xs">
                                                     <h4 className="text-sm font-bold text-slate-900">AI Summary</h4>
                                                     <div className="space-y-2 text-xs">
-                                                        {candidate.summaryPoints.map((pt, i) => (
+                                                        {parseSafeArray(candidate.summaryPoints).map((pt, i) => (
                                                             <div key={i} className="flex items-start gap-2">
                                                                 {pt.type === "good" ? (
                                                                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -831,7 +763,7 @@ const Candidates = () => {
                                         <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-4 shadow-xs animate-in fade-in">
                                             <h4 className="text-sm font-bold text-slate-900">Competency Evaluation</h4>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                {candidate.evaluationBreakdown.map((item, idx) => (
+                                                {parseSafeArray(candidate.evaluationBreakdown).map((item, idx) => (
                                                     <div key={idx} className="p-4 bg-slate-50 rounded-2xl space-y-2 border border-slate-100">
                                                         <div className="flex justify-between items-center text-xs">
                                                             <span className="font-bold text-slate-800">{item.category}</span>
@@ -966,138 +898,6 @@ const Candidates = () => {
                                 Apply
                             </button>
                         </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add Candidate Modal (Saves to PostgreSQL) */}
-            {showAddModal && (
-                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
-                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-5">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center">
-                                    <Database className="w-4 h-4" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">Add Candidate Record</h3>
-                                    <p className="text-[11px] text-slate-400">Save candidate interview profile</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateCandidate} className="space-y-3.5 text-xs">
-                            <div>
-                                <label className="font-semibold text-slate-700 block mb-1">Full Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="e.g. Snehal Harde"
-                                    value={newCandidateForm.name}
-                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, name: e.target.value })}
-                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Email *</label>
-                                    <input
-                                        type="email"
-                                        required
-                                        placeholder="snehal@example.com"
-                                        value={newCandidateForm.email}
-                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, email: e.target.value })}
-                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Phone</label>
-                                    <input
-                                        type="text"
-                                        placeholder="+91 98000 00000"
-                                        value={newCandidateForm.phone}
-                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, phone: e.target.value })}
-                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Role</label>
-                                    <select
-                                        value={newCandidateForm.role}
-                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, role: e.target.value })}
-                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                    >
-                                        <option value="Frontend Developer">Frontend Developer</option>
-                                        <option value="Python Developer">Python Developer</option>
-                                        <option value="Full Stack Engineer">Full Stack Engineer</option>
-                                        <option value="DevOps Engineer">DevOps Engineer</option>
-                                        <option value="AI Research Engineer">AI Research Engineer</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="font-semibold text-slate-700 block mb-1">Initial Score (0-100)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        value={newCandidateForm.score}
-                                        onChange={(e) => setNewCandidateForm({ ...newCandidateForm, score: e.target.value })}
-                                        className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 block mb-1">Status</label>
-                                <select
-                                    value={newCandidateForm.status}
-                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, status: e.target.value })}
-                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                >
-                                    <option value="Under Review">Under Review</option>
-                                    <option value="Selected">Selected</option>
-                                    <option value="Rejected">Rejected</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="font-semibold text-slate-700 block mb-1">Recruiter Notes</label>
-                                <textarea
-                                    rows="2"
-                                    placeholder="Add evaluation summary or notes..."
-                                    value={newCandidateForm.notes}
-                                    onChange={(e) => setNewCandidateForm({ ...newCandidateForm, notes: e.target.value })}
-                                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 resize-none"
-                                />
-                            </div>
-
-                            <div className="flex justify-end items-center gap-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowAddModal(false)}
-                                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSavingCandidate}
-                                    className="px-5 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-semibold transition shadow-xs"
-                                >
-                                    {isSavingCandidate ? "Saving..." : "Save Candidate"}
-                                </button>
-                            </div>
-                        </form>
                     </div>
                 </div>
             )}

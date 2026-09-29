@@ -1,11 +1,11 @@
 [
   {
-    "id": "sess-iv-c-1790062026728",
-    "linkCode": "ava-c-1790062026728",
-    "candidateName": "Snehal Harde",
-    "candidateEmail": "snehal.harde2935@gmail.com",
+    "id": "sess-iv-1790698535658",
+    "linkCode": "ava328",
+    "candidateName": "hello",
+    "candidateEmail": "hello@mail.com",
     "candidatePhone": "+91 98765 43210",
-    "role": "software engineer",
+    "role": "Software Engineer",
     "company": "AvaHire Technologies Pvt. Ltd.",
     "status": "System Check Completed",
     "systemCheckStatus": {
@@ -15,7 +15,7 @@
       "network": "Optimal",
       "latency": "24ms",
       "agreedProctoring": true,
-      "checkedAt": "2026-09-29T13:07:49.713Z"
+      "checkedAt": "2026-09-29T18:29:15.399Z"
     },
     "overallScore": "94",
     "techDepthScore": "9.2 / 10",
@@ -46,7 +46,105 @@
       }
     ],
     "completedAt": null,
-    "updatedAt": "2026-09-29T13:07:49.713Z"
+    "updatedAt": "2026-09-29T18:29:15.399Z"
+  },
+  {
+    "id": "sess-iv-1790690650150",
+    "linkCode": "ava165",
+    "candidateName": "aserfvAQ",
+    "candidateEmail": "snehal.harde@gmail.com",
+    "candidatePhone": "+91 98765 43210",
+    "role": "DevOps Engineer",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "status": "System Check Completed",
+    "systemCheckStatus": {
+      "camera": true,
+      "microphone": true,
+      "audio": false,
+      "network": "Optimal",
+      "latency": "24ms",
+      "agreedProctoring": true,
+      "checkedAt": "2026-09-29T14:04:27.611Z"
+    },
+    "overallScore": "94",
+    "techDepthScore": "9.2 / 10",
+    "clarityScore": "9.5 / 10",
+    "recommendation": "Recommended for Senior Technical Review",
+    "elapsedSeconds": 0,
+    "transcripts": [],
+    "evaluationBreakdown": [
+      {
+        "score": 95,
+        "weight": "35%",
+        "category": "System Architecture & Scalability"
+      },
+      {
+        "score": 92,
+        "weight": "30%",
+        "category": "Data Structures & Performance"
+      },
+      {
+        "score": 96,
+        "weight": "20%",
+        "category": "Engineering Collaboration & Communication"
+      },
+      {
+        "score": 94,
+        "weight": "15%",
+        "category": "Code Quality & Resiliency"
+      }
+    ],
+    "completedAt": null,
+    "updatedAt": "2026-09-29T14:04:27.611Z"
+  },
+  {
+    "id": "sess-iv-c-1790062026728",
+    "linkCode": "ava-c-1790062026728",
+    "candidateName": "Snehal Harde",
+    "candidateEmail": "snehal.harde2935@gmail.com",
+    "candidatePhone": "+91 98765 43210",
+    "role": "software engineer",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "status": "System Check Completed",
+    "systemCheckStatus": {
+      "camera": false,
+      "microphone": true,
+      "audio": false,
+      "network": "Optimal",
+      "latency": "24ms",
+      "agreedProctoring": true,
+      "checkedAt": "2026-09-29T13:47:10.233Z"
+    },
+    "overallScore": "94",
+    "techDepthScore": "9.2 / 10",
+    "clarityScore": "9.5 / 10",
+    "recommendation": "Recommended for Senior Technical Review",
+    "elapsedSeconds": 0,
+    "transcripts": [],
+    "evaluationBreakdown": [
+      {
+        "score": 95,
+        "weight": "35%",
+        "category": "System Architecture & Scalability"
+      },
+      {
+        "score": 92,
+        "weight": "30%",
+        "category": "Data Structures & Performance"
+      },
+      {
+        "score": 96,
+        "weight": "20%",
+        "category": "Engineering Collaboration & Communication"
+      },
+      {
+        "score": 94,
+        "weight": "15%",
+        "category": "Code Quality & Resiliency"
+      }
+    ],
+    "completedAt": null,
+    "updatedAt": "2026-09-29T13:47:10.234Z"
   },
   {
     "id": "sess-akc123",

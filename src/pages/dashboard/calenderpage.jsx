@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -19,50 +19,191 @@ import {
     ShieldCheck,
     Sparkles,
     CalendarCheck,
-    SlidersHorizontal,
-    Search
+    Search,
+    RefreshCw
 } from "lucide-react";
-import { getInterviews } from "@/utils/interviewStore";
+import { getStoredInterviews, saveInterviews } from "@/utils/interviewStore";
+import { interviewsApi } from "@/services/api";
+
+const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+];
+
+// Helper: Color & status mapping as requested
+// Green = Going to be conducted (Scheduled / Upcoming)
+// Yellow = In Process (Active / In Progress)
+// Blue = Ended (Completed / Finished)
+const getInterviewStatusConfig = (status) => {
+    const s = String(status || "").trim().toLowerCase();
+
+    // In Process / Active
+    if (
+        s === "in process" ||
+        s === "in-process" ||
+        s === "in progress" ||
+        s === "in-progress" ||
+        s === "active" ||
+        s === "ongoing" ||
+        s === "live"
+    ) {
+        return {
+            category: "in_process",
+            label: "In Process",
+            dotClass: "bg-amber-500",
+            dotPing: true,
+            pillClass: "bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200",
+            badgeClass: "bg-amber-50 text-amber-800 border-amber-200/90",
+            badgeDot: "bg-amber-500 animate-pulse",
+            textColor: "text-amber-700",
+            description: "In Process",
+        };
+    }
+
+    // Ended / Completed
+    if (
+        s === "ended" ||
+        s === "completed" ||
+        s === "finished" ||
+        s === "done" ||
+        s === "terminated" ||
+        s === "expired" ||
+        s === "inactive"
+    ) {
+        return {
+            category: "ended",
+            label: "Ended",
+            dotClass: "bg-blue-500",
+            dotPing: false,
+            pillClass: "bg-blue-100 text-blue-900 border-blue-300 hover:bg-blue-200",
+            badgeClass: "bg-blue-50 text-blue-800 border-blue-200/90",
+            badgeDot: "bg-blue-500",
+            textColor: "text-blue-700",
+            description: "Ended",
+        };
+    }
+
+    // Going to be conducted (Scheduled / Upcoming / Default)
+    return {
+        category: "scheduled",
+        label: "Scheduled",
+        dotClass: "bg-emerald-500",
+        dotPing: false,
+        pillClass: "bg-emerald-100 text-emerald-900 border-emerald-300 hover:bg-emerald-200",
+        badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200/90",
+        badgeDot: "bg-emerald-500",
+        textColor: "text-emerald-700",
+        description: "Going to be conducted",
+    };
+};
+
+// Robust date parser for any date string format in stored interviews
+const parseInterviewDate = (iv) => {
+    if (!iv) return null;
+    const dateVal = iv.date || iv.scheduledDate || iv.expiryTime || iv.createdAt;
+    if (!dateVal) return null;
+
+    if (dateVal instanceof Date && !isNaN(dateVal)) {
+        return dateVal;
+    }
+
+    const str = String(dateVal).trim();
+
+    // Standard Date parsing
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+        return parsed;
+    }
+
+    // Match "29 September 2026" or "29 Sep 2026"
+    const match = str.match(/(\d{1,2})[\s\-\/]+([a-zA-Z]+)[\s\-\/]+(\d{4})/);
+    if (match) {
+        const d = parseInt(match[1], 10);
+        const mStr = match[2].toLowerCase();
+        const y = parseInt(match[3], 10);
+        const mIdx = monthNames.findIndex((mn) => mn.toLowerCase().startsWith(mStr.slice(0, 3)));
+        if (mIdx !== -1) {
+            return new Date(y, mIdx, d);
+        }
+    }
+
+    // Match DD-MM-YYYY or DD/MM/YYYY
+    const dmyMatch = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (dmyMatch) {
+        return new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
+    }
+
+    // Match YYYY-MM-DD
+    const ymdMatch = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymdMatch) {
+        return new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[1], 10));
+    }
+
+    return null;
+};
 
 const CalendarPage = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const querySearch = searchParams.get("search") || "";
 
-    const [currentDate, setCurrentDate] = useState(new Date(2026, 8, 1)); // September 2026 default
-    const [selectedDate, setSelectedDate] = useState(2); // 2nd
+    const todayDate = useMemo(() => new Date(), []);
+    const [currentDate, setCurrentDate] = useState(() => new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
+    const [selectedDate, setSelectedDate] = useState(() => todayDate.getDate());
     const [selectedInterview, setSelectedInterview] = useState(null);
     const [copiedCode, setCopiedCode] = useState(null);
     const [searchTerm, setSearchTerm] = useState(querySearch);
 
-    // Fetch interviews from store
-    const allInterviews = useMemo(() => {
+    const [interviews, setInterviews] = useState(() => {
+        return getStoredInterviews();
+    });
+
+    // Refresh & sync interviews from store and backend API
+    const refreshInterviews = async () => {
         try {
-            return getInterviews();
+            const data = await interviewsApi.getAll();
+            if (Array.isArray(data) && data.length > 0) {
+                setInterviews(data);
+                saveInterviews(data);
+                return;
+            }
         } catch (e) {
-            return [];
+            // fallback to localStorage
         }
+        setInterviews(getStoredInterviews());
+    };
+
+    useEffect(() => {
+        refreshInterviews();
+
+        const handleStorage = () => {
+            setInterviews(getStoredInterviews());
+        };
+
+        window.addEventListener("storage", handleStorage);
+        window.addEventListener("avahire_interviews_updated", handleStorage);
+
+        return () => {
+            window.removeEventListener("storage", handleStorage);
+            window.removeEventListener("avahire_interviews_updated", handleStorage);
+        };
     }, []);
 
     // Filter interviews based on search
     const filteredInterviews = useMemo(() => {
-        if (!searchTerm.trim()) return allInterviews;
+        if (!searchTerm.trim()) return interviews;
         const q = searchTerm.toLowerCase();
-        return allInterviews.filter(
+        return interviews.filter(
             (iv) =>
                 iv.name?.toLowerCase().includes(q) ||
                 iv.role?.toLowerCase().includes(q) ||
-                iv.email?.toLowerCase().includes(q)
+                iv.email?.toLowerCase().includes(q) ||
+                iv.linkCode?.toLowerCase().includes(q)
         );
-    }, [allInterviews, searchTerm]);
+    }, [interviews, searchTerm]);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
-
-    const monthNames = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
 
     // Days in current month
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -82,33 +223,36 @@ const CalendarPage = () => {
     };
 
     const goToToday = () => {
-        const today = new Date();
-        setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1));
-        setSelectedDate(today.getDate());
+        const now = new Date();
+        setCurrentDate(new Date(now.getFullYear(), now.getMonth(), 1));
+        setSelectedDate(now.getDate());
     };
 
-    // Helper: Map interview to day of month
+    // Helper: Map interviews to day of current displayed month & year
     const getInterviewsForDay = (day) => {
         if (!day) return [];
         return filteredInterviews.filter((iv) => {
-            if (!iv.date) return false;
-            // e.g. "02 September 2026" or "Sep 2, 2026" or "2026-09-02"
-            const str = iv.date.toLowerCase();
-            const currentMonthName = monthNames[month].toLowerCase();
-            const paddedDay = String(day).padStart(2, "0");
+            const parsed = parseInterviewDate(iv);
+            if (parsed) {
+                return (
+                    parsed.getFullYear() === year &&
+                    parsed.getMonth() === month &&
+                    parsed.getDate() === day
+                );
+            }
 
-            // Matches "02 September" or "2 September" or "September 02"
-            if (str.includes(currentMonthName)) {
-                if (str.includes(paddedDay) || str.includes(` ${day} `) || str.startsWith(`${day} `)) {
-                    return true;
+            // String fallback match
+            if (iv.date) {
+                const str = iv.date.toLowerCase();
+                const currentMonthName = monthNames[month].toLowerCase();
+                const paddedDay = String(day).padStart(2, "0");
+
+                if (str.includes(currentMonthName)) {
+                    if (str.includes(paddedDay) || str.includes(` ${day} `) || str.startsWith(`${day} `)) {
+                        return true;
+                    }
                 }
             }
-            // fallback: distribute some interviews across days for demo realism
-            if (day === 2 && iv.linkCode === "akc123") return true;
-            if (day === 3 && iv.linkCode === "ava456") return true;
-            if (day === 4 && iv.linkCode === "dev789") return true;
-            if (day === 7 && iv.name === "David Kim") return true;
-            if (day === 10 && iv.name === "Jessica Taylor") return true;
             return false;
         });
     };
@@ -134,37 +278,23 @@ const CalendarPage = () => {
                         <span>Recruitment Calendar</span>
                     </h1>
                     <p className="text-sm text-slate-500 mt-0.5">
-                        Track upcoming AI interviews, candidate assessments, and hiring schedules.
+                        Automatically tracking scheduled interviews, live sessions, and completed evaluations.
                     </p>
                 </div>
 
                 {/* Connected Quick Action Links */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                    <Link
-                        to="/app/candidates"
-                        className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
+                    <button
+                        onClick={refreshInterviews}
+                        className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 transition cursor-pointer"
+                        title="Refresh Calendar"
                     >
-                        <Users className="w-3.5 h-3.5 text-violet-600" />
-                        <span>Candidate Pipeline</span>
-                    </Link>
-                    <Link
-                        to="/app/email"
-                        className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition"
-                    >
-                        <Mail className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Email Center</span>
-                    </Link>
-                    <Link
-                        to="/app/interviews"
-                        className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md shadow-violet-500/25 transition active:scale-98"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Schedule Interview</span>
-                    </Link>
+                        <RefreshCw className="w-4 h-4 text-slate-600" />
+                    </button>
                 </div>
             </div>
 
-            {/* Navigation and Filter Bar */}
+            {/* Navigation & Search Bar */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
                 {/* Month Navigator */}
                 <div className="flex items-center gap-2">
@@ -195,10 +325,10 @@ const CalendarPage = () => {
 
                 {/* Search in Calendar */}
                 <div className="relative w-full md:w-72">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="Search interview by candidate or role..."
+                        placeholder="Search candidate name, role, code..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:bg-white transition"
@@ -234,25 +364,27 @@ const CalendarPage = () => {
 
                             const dayEvents = getInterviewsForDay(day);
                             const isSelected = selectedDate === day;
-                            const isToday =
-                                day === 2 && month === 8 && year === 2026; // match simulated current active day
+                            const isRealToday =
+                                day === todayDate.getDate() &&
+                                month === todayDate.getMonth() &&
+                                year === todayDate.getFullYear();
 
                             return (
                                 <div
                                     key={`day-${day}`}
                                     onClick={() => setSelectedDate(day)}
-                                    className={`min-h-[75px] sm:min-h-[92px] rounded-2xl p-1.5 sm:p-2.5 text-left transition flex flex-col justify-between cursor-pointer border relative group ${
+                                    className={`min-h-[85px] sm:min-h-[105px] rounded-2xl p-1.5 sm:p-2.5 text-left transition flex flex-col justify-between cursor-pointer border relative group ${
                                         isSelected
                                             ? "border-violet-600 bg-violet-50/60 shadow-xs ring-2 ring-violet-500/20"
-                                            : isToday
-                                            ? "border-indigo-300 bg-indigo-50/30 hover:border-violet-300 hover:bg-slate-50/80"
+                                            : isRealToday
+                                            ? "border-indigo-400 bg-indigo-50/40 hover:border-violet-300 hover:bg-slate-50/80"
                                             : "border-slate-100 bg-white hover:border-slate-300 hover:bg-slate-50/50"
                                     }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <span
                                             className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
-                                                isToday
+                                                isRealToday
                                                     ? "bg-violet-600 text-white shadow-xs"
                                                     : isSelected
                                                     ? "text-violet-700 font-black"
@@ -262,28 +394,44 @@ const CalendarPage = () => {
                                             {day}
                                         </span>
                                         {dayEvents.length > 0 && (
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
+                                            <span className="flex items-center gap-1">
+                                                {dayEvents.slice(0, 3).map((iv, i) => {
+                                                    const cfg = getInterviewStatusConfig(iv.status);
+                                                    return (
+                                                        <span
+                                                            key={i}
+                                                            className={`w-2 h-2 rounded-full ${cfg.dotClass}`}
+                                                            title={`${iv.name} - ${cfg.label}`}
+                                                        />
+                                                    );
+                                                })}
+                                            </span>
                                         )}
                                     </div>
 
-                                    {/* Event pills inside day */}
+                                    {/* Candidate Event Pills inside calendar day cell */}
                                     <div className="space-y-1 mt-1">
-                                        {dayEvents.slice(0, 2).map((iv) => (
-                                            <div
-                                                key={iv.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    setSelectedInterview(iv);
-                                                }}
-                                                className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold truncate bg-violet-100/80 text-violet-800 hover:bg-violet-200 transition border border-violet-200/50 flex items-center gap-1"
-                                                title={`${iv.name} - ${iv.time}`}
-                                            >
-                                                <span className="w-1.5 h-1.5 rounded-full bg-violet-600 shrink-0" />
-                                                <span className="truncate">{iv.name?.split(" ")[0]}</span>
-                                            </div>
-                                        ))}
+                                        {dayEvents.slice(0, 2).map((iv) => {
+                                            const statusCfg = getInterviewStatusConfig(iv.status);
+                                            const candidateDisplayName = iv.name || "Candidate";
+
+                                            return (
+                                                <div
+                                                    key={iv.id || iv.linkCode}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setSelectedInterview(iv);
+                                                    }}
+                                                    className={`px-1.5 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold truncate transition border flex items-center gap-1 shadow-2xs ${statusCfg.pillClass}`}
+                                                    title={`${candidateDisplayName} (${statusCfg.label}) - ${iv.time || ""}`}
+                                                >
+                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusCfg.dotClass} ${statusCfg.dotPing ? "animate-pulse" : ""}`} />
+                                                    <span className="truncate font-semibold">{candidateDisplayName}</span>
+                                                </div>
+                                            );
+                                        })}
                                         {dayEvents.length > 2 && (
-                                            <div className="text-[9px] font-bold text-slate-400 pl-1">
+                                            <div className="text-[9px] font-bold text-slate-500 pl-1">
                                                 +{dayEvents.length - 2} more
                                             </div>
                                         )}
@@ -320,7 +468,7 @@ const CalendarPage = () => {
                                     <CalendarCheck className="w-6 h-6 text-slate-300" />
                                 </div>
                                 <p className="text-xs text-slate-500 font-medium">
-                                    No interviews scheduled for this date.
+                                    No interviews scheduled on {selectedDate} {monthNames[month]} {year}.
                                 </p>
                                 <Link
                                     to="/app/interviews"
@@ -332,81 +480,52 @@ const CalendarPage = () => {
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {selectedDayInterviews.map((iv) => (
-                                    <div
-                                        key={iv.id}
-                                        onClick={() => setSelectedInterview(iv)}
-                                        className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 hover:border-violet-300 transition cursor-pointer space-y-2 group"
-                                    >
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 font-bold text-xs flex items-center justify-center shrink-0">
-                                                    {iv.name?.charAt(0) || "C"}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="text-xs font-bold text-slate-900 group-hover:text-violet-600 transition truncate">
-                                                        {iv.name}
-                                                    </div>
-                                                    <div className="text-[11px] text-slate-500 truncate">
-                                                        {iv.role}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                                                iv.status === "Active"
-                                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200/60"
-                                                    : iv.status === "Scheduled"
-                                                    ? "bg-blue-50 text-blue-700 border border-blue-200/60"
-                                                    : "bg-slate-100 text-slate-600"
-                                            }`}>
-                                                {iv.status}
-                                            </span>
-                                        </div>
+                                {selectedDayInterviews.map((iv) => {
+                                    const statusCfg = getInterviewStatusConfig(iv.status);
 
-                                        <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="w-3 h-3 text-slate-400" />
-                                                <span>{iv.time}</span>
+                                    return (
+                                        <div
+                                            key={iv.id || iv.linkCode}
+                                            onClick={() => setSelectedInterview(iv)}
+                                            className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 hover:border-violet-300 transition cursor-pointer space-y-2 group"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${statusCfg.pillClass}`}>
+                                                        {iv.name?.charAt(0) || "C"}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="text-xs font-bold text-slate-900 group-hover:text-violet-600 transition truncate flex items-center gap-1.5">
+                                                            <span>{iv.name}</span>
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-500 truncate">
+                                                            {iv.role}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Color-coded Status Badge */}
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${statusCfg.badgeClass}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.badgeDot}`} />
+                                                    <span>{statusCfg.label}</span>
+                                                </span>
                                             </div>
-                                            <div className="font-mono text-violet-700 font-semibold">
-                                                /i/{iv.linkCode}
+
+                                            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                                                <div className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3 text-slate-400" />
+                                                    <span>{iv.time || "Scheduled"}</span>
+                                                </div>
+                                                <div className="font-mono text-violet-700 font-semibold">
+                                                    /i/{iv.linkCode}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
-
-                    {/* Quick Link Card to other HR pages */}
-                    <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-3xl p-6 text-white space-y-4 shadow-xl">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-violet-400" />
-                            <span className="text-xs font-bold text-violet-300 uppercase tracking-wider">
-                                Connected Recruiter Hub
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                            All interview dates are synced with your candidate pipeline and email notifications.
-                        </p>
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                            <Link
-                                to="/app/interviews"
-                                className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                            >
-                                <Video className="w-3.5 h-3.5 text-violet-300" />
-                                <span>All Interviews</span>
-                            </Link>
-                            <Link
-                                to="/app/candidates"
-                                className="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                            >
-                                <Users className="w-3.5 h-3.5 text-emerald-300" />
-                                <span>Pipeline</span>
-                            </Link>
-                        </div>
-                    </div>
-
                 </div>
 
             </div>
@@ -439,32 +558,38 @@ const CalendarPage = () => {
                         </div>
 
                         {/* Candidate Card Info */}
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Candidate</span>
-                                <span className="text-xs font-bold text-slate-900">{selectedInterview.name}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</span>
-                                <span className="text-xs font-medium text-slate-700">{selectedInterview.email}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Role</span>
-                                <span className="text-xs font-bold text-violet-700">{selectedInterview.role}</span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Schedule</span>
-                                <span className="text-xs font-bold text-slate-800">
-                                    {selectedInterview.date} at {selectedInterview.time}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</span>
-                                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                                    {selectedInterview.status}
-                                </span>
-                            </div>
-                        </div>
+                        {(() => {
+                            const statusCfg = getInterviewStatusConfig(selectedInterview.status);
+                            return (
+                                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Candidate</span>
+                                        <span className="text-xs font-bold text-slate-900">{selectedInterview.name}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</span>
+                                        <span className="text-xs font-medium text-slate-700">{selectedInterview.email}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Role</span>
+                                        <span className="text-xs font-bold text-violet-700">{selectedInterview.role}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Schedule</span>
+                                        <span className="text-xs font-bold text-slate-800">
+                                            {selectedInterview.date} at {selectedInterview.time}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Status</span>
+                                        <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${statusCfg.badgeClass}`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.badgeDot}`} />
+                                            <span>{statusCfg.label} ({statusCfg.description})</span>
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* Candidate Portal Link Bar */}
                         <div className="space-y-1.5">
@@ -490,7 +615,7 @@ const CalendarPage = () => {
                         {/* Action Buttons to all other HR pages */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                             <Link
-                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email)}&interviewCode=${selectedInterview.linkCode}&role=${encodeURIComponent(selectedInterview.role)}`}
+                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email || "")}&interviewCode=${selectedInterview.linkCode}&role=${encodeURIComponent(selectedInterview.role || "")}`}
                                 className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                             >
                                 <Mail className="w-3.5 h-3.5" />
@@ -498,7 +623,7 @@ const CalendarPage = () => {
                             </Link>
 
                             <Link
-                                to={`/app/candidates?search=${encodeURIComponent(selectedInterview.name)}`}
+                                to={`/app/candidates?search=${encodeURIComponent(selectedInterview.name || "")}`}
                                 className="py-2.5 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                             >
                                 <Users className="w-3.5 h-3.5" />

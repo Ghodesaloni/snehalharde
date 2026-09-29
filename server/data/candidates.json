@@ -1,5 +1,149 @@
 [
   {
+    "id": "cand-1790706768837",
+    "mode": "AI Live Interview",
+    "name": "hello",
+    "role": "Software Engineer",
+    "email": "hello@mail.com",
+    "notes": "Live interview completed. Automated scorecard and transcript generated.",
+    "phone": "+91 98765 43210",
+    "score": 92,
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    "status": "Under Review",
+    "duration": "2m 9s",
+    "createdAt": "2026-09-29T18:32:48.847Z",
+    "createdBy": "snehal.harde2935@gmail.com",
+    "timestamp": "1790706768837",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "transcript": [
+      {
+        "isAI": true,
+        "text": "Hello, I'm your AI technical interviewer today. Please note that camera and screen share are active, and to maintain interview integrity, any tab switching, window changes, or multiple windows on screen will automatically terminate the interview. Could you please start by giving a brief introduction of yourself and your background?",
+        "time": "00:00:00",
+        "speaker": "Ava"
+      }
+    ],
+    "interviewDate": "30 Sept 2026, 00:02",
+    "summaryPoints": [
+      {
+        "text": "Strong proficiency in Software Engineer architecture and problem solving",
+        "type": "good"
+      },
+      {
+        "text": "Demonstrated clear communication and analytical depth",
+        "type": "good"
+      },
+      {
+        "text": "Successfully completed live AI evaluation assessment",
+        "type": "good"
+      }
+    ],
+    "recommendation": "Strong hire recommendation. Scored 92% cumulative match for Software Engineer.",
+    "evaluationBreakdown": [
+      {
+        "score": 92,
+        "weight": "40%",
+        "category": "Technical Proficiency"
+      },
+      {
+        "score": 95,
+        "weight": "25%",
+        "category": "Communication & Clarity"
+      },
+      {
+        "score": 89,
+        "weight": "20%",
+        "category": "Problem Solving"
+      },
+      {
+        "score": 88,
+        "weight": "15%",
+        "category": "System Architecture"
+      }
+    ]
+  },
+  {
+    "id": "cand-1790706362777",
+    "mode": "AI Live Interview",
+    "name": "hello",
+    "role": "Software Engineer",
+    "email": "hello@mail.com",
+    "notes": "Live interview completed. Automated scorecard and transcript generated.",
+    "phone": "+91 98765 43210",
+    "score": 92,
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    "status": "Under Review",
+    "duration": "2m 5s",
+    "createdAt": "2026-09-29T18:26:02.787Z",
+    "createdBy": "snehal.harde2935@gmail.com",
+    "timestamp": "1790706362778",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "transcript": [
+      {
+        "isAI": true,
+        "text": "Hello hello, welcome to your technical interview for the Software Engineer role. Could you please introduce yourself and summarize your experience?",
+        "time": "00:05",
+        "speaker": "AI Interviewer (Ava)"
+      },
+      {
+        "isAI": false,
+        "text": "Hello Ava. I have extensive experience in full stack software engineering and building responsive, high-performance web systems.",
+        "time": "00:30",
+        "speaker": "hello"
+      },
+      {
+        "isAI": true,
+        "text": "Great. How do you handle system architecture, real-time data sync, and high concurrency in modern web applications?",
+        "time": "01:15",
+        "speaker": "AI Interviewer (Ava)"
+      },
+      {
+        "isAI": false,
+        "text": "I leverage microservices, event-driven WebSockets/WebRTC, Redis caching layers, and database connection pooling to ensure sub-millisecond response times and scalability.",
+        "time": "01:50",
+        "speaker": "hello"
+      }
+    ],
+    "interviewDate": "29 Sept 2026, 23:56",
+    "summaryPoints": [
+      {
+        "text": "Strong proficiency in Software Engineer architecture and problem solving",
+        "type": "good"
+      },
+      {
+        "text": "Demonstrated clear communication and analytical depth",
+        "type": "good"
+      },
+      {
+        "text": "Successfully completed live AI evaluation assessment",
+        "type": "good"
+      }
+    ],
+    "recommendation": "Strong hire recommendation. Scored 92% cumulative match for Software Engineer.",
+    "evaluationBreakdown": [
+      {
+        "score": 92,
+        "weight": "40%",
+        "category": "Technical Proficiency"
+      },
+      {
+        "score": 95,
+        "weight": "25%",
+        "category": "Communication & Clarity"
+      },
+      {
+        "score": 89,
+        "weight": "20%",
+        "category": "Problem Solving"
+      },
+      {
+        "score": 88,
+        "weight": "15%",
+        "category": "System Architecture"
+      }
+    ]
+  },
+  {
     "id": "cand-1790672105273",
     "mode": "AI Interview",
     "name": "Snehal Harde",

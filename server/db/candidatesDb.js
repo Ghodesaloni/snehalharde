@@ -115,6 +115,7 @@ class CandidatesDatabase {
       recommendation: data.recommendation || "",
       transcript: data.transcript || [],
       evaluationBreakdown: data.evaluationBreakdown || [],
+      audioUrl: data.audioUrl || data.audio_url || "",
       createdBy: data.createdBy || data.userEmail || "",
       userEmail: data.userEmail || data.createdBy || "",
       createdAt: new Date().toISOString()
@@ -275,6 +276,7 @@ class CandidatesDatabase {
       recommendation: row.recommendation,
       transcript: typeof row.transcript === "string" ? JSON.parse(row.transcript) : (row.transcript || []),
       evaluationBreakdown: typeof row.evaluation_breakdown === "string" ? JSON.parse(row.evaluation_breakdown) : (row.evaluation_breakdown || []),
+      audioUrl: row.audio_url || row.audioUrl || "",
       createdBy: row.created_by,
       userEmail: row.user_email,
       createdAt: row.created_at
