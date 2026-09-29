@@ -282,5 +282,57 @@
     "phone": "",
     "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
     "created_at": "2026-09-15T20:03:24.552Z"
+  },
+  {
+    "id": 419,
+    "uid": "usr_419",
+    "name": "riyabondre435",
+    "email": "riyabondre435@gmail.com",
+    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+    "role": "recruiter",
+    "company": "AvaHire Partner",
+    "designation": "Talent Recruiter",
+    "phone": "+91 98000 00000",
+    "password_hash": "3a59c0d6edbf6dac4cf20beb70902824e814c1b8389f8133b704f2c94f83badf",
+    "created_at": "2026-09-16T19:55:23.253Z"
+  },
+  {
+    "id": 420,
+    "uid": "usr_420",
+    "name": "Test Recruiter",
+    "email": "test.recruiter.unique99@example.com",
+    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+    "role": "recruiter",
+    "company": "AvaHire AI",
+    "designation": "Talent Acquisition",
+    "phone": "",
+    "password_hash": "a109e36947ad56de1dca1cc49f0ef8ac9ad9a7b1aa0df41fb3c4cb73c1ff01ea",
+    "created_at": "2026-09-16T19:55:23.463Z"
+  },
+  {
+    "id": 421,
+    "uid": "usr_421",
+    "name": "vedant harde",
+    "email": "harde.vedant1304@gmail.com",
+    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+    "role": "recruiter",
+    "company": "ttc",
+    "designation": "maneger",
+    "phone": "1234567890",
+    "password_hash": "f9310e87c56ec02807ba8f7412822a3a880ee627e49f1b4cc5520e36a5851911",
+    "created_at": "2026-09-17T18:29:06.230Z"
+  },
+  {
+    "id": 422,
+    "uid": "usr_422",
+    "name": "vedant",
+    "email": "harde.vedant111@gmail.com",
+    "avatar": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
+    "role": "recruiter",
+    "company": "tts",
+    "designation": "asd",
+    "phone": "789456123",
+    "password_hash": "f9310e87c56ec02807ba8f7412822a3a880ee627e49f1b4cc5520e36a5851911",
+    "created_at": "2026-09-17T18:30:36.282Z"
   }
 ]

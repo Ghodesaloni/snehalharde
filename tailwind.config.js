@@ -2,7 +2,20 @@
 module.exports = {
     darkMode: ["class"],
     content: [
-        "./src/**/*.{js,jsx,ts,tsx}",
+        "./src/components/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/candidate/*.{js,jsx,ts,tsx}",
+        "./src/pages/dashboard/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/auth/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/jobs/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/resumes/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/interviews/**/*.{js,jsx,ts,tsx}",
+        "./src/pages/*.{js,jsx,ts,tsx}",
+        "./src/services/**/*.{js,jsx,ts,tsx}",
+        "./src/utils/**/*.{js,jsx,ts,tsx}",
+        "./src/hooks/**/*.{js,jsx,ts,tsx}",
+        "./src/lib/**/*.{js,jsx,ts,tsx}",
+        "./src/App.{js,jsx,ts,tsx}",
+        "./src/index.{js,jsx,ts,tsx}",
         "./public/index.html"
     ],
     theme: {

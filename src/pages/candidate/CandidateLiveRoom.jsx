@@ -5,6 +5,8 @@ import {
     MicOff,
     Video,
     VideoOff,
+    Monitor,
+    MonitorOff,
     ShieldCheck,
     Sparkles,
     LogOut,
@@ -21,9 +23,12 @@ import {
     Activity,
     SlidersHorizontal,
     User,
-    ArrowDown
+    ArrowDown,
+    AlertTriangle,
+    Loader2
 } from "lucide-react";
 import { toast } from "sonner";
+import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
@@ -37,59 +42,49 @@ const CandidateLiveRoom = () => {
         return {
             id: "iv-default",
             name: "Candidate",
-            role: "Role Assessment",
+            role: "Senior Full Stack Engineer",
             company: "AvaHire Recruiter",
             linkCode: code || ""
         };
     });
 
+    // Connection & LiveKit State
+    const [connectionStatus, setConnectionStatus] = useState("connecting"); // connecting, connected, disconnected, error
+    const [connectionError, setConnectionError] = useState(null);
+    const roomRef = useRef(null);
+
     // Call Controls State
     const [isMicOn, setIsMicOn] = useState(true);
     const [isCameraOn, setIsCameraOn] = useState(true);
+    const [isScreenSharing, setIsScreenSharing] = useState(false);
     const [showCaptions, setShowCaptions] = useState(true);
     const [showTranscript, setShowTranscript] = useState(false);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-    // Transcript Search & Auto-scroll
+    // Video Elements
+    const avatarVideoRef = useRef(null);
+    const avatarAudioRef = useRef(null);
+    const candidateVideoRef = useRef(null);
+    const [hasAvatarVideo, setHasAvatarVideo] = useState(false);
+    const [hasCandidateVideo, setHasCandidateVideo] = useState(false);
+
+    // AI & Conversation State
+    const [isAITalking, setIsAITalking] = useState(false);
+    const [currentCaption, setCurrentCaption] = useState("Connecting with AI Interviewer Ava...");
+    const [transcripts, setTranscripts] = useState([]);
+    const [interviewEnded, setInterviewEnded] = useState(false);
+    const [terminationReason, setTerminationReason] = useState("");
+
+    // Transcript UI State
     const [transcriptSearch, setTranscriptSearch] = useState("");
     const [autoScroll, setAutoScroll] = useState(true);
     const [isCopied, setIsCopied] = useState(false);
     const transcriptBottomRef = useRef(null);
 
-    // Interview Questions & Interactive Flow
-    const questions = [
-        "Welcome! Could you please introduce yourself and walk us through your most significant technical project?",
-        "How do you approach architecting scalable full-stack applications with high concurrency and low latency?",
-        "Can you describe a challenging bug or production outage you investigated and how you resolved it?",
-        "How do you balance engineering quality, test coverage, and tight product delivery deadlines?"
-    ];
+    // Live Utterance buffer
+    const [liveUtterance, setLiveUtterance] = useState(null);
 
-    const candidateAnswers = [
-        "I have over 4 years of experience as a Senior Full Stack Engineer. Most recently, I architected a distributed data pipeline handling over 40,000 requests per second. We deployed Node.js microservices with Redis clusters and PostgreSQL, reducing latency by 45% and eliminating bottlenecks.",
-        "When designing for high concurrency and low latency, I isolate read and write workloads with connection pooling, utilize asynchronous Kafka messaging to decouple heavy compute, and implement multi-layer caching with Redis and CDN edge caching.",
-        "During a peak traffic surge, we encountered database connection pool starvation caused by unindexed sequential scans. I diagnosed the query plan using EXPLAIN ANALYZE, added targeted composite indexes, and implemented a resilient circuit breaker pattern with pgBouncer.",
-        "I advocate for shift-left testing with automated CI/CD unit and integration test gates. For tight deadlines, I decouple non-blocking enhancements into fast follow-ups while maintaining 100% test coverage on core business logic and financial transactions."
-    ];
-
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [isAITalking, setIsAITalking] = useState(true);
-    const [isCandidateAnswering, setIsCandidateAnswering] = useState(false);
-    const [interviewEnded, setInterviewEnded] = useState(false);
-
-    // Initial Historic Transcript
-    const [transcripts, setTranscripts] = useState([]);
-
-    // Live Streaming Utterance (Speech-to-text in progress)
-    const [liveUtterance, setLiveUtterance] = useState({
-        speaker: "Ava",
-        roleTag: "AI Interviewer",
-        time: "00:00:00",
-        text: questions[0]
-    });
-
-    const videoRef = useRef(null);
-    const [hasCameraStream, setHasCameraStream] = useState(false);
-
+    // Load Interview Record
     useEffect(() => {
         const found = getInterviewByCodeOrId(code);
         if (found) {
@@ -99,12 +94,12 @@ const CandidateLiveRoom = () => {
 
     // Live Stopwatch Timer
     useEffect(() => {
-        if (interviewEnded) return;
+        if (interviewEnded || connectionStatus !== "connected") return;
         const interval = setInterval(() => {
             setElapsedSeconds((prev) => prev + 1);
         }, 1000);
         return () => clearInterval(interval);
-    }, [interviewEnded]);
+    }, [interviewEnded, connectionStatus]);
 
     const formatTime = (totalSeconds) => {
         const hrs = Math.floor(totalSeconds / 3600);
@@ -113,161 +108,334 @@ const CandidateLiveRoom = () => {
         return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     };
 
-    // Auto-scroll transcript feed when new words or messages arrive
+    // Auto-scroll transcript feed
     useEffect(() => {
         if (autoScroll && transcriptBottomRef.current) {
             transcriptBottomRef.current.scrollIntoView({ behavior: "smooth" });
         }
     }, [transcripts, liveUtterance, autoScroll, showTranscript]);
 
-    // Real-time Speech-to-Text: Browser Web Speech API listener if microphone is active
+    // LiveKit Room Connection & Agent Initialization
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
-        if (!isMicOn || interviewEnded || isAITalking) return;
-
-        let recognition = null;
-        try {
-            recognition = new SpeechRecognition();
-            recognition.continuous = true;
-            recognition.interimResults = true;
-            recognition.lang = "en-US";
-
-            recognition.onresult = (event) => {
-                let spokenText = "";
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    spokenText += event.results[i][0].transcript;
-                }
-                if (spokenText.trim()) {
-                    setLiveUtterance({
-                        speaker: "Candidate",
-                        roleTag: "Candidate (Live Mic)",
-                        time: formatTime(elapsedSeconds),
-                        text: spokenText.trim()
-                    });
-                }
-            };
-
-            recognition.onerror = () => {
-                // Silently ignore permission/sandbox constraints
-            };
-
-            recognition.start();
-        } catch (e) {
-            // SpeechRecognition started or restricted in iframe
-        }
-
-        return () => {
-            if (recognition) {
-                try {
-                    recognition.stop();
-                } catch (e) {}
-            }
-        };
-    }, [isMicOn, interviewEnded, isAITalking, elapsedSeconds]);
-
-    // Live AI Speech Simulation & Live STT Stream Generation
-    useEffect(() => {
-        setIsAITalking(true);
-        setIsCandidateAnswering(false);
-
-        const currentQuestion = questions[currentQuestionIndex];
-        const currentTime = formatTime(elapsedSeconds);
-
-        // Stream Ava's question words
-        const words = currentQuestion.split(" ");
-        let wordIdx = 0;
-        setLiveUtterance({
-            speaker: "Ava",
-            roleTag: "AI Interviewer",
-            time: currentTime,
-            text: words[0]
+        let isMounted = true;
+        const room = new Room({
+            adaptiveStream: true,
+            dynacast: true,
+            audioCaptureDefaults: {
+                autoGainControl: true,
+                echoCancellation: true,
+                noiseSuppression: true,
+            },
+            videoCaptureDefaults: {
+                resolution: { width: 1280, height: 720, frameRate: 30 },
+            },
         });
+        roomRef.current = room;
 
-        const wordTimer = setInterval(() => {
-            wordIdx++;
-            if (wordIdx < words.length) {
-                setLiveUtterance((prev) => ({
-                    speaker: "Ava",
-                    roleTag: "AI Interviewer",
-                    time: currentTime,
-                    text: words.slice(0, wordIdx + 1).join(" ")
-                }));
-            } else {
-                clearInterval(wordTimer);
-            }
-        }, 160);
+        const connectToLiveKit = async () => {
+            try {
+                setConnectionStatus("connecting");
+                setConnectionError(null);
 
-        // When Ava finishes talking, commit question to transcript and trigger candidate response
-        const talkingTimer = setTimeout(() => {
-            setIsAITalking(false);
-            setIsCandidateAnswering(true);
-
-            setTranscripts((prev) => [
-                ...prev,
-                {
-                    id: `stt-q-${currentQuestionIndex}-${Date.now()}`,
-                    speaker: "Ava",
-                    roleTag: "AI Interviewer",
-                    time: currentTime,
-                    text: currentQuestion
-                }
-            ]);
-
-            // Start candidate live speech-to-text response stream
-            const answer = candidateAnswers[currentQuestionIndex] || candidateAnswers[0];
-            const ansWords = answer.split(" ");
-            let ansIdx = 0;
-            const ansTime = formatTime(elapsedSeconds + 4);
-
-            setLiveUtterance({
-                speaker: "Candidate",
-                roleTag: "Candidate",
-                time: ansTime,
-                text: ansWords[0]
-            });
-
-            const candidateStreamInterval = setInterval(() => {
-                ansIdx++;
-                if (ansIdx < ansWords.length) {
-                    setLiveUtterance((prev) => {
-                        // If mic is turned off, pause live speech stream
-                        if (!isMicOn) return prev;
-                        return {
-                            speaker: "Candidate",
-                            roleTag: "Candidate",
-                            time: ansTime,
-                            text: ansWords.slice(0, ansIdx + 1).join(" ")
-                        };
+                // Fetch Token from Backend
+                const candidateName = interviewData?.name || "Candidate";
+                const roomCode = code || "live-session";
+                
+                let tokenData = null;
+                try {
+                    const res = await fetch("/api/livekit/token", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            code: roomCode,
+                            participant_name: candidateName,
+                            room_name: `interview_${roomCode}`,
+                        }),
                     });
-                } else {
-                    clearInterval(candidateStreamInterval);
+                    if (res.ok) {
+                        tokenData = await res.json();
+                    }
+                } catch (fetchErr) {
+                    console.warn("Backend token endpoint fetch failed, trying local fallback:", fetchErr);
                 }
-            }, 240);
 
-        }, 4000);
+                if (!tokenData || !tokenData.participantToken) {
+                    throw new Error("Unable to obtain LiveKit participant access token.");
+                }
+
+                const serverUrl = tokenData.serverUrl || "wss://avahire-interview-odja2ewy.livekit.cloud";
+                const token = tokenData.participantToken;
+
+                // Setup Track Subscribed Listener (Avatar Video + Audio)
+                room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+                    console.log(`Track subscribed: kind=${track.kind}, source=${track.source} from participant=${participant.identity}`);
+
+                    if (track.kind === Track.Kind.Video) {
+                        // Remote Avatar Video (from bey-avatar-agent or AI Agent)
+                        if (avatarVideoRef.current) {
+                            track.attach(avatarVideoRef.current);
+                            setHasAvatarVideo(true);
+                        }
+                    } else if (track.kind === Track.Kind.Audio) {
+                        // Remote AI Voice Audio
+                        if (avatarAudioRef.current) {
+                            track.attach(avatarAudioRef.current);
+                        } else {
+                            const audioElement = track.attach();
+                            audioElement.style.display = "none";
+                            document.body.appendChild(audioElement);
+                        }
+                    }
+                });
+
+                room.on(RoomEvent.TrackUnsubscribed, (track) => {
+                    track.detach();
+                    if (track.kind === Track.Kind.Video && avatarVideoRef.current) {
+                        setHasAvatarVideo(false);
+                    }
+                });
+
+                // Active Speaker Detection (AI Speaking State)
+                room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+                    const isRemoteSpeaking = speakers.some((s) => !s.isLocal);
+                    setIsAITalking(isRemoteSpeaking);
+                });
+
+                // Transcription & Data Messages
+                room.on(RoomEvent.TranscriptionReceived, (transcriptions, participant) => {
+                    for (const t of transcriptions) {
+                        const isAva = !participant || !participant.isLocal;
+                        const speakerName = isAva ? "Ava" : (candidateName || "Candidate");
+                        const roleTag = isAva ? "AI Interviewer" : "Candidate";
+                        const timeStr = formatTime(elapsedSeconds);
+
+                        if (t.final) {
+                            setTranscripts((prev) => [
+                                ...prev,
+                                {
+                                    id: `stt-${Date.now()}-${Math.random()}`,
+                                    speaker: speakerName,
+                                    roleTag: roleTag,
+                                    time: timeStr,
+                                    text: t.text,
+                                },
+                            ]);
+                            if (isAva) {
+                                setCurrentCaption(t.text);
+                            }
+                            setLiveUtterance(null);
+                        } else {
+                            setLiveUtterance({
+                                speaker: speakerName,
+                                roleTag: roleTag,
+                                time: timeStr,
+                                text: t.text,
+                            });
+                            if (isAva) {
+                                setCurrentCaption(t.text);
+                            }
+                        }
+                    }
+                });
+
+                // Data Packet Handling (e.g. agent notifications / termination)
+                room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+                    try {
+                        const str = new TextDecoder().decode(payload);
+                        console.log("Data packet received:", topic, str);
+                        const parsed = JSON.parse(str);
+                        if (parsed.type === "termination" || topic === "interview_terminated") {
+                            setTerminationReason(parsed.reason || "Integrity policy violation");
+                            toast.error(`Interview ended: ${parsed.reason || "Session closed"}`);
+                        }
+                    } catch (e) {
+                        // Non-json data packet
+                    }
+                });
+
+                // Connection State Listener
+                room.on(RoomEvent.ConnectionStateChanged, (state) => {
+                    if (state === ConnectionState.Connected) {
+                        setConnectionStatus("connected");
+                        toast.success("Connected to AI Interviewer Ava");
+                    } else if (state === ConnectionState.Disconnected) {
+                        setConnectionStatus("disconnected");
+                    }
+                });
+
+                // Connect to Room
+                await room.connect(serverUrl, token);
+
+                if (!isMounted || room.state !== ConnectionState.Connected) {
+                    try { room.disconnect(); } catch (e) {}
+                    return;
+                }
+
+                setConnectionStatus("connected");
+
+                // Automatically Publish Local Microphone safely
+                try {
+                    if (isMounted && room.state === ConnectionState.Connected) {
+                        await room.localParticipant.setMicrophoneEnabled(true);
+                        setIsMicOn(true);
+                    }
+                } catch (micErr) {
+                    console.warn("Failed to enable mic:", micErr?.message || micErr);
+                }
+
+                // Automatically Publish Local Camera safely
+                try {
+                    if (isMounted && room.state === ConnectionState.Connected) {
+                        await room.localParticipant.setCameraEnabled(true);
+                        setIsCameraOn(true);
+                        setHasCandidateVideo(true);
+
+                        // Attach local camera video track to PiP preview
+                        const camPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+                        if (camPub && camPub.videoTrack && candidateVideoRef.current) {
+                            camPub.videoTrack.attach(candidateVideoRef.current);
+                        }
+                    }
+                } catch (camErr) {
+                    console.warn("Failed to enable camera:", camErr?.message || camErr);
+                }
+
+            } catch (err) {
+                console.error("LiveKit connection error:", err);
+                if (isMounted) {
+                    setConnectionStatus("error");
+                    setConnectionError(err.message || "Failed to join live interview room");
+                    toast.error("Failed to connect with AI Agent. Please check network/credentials.");
+                }
+            }
+        };
+
+        connectToLiveKit();
 
         return () => {
-            clearInterval(wordTimer);
-            clearTimeout(talkingTimer);
-        };
-    }, [currentQuestionIndex]);
-
-    // Automatic AI Question Progression every 45 seconds if not ended
-    useEffect(() => {
-        if (interviewEnded) return;
-        const timer = setInterval(() => {
-            setCurrentQuestionIndex((prev) => {
-                if (prev < questions.length - 1) {
-                    toast.info(`Ava is moving to Question ${prev + 2} of ${questions.length}`);
-                    return prev + 1;
+            isMounted = false;
+            try {
+                if (room && room.state !== ConnectionState.Disconnected) {
+                    room.disconnect();
                 }
-                return prev;
-            });
-        }, 45000);
-        return () => clearInterval(timer);
-    }, [interviewEnded, questions.length]);
+            } catch (e) {
+                // Ignore cleanup disconnect errors
+            }
+        };
+    }, [code]);
+
+    // Local Video Attachment Effect
+    useEffect(() => {
+        if (roomRef.current && isCameraOn && connectionStatus === "connected" && roomRef.current.state === ConnectionState.Connected) {
+            try {
+                const camPub = roomRef.current.localParticipant?.getTrackPublication(Track.Source.Camera);
+                if (camPub && camPub.videoTrack && candidateVideoRef.current) {
+                    camPub.videoTrack.attach(candidateVideoRef.current);
+                    setHasCandidateVideo(true);
+                }
+            } catch (e) {
+                console.warn("Video attach error:", e);
+            }
+        }
+    }, [isCameraOn, connectionStatus]);
+
+    // Anti-Cheating & Integrity Event Broadcasts (Tab switch, window blur, visibility change)
+    useEffect(() => {
+        const sendViolation = async (type, reason) => {
+            const currentRoom = roomRef.current;
+            if (!currentRoom || currentRoom.state !== ConnectionState.Connected) return;
+            try {
+                const payload = JSON.stringify({ type, reason, timestamp: Date.now() });
+                const encoder = new TextEncoder();
+                await currentRoom.localParticipant.publishData(encoder.encode(payload), {
+                    reliable: true,
+                    topic: type,
+                });
+                console.warn(`[Anti-Cheating] Broadcasted ${type}: ${reason}`);
+            } catch (e) {
+                // Silently ignore if connection is closing/closed
+                console.debug("Anti-cheating broadcast skipped:", e?.message || e);
+            }
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.hidden && connectionStatus === "connected") {
+                toast.warning("Tab Switch Detected: Please remain on the active interview screen.");
+                sendViolation("tab_switch", "Candidate switched away from the active interview tab.");
+            }
+        };
+
+        const handleWindowBlur = () => {
+            if (connectionStatus === "connected") {
+                sendViolation("window_blur", "Candidate switched active window or application focus.");
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleWindowBlur);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("blur", handleWindowBlur);
+        };
+    }, [connectionStatus]);
+
+    // Toggle Microphone
+    const handleToggleMic = async () => {
+        if (!roomRef.current || roomRef.current.state !== ConnectionState.Connected) return;
+        try {
+            const newMicState = !isMicOn;
+            await roomRef.current.localParticipant.setMicrophoneEnabled(newMicState);
+            setIsMicOn(newMicState);
+            toast.info(newMicState ? "Microphone active" : "Microphone muted");
+        } catch (e) {
+            console.warn("Mic toggle error:", e?.message || e);
+        }
+    };
+
+    // Toggle Camera
+    const handleToggleCamera = async () => {
+        if (!roomRef.current || roomRef.current.state !== ConnectionState.Connected) return;
+        try {
+            const newCamState = !isCameraOn;
+            await roomRef.current.localParticipant.setCameraEnabled(newCamState);
+            setIsCameraOn(newCamState);
+            setHasCandidateVideo(newCamState);
+            if (newCamState && candidateVideoRef.current) {
+                const camPub = roomRef.current.localParticipant.getTrackPublication(Track.Source.Camera);
+                if (camPub && camPub.videoTrack) {
+                    camPub.videoTrack.attach(candidateVideoRef.current);
+                }
+            }
+            toast.info(newCamState ? "Camera resumed" : "Camera muted");
+        } catch (e) {
+            console.warn("Camera toggle error:", e?.message || e);
+        }
+    };
+
+    // Toggle Screen Share
+    const handleToggleScreenShare = async () => {
+        if (!roomRef.current || roomRef.current.state !== ConnectionState.Connected) return;
+        try {
+            const newScreenState = !isScreenSharing;
+            await roomRef.current.localParticipant.setScreenShareEnabled(newScreenState);
+            setIsScreenSharing(newScreenState);
+            toast.info(newScreenState ? "Screen sharing started" : "Screen sharing stopped");
+        } catch (e) {
+            console.warn("Screen share error:", e?.message || e);
+            toast.error("Screen sharing was cancelled or denied.");
+            setIsScreenSharing(false);
+        }
+    };
+
+    // End / Leave Interview
+    const handleEndInterview = () => {
+        if (roomRef.current) {
+            roomRef.current.disconnect();
+        }
+        setInterviewEnded(true);
+        toast.success("Interview completed! Generating AI assessment scorecard.");
+    };
 
     // Copy full transcript text
     const handleCopyTranscript = () => {
@@ -276,7 +444,7 @@ const CandidateLiveRoom = () => {
             .join("\n");
         navigator.clipboard.writeText(fullText);
         setIsCopied(true);
-        toast.success("Full speech-to-text transcript copied to clipboard!");
+        toast.success("Full transcript copied to clipboard!");
         setTimeout(() => setIsCopied(false), 2200);
     };
 
@@ -309,87 +477,98 @@ const CandidateLiveRoom = () => {
         );
     });
 
-    // Live Candidate Camera Stream Setup
-    useEffect(() => {
-        let activeStream = null;
-
-        const startWebcam = async () => {
-            if (isCameraOn && !interviewEnded) {
-                try {
-                    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                        const stream = await navigator.mediaDevices.getUserMedia({
-                            video: {
-                                width: { ideal: 1280 },
-                                height: { ideal: 720 },
-                                facingMode: "user"
-                            },
-                            audio: false
-                        });
-                        activeStream = stream;
-                        if (videoRef.current) {
-                            videoRef.current.srcObject = stream;
-                            videoRef.current.onloadedmetadata = () => {
-                                videoRef.current.play().catch((e) => console.log("Video play exception:", e));
-                            };
-                            setHasCameraStream(true);
-                        }
-                    }
-                } catch (err) {
-                    console.log("Webcam access info:", err);
-                    setHasCameraStream(false);
-                }
-            } else {
-                if (videoRef.current && videoRef.current.srcObject) {
-                    videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
-                    videoRef.current.srcObject = null;
-                }
-                setHasCameraStream(false);
-            }
-        };
-
-        startWebcam();
-
-        return () => {
-            if (activeStream) {
-                activeStream.getTracks().forEach((track) => track.stop());
-            }
-        };
-    }, [isCameraOn, interviewEnded]);
-
-    const handleEndInterview = () => {
-        setInterviewEnded(true);
-        toast.success("Interview completed! Generating AI assessment scorecard.");
-    };
-
     return (
         <div className="fixed inset-0 w-screen h-screen bg-[#06080F] text-white font-sans overflow-hidden select-none">
             
-            {/* 1. Full-Screen AI Interviewer (Ava) Video Canvas (100% Device Viewport) */}
-            <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#0c101d] z-0">
-                <img
-                    src="/images/ai_interviewer_ava_feed.jpg"
-                    alt="AI Interviewer Ava"
-                    className="w-full h-full object-cover object-center filter brightness-[1.03] contrast-[1.03]"
+            {/* Hidden Audio element for AI Agent voice playback */}
+            <audio ref={avatarAudioRef} autoPlay playsInline />
+
+            {/* 1. COMPLETE DISPLAY: Hero Beyond Avatar Live Video Stream (100% Screen Viewport) */}
+            <div className="absolute inset-0 w-full h-full overflow-hidden bg-[#060913] z-0 flex items-center justify-center">
+                {/* Live WebRTC Avatar Video Stream Element */}
+                <video
+                    ref={avatarVideoRef}
+                    autoPlay
+                    playsInline
+                    className={`w-full h-full object-cover object-center transition-opacity duration-500 ${
+                        hasAvatarVideo ? "opacity-100" : "opacity-0 absolute pointer-events-none"
+                    }`}
                 />
 
-                {/* Subtle Cinematic Vignette Overlays for Maximum Legibility */}
-                <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none" />
-                <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/85 via-black/40 to-transparent pointer-events-none" />
+                {/* Modern Dark AI Stage Canvas (Shown before Avatar Video track arrives, with NO static image) */}
+                {!hasAvatarVideo && (
+                    <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#080b18] via-[#050711] to-[#03040a] px-4">
+                        {/* Ambient Glowing Background Orb */}
+                        <div className="absolute w-96 h-96 rounded-full bg-violet-600/10 blur-[120px] pointer-events-none animate-pulse" />
+                        <div className="absolute w-72 h-72 rounded-full bg-indigo-500/10 blur-[90px] pointer-events-none delay-300" />
+
+                        {/* Center AI Avatar Pulsing Indicator */}
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-5 text-center">
+                            <div className="relative flex items-center justify-center">
+                                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-violet-600/30 to-indigo-500/30 border border-violet-400/40 flex items-center justify-center shadow-2xl shadow-violet-500/20 backdrop-blur-xl">
+                                    <Sparkles className="w-10 h-10 text-violet-300 animate-pulse" />
+                                </div>
+                                <div className="absolute -inset-2 rounded-full border border-violet-400/20 animate-ping opacity-40 pointer-events-none" />
+                                <div className="absolute -inset-6 rounded-full border border-indigo-500/15 animate-pulse pointer-events-none" />
+                            </div>
+
+                            <div className="space-y-1.5 max-w-sm">
+                                <h3 className="text-xl font-black text-white tracking-tight">
+                                    {connectionStatus === "connected" ? "AI Interviewer Ava is Starting..." : "Connecting to AvaHire Live..."}
+                                </h3>
+                                <p className="text-xs text-slate-400 font-medium">
+                                    {connectionStatus === "connected"
+                                        ? "Live audio is active. Avatar video stream will appear on screen momentarily."
+                                        : "Establishing secure real-time WebRTC session and AI vision channels."}
+                                </p>
+                            </div>
+
+                            {/* Minimal Connection Spinner */}
+                            {connectionStatus === "connecting" && (
+                                <div className="flex items-center gap-2 text-xs font-semibold text-violet-300 bg-violet-950/40 border border-violet-500/30 px-4 py-1.5 rounded-full backdrop-blur-md">
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+                                    <span>Connecting in ~3-5 seconds</span>
+                                </div>
+                            )}
+
+                            {connectionStatus === "error" && (
+                                <div className="space-y-3 pt-2">
+                                    <p className="text-xs text-rose-300 bg-rose-950/50 border border-rose-500/40 px-4 py-2 rounded-xl">
+                                        {connectionError || "Connection to LiveKit server failed."}
+                                    </p>
+                                    <button
+                                        onClick={() => window.location.reload()}
+                                        className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition shadow-lg cursor-pointer"
+                                    >
+                                        Retry Connection
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Subtle Cinematic Vignette Overlays */}
+                <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/80 via-black/25 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
             </div>
 
             {/* 2. Transparent Floating Top Bar */}
             <header className="absolute top-0 inset-x-0 px-6 sm:px-10 py-5 flex items-center justify-between z-30 pointer-events-auto">
-                
-                {/* Left: AvaHire Logo */}
+                {/* Left: Logo */}
                 <div className="flex items-center gap-3">
                     <AvaHireLogo size="sm" variant="darkBg" />
                 </div>
 
                 {/* Center: Live Status & Elapsed Stopwatch Timer */}
-                <div className="hidden md:flex items-center gap-4 bg-black/40 backdrop-blur-md border border-white/15 px-5 py-2 rounded-2xl shadow-xl text-xs font-semibold text-slate-300">
+                <div className="hidden md:flex items-center gap-4 bg-black/45 backdrop-blur-md border border-white/15 px-5 py-2 rounded-2xl shadow-xl text-xs font-semibold text-slate-300">
                     <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse shadow-sm shadow-violet-400/50" />
-                        <span className="text-white font-bold tracking-wide">Interview in Progress</span>
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                            connectionStatus === "connected" ? "bg-emerald-400 animate-pulse shadow-sm shadow-emerald-400/50" : "bg-amber-400 animate-ping"
+                        }`} />
+                        <span className="text-white font-bold tracking-wide">
+                            {connectionStatus === "connected" ? "Live AI Interview" : "Connecting..."}
+                        </span>
                     </div>
 
                     <span className="text-white/20 font-normal">|</span>
@@ -399,9 +578,9 @@ const CandidateLiveRoom = () => {
                     </span>
                 </div>
 
-                {/* Right: Security Badge, Transcript Toggle & Leave Room */}
+                {/* Right: Actions */}
                 <div className="flex items-center gap-2.5 sm:gap-4">
-                    {/* Header Quick Toggle for Transcript */}
+                    {/* Live Transcript Toggle */}
                     <button
                         id="btn-header-transcript-toggle"
                         type="button"
@@ -412,7 +591,7 @@ const CandidateLiveRoom = () => {
                         className={`hidden sm:flex items-center gap-2 text-xs font-bold px-3.5 py-1.5 rounded-xl border backdrop-blur-md transition cursor-pointer ${
                             showTranscript
                                 ? "bg-violet-600/40 text-violet-200 border-violet-400/60 shadow-md shadow-violet-500/20"
-                                : "bg-black/30 hover:bg-black/50 text-slate-300 border-white/15 hover:border-white/30"
+                                : "bg-black/35 hover:bg-black/55 text-slate-300 border-white/15 hover:border-white/30"
                         }`}
                         title="Toggle Real-Time Speech-to-Text Transcript Feed"
                     >
@@ -421,9 +600,9 @@ const CandidateLiveRoom = () => {
                         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     </button>
 
-                    <div className="hidden lg:flex items-center gap-2 text-xs font-bold text-emerald-400 bg-black/30 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/20">
+                    <div className="hidden lg:flex items-center gap-2 text-xs font-bold text-emerald-400 bg-black/35 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-emerald-500/20">
                         <ShieldCheck className="w-4 h-4 text-emerald-400 stroke-[2.5]" />
-                        <span>Secure Connection</span>
+                        <span>Anti-Cheat Active</span>
                     </div>
 
                     <span className="hidden sm:inline text-white/20">|</span>
@@ -432,15 +611,15 @@ const CandidateLiveRoom = () => {
                         onClick={() => {
                             let confirmed = true;
                             try {
-                                confirmed = window.confirm("Are you sure you want to exit and submit your interview?");
+                                confirmed = window.confirm("Are you sure you want to end your interview and submit responses?");
                             } catch (e) {
                                 confirmed = true;
                             }
                             if (confirmed) {
-                                navigate(`/i/${interviewData.linkCode || code || "akc123"}/thank-you`);
+                                handleEndInterview();
                             }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-950/30 hover:bg-red-900/40 backdrop-blur-md text-red-300 text-xs font-bold transition cursor-pointer shadow-lg"
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/30 hover:border-red-500/60 bg-red-950/35 hover:bg-red-900/50 backdrop-blur-md text-red-300 text-xs font-bold transition cursor-pointer shadow-lg"
                     >
                         <LogOut className="w-3.5 h-3.5 text-red-400" />
                         <span>Leave Interview</span>
@@ -448,43 +627,44 @@ const CandidateLiveRoom = () => {
                 </div>
             </header>
 
-            {/* 3. Floating Overlay Badges over Full Screen */}
-            <div className={`absolute top-20 left-6 sm:left-10 z-20 flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 text-xs font-bold text-white shadow-xl pointer-events-none transition-all ${showTranscript ? "opacity-30 sm:opacity-0" : "opacity-100"}`}>
+            {/* 3. Floating AI Status Badges */}
+            <div className={`absolute top-20 left-6 sm:left-10 z-20 flex items-center gap-2 bg-black/45 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 text-xs font-bold text-white shadow-xl pointer-events-none transition-all ${showTranscript ? "opacity-30 sm:opacity-0" : "opacity-100"}`}>
                 <Sparkles className="w-3.5 h-3.5 text-violet-400" />
                 <span>AI Interviewer: Ava</span>
                 {isAITalking && (
-                    <span className="flex items-center gap-1 ml-1 text-violet-300 font-mono text-[11px] animate-pulse">
-                        <Volume2 className="w-3 h-3 text-violet-400" /> Speaking
+                    <span className="flex items-center gap-1.5 ml-1 text-violet-300 font-mono text-[11px] animate-pulse">
+                        <Volume2 className="w-3.5 h-3.5 text-violet-400" /> Speaking
                     </span>
                 )}
             </div>
 
-            <div className="absolute top-20 right-6 sm:right-10 z-20 text-xs text-slate-300 font-medium bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 shadow-xl pointer-events-none">
+            <div className="absolute top-20 right-6 sm:right-10 z-20 text-xs text-slate-300 font-medium bg-black/45 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 shadow-xl pointer-events-none">
                 Interview for:{" "}
                 <span className="text-violet-400 font-black">
                     {interviewData.role || "Senior Full Stack Engineer"}
                 </span>
             </div>
 
-            {/* 4. Closed Captions / Subtitle Bar (Only when captions enabled and transcript panel closed or on large screens) */}
+            {/* 4. Live Closed Captions / Subtitle Bar */}
             {showCaptions && !showTranscript && (
                 <div className="absolute bottom-28 inset-x-6 sm:inset-x-24 z-20 flex justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-2">
-                    <div className="max-w-3xl w-full bg-black/50 backdrop-blur-xl border border-white/15 rounded-2xl px-6 py-3.5 text-center shadow-2xl">
-                        <div className="text-[11px] uppercase tracking-wider text-violet-400 font-extrabold mb-0.5">
-                            Ava (AI Interviewer) • Question {currentQuestionIndex + 1} of {questions.length}
+                    <div className="max-w-3xl w-full bg-black/55 backdrop-blur-xl border border-white/15 rounded-2xl px-6 py-3.5 text-center shadow-2xl">
+                        <div className="text-[11px] uppercase tracking-wider text-violet-400 font-extrabold mb-0.5 flex items-center justify-center gap-1.5">
+                            <span>Ava (AI Interviewer)</span>
+                            {isAITalking && <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-ping" />}
                         </div>
                         <p className="text-sm sm:text-base font-semibold text-white leading-relaxed">
-                            "{questions[currentQuestionIndex]}"
+                            "{currentCaption}"
                         </p>
                     </div>
                 </div>
             )}
 
-            {/* REAL-TIME SPEECH-TO-TEXT TRANSCRIPT FEED DRAWER / PANEL */}
+            {/* 5. Real-Time Speech-to-Text Transcript Drawer */}
             {showTranscript && (
                 <aside
                     id="realtime-transcript-panel"
-                    className="absolute top-20 bottom-28 left-4 sm:left-8 z-40 w-80 sm:w-96 md:w-[440px] max-w-[calc(100vw-2rem)] bg-[#0a0d18]/92 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl shadow-black/95 flex flex-col overflow-hidden animate-in slide-in-from-left-4 fade-in duration-200"
+                    className="absolute top-20 bottom-28 left-4 sm:left-8 z-40 w-80 sm:w-96 md:w-[440px] max-w-[calc(100vw-2rem)] bg-[#0a0d18]/95 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl shadow-black/95 flex flex-col overflow-hidden animate-in slide-in-from-left-4 fade-in duration-200"
                 >
                     {/* Header */}
                     <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.03]">
@@ -503,16 +683,7 @@ const CandidateLiveRoom = () => {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                                    <span>Whisper STT Stream</span>
-                                    <span>•</span>
-                                    {/* Audio wave frequency animation */}
-                                    <div className="flex items-center gap-0.5 h-2.5">
-                                        <span className="w-0.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                                        <span className="w-0.5 h-3 bg-emerald-400 rounded-full animate-pulse delay-75" />
-                                        <span className="w-0.5 h-2 bg-emerald-400 rounded-full animate-pulse delay-150" />
-                                        <span className="w-0.5 h-1 bg-emerald-400 rounded-full animate-pulse" />
-                                    </div>
-                                    <span className="text-emerald-400 font-mono">16kHz</span>
+                                    <span>Real-Time WebRTC Stream</span>
                                 </div>
                             </div>
                         </div>
@@ -575,7 +746,6 @@ const CandidateLiveRoom = () => {
                                     ? "bg-violet-600/30 text-violet-300 border-violet-500/40"
                                     : "bg-white/5 text-slate-400 border-white/10 hover:text-slate-200"
                             }`}
-                            title="Auto-scroll to latest speech in real-time"
                         >
                             <ArrowDown className="w-3 h-3" />
                             <span>Follow</span>
@@ -624,7 +794,7 @@ const CandidateLiveRoom = () => {
                             );
                         })}
 
-                        {/* Currently Active Live Utterance (Real-Time STT in progress) */}
+                        {/* Live Utterance buffer */}
                         {liveUtterance && liveUtterance.text && (
                             <div className="p-3 rounded-2xl border border-violet-400/50 bg-violet-600/10 shadow-lg shadow-violet-500/10 animate-pulse">
                                 <div className="flex items-center justify-between mb-1.5">
@@ -632,9 +802,6 @@ const CandidateLiveRoom = () => {
                                         <span className="w-2 h-2 rounded-full bg-violet-400 animate-ping" />
                                         <span className="font-bold text-violet-300">
                                             {liveUtterance.speaker === "Ava" ? "Ava (Speaking)" : `${interviewData.name || "Candidate"} (Speaking)`}
-                                        </span>
-                                        <span className="text-[10px] text-violet-400/80 font-mono">
-                                            [Transcribing Live]
                                         </span>
                                     </div>
                                     <span className="font-mono text-[10px] text-violet-300 font-bold">
@@ -651,20 +818,20 @@ const CandidateLiveRoom = () => {
                         {filteredTranscripts.length === 0 && !liveUtterance?.text && (
                             <div className="py-12 text-center text-slate-500 space-y-2">
                                 <Search className="w-6 h-6 mx-auto opacity-40" />
-                                <p className="text-xs">No matching speech detected in transcript.</p>
+                                <p className="text-xs">Live conversation transcription will appear here as Ava and candidate speak.</p>
                             </div>
                         )}
 
                         <div ref={transcriptBottomRef} />
                     </div>
 
-                    {/* Footer: STT Hardware & Audio Status */}
+                    {/* Footer */}
                     <div className="p-3 border-t border-white/10 bg-black/40 backdrop-blur-md flex items-center justify-between text-[10px] text-slate-400">
                         <div className="flex items-center gap-1.5">
                             {isMicOn ? (
                                 <>
                                     <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                                    <span className="text-emerald-300 font-semibold">STT Microphone Active</span>
+                                    <span className="text-emerald-300 font-semibold">Microphone Stream Active</span>
                                 </>
                             ) : (
                                 <>
@@ -675,25 +842,23 @@ const CandidateLiveRoom = () => {
                         </div>
 
                         <div className="flex items-center gap-1.5 font-mono text-[10px] text-slate-400">
-                            <span>Confidence: <strong className="text-emerald-400">99.2%</strong></span>
+                            <span>Status: <strong className="text-emerald-400">{connectionStatus}</strong></span>
                         </div>
                     </div>
                 </aside>
             )}
 
-            {/* 5. Bottom Right Floating Candidate Live Camera PiP Window */}
+            {/* 6. Candidate Live Camera PiP Tile (Bottom Right) */}
             <div className="absolute bottom-6 right-6 sm:right-10 z-20 w-48 sm:w-60 md:w-72 aspect-[16/10] bg-black/60 backdrop-blur-md rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl shadow-black/90 flex items-center justify-center group/pip">
-                {/* Live Webcam Stream Video Element */}
                 <video
-                    ref={videoRef}
+                    ref={candidateVideoRef}
                     autoPlay
                     playsInline
                     muted
-                    className={`w-full h-full object-cover transform -scale-x-100 ${isCameraOn && hasCameraStream ? "block" : "hidden"}`}
+                    className={`w-full h-full object-cover transform -scale-x-100 ${isCameraOn && hasCandidateVideo ? "block" : "hidden"}`}
                 />
 
-                {/* Camera Off / Connecting State */}
-                {(!isCameraOn || !hasCameraStream) && (
+                {(!isCameraOn || !hasCandidateVideo) && (
                     <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-black/80 text-slate-400 p-4 text-center">
                         <div className="w-10 h-10 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-slate-400">
                             <VideoOff className="w-5 h-5 text-red-400" />
@@ -707,7 +872,7 @@ const CandidateLiveRoom = () => {
                 {/* Top Right Live Indicator */}
                 <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-xs px-2 py-0.5 rounded-md text-[9px] font-bold text-emerald-400 flex items-center gap-1 border border-white/10">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span>{isCameraOn && hasCameraStream ? "Live HD" : "Offline"}</span>
+                    <span>{isCameraOn && hasCandidateVideo ? "Live HD" : "Offline"}</span>
                 </div>
 
                 {/* Bottom Candidate Label */}
@@ -729,17 +894,14 @@ const CandidateLiveRoom = () => {
                 </div>
             </div>
 
-            {/* 6. Transparent Floating Bottom Call Controls Capsule */}
+            {/* 7. Bottom Call Controls Capsule */}
             <footer className="absolute bottom-6 inset-x-0 z-30 flex justify-center pointer-events-auto bg-transparent">
-                <div className="bg-black/40 backdrop-blur-xl border border-white/15 px-6 sm:px-8 py-2.5 rounded-2xl shadow-2xl flex items-center gap-5 sm:gap-8">
+                <div className="bg-black/45 backdrop-blur-xl border border-white/15 px-6 sm:px-8 py-2.5 rounded-2xl shadow-2xl flex items-center gap-4 sm:gap-7">
                     
-                    {/* Mic Toggle Button */}
+                    {/* Mic Toggle */}
                     <button
                         type="button"
-                        onClick={() => {
-                            setIsMicOn(!isMicOn);
-                            toast.info(isMicOn ? "Microphone muted" : "Microphone active");
-                        }}
+                        onClick={handleToggleMic}
                         className="flex flex-col items-center gap-1 group cursor-pointer"
                     >
                         <div
@@ -755,13 +917,10 @@ const CandidateLiveRoom = () => {
                         </span>
                     </button>
 
-                    {/* Camera Toggle Button */}
+                    {/* Camera Toggle */}
                     <button
                         type="button"
-                        onClick={() => {
-                            setIsCameraOn(!isCameraOn);
-                            toast.info(isCameraOn ? "Camera feed paused" : "Camera resumed");
-                        }}
+                        onClick={handleToggleCamera}
                         className="flex flex-col items-center gap-1 group cursor-pointer"
                     >
                         <div
@@ -774,6 +933,25 @@ const CandidateLiveRoom = () => {
                         </div>
                         <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">
                             Camera
+                        </span>
+                    </button>
+
+                    {/* Screen Share Toggle */}
+                    <button
+                        type="button"
+                        onClick={handleToggleScreenShare}
+                        className="flex flex-col items-center gap-1 group cursor-pointer"
+                    >
+                        <div
+                            className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${isScreenSharing
+                                    ? "bg-emerald-600 text-white border border-emerald-400 shadow-md shadow-emerald-500/30"
+                                    : "bg-white/10 hover:bg-white/20 text-slate-300 border border-white/15"
+                                }`}
+                        >
+                            {isScreenSharing ? <Monitor className="w-5 h-5" /> : <MonitorOff className="w-5 h-5" />}
+                        </div>
+                        <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white">
+                            Share
                         </span>
                     </button>
 
@@ -799,7 +977,7 @@ const CandidateLiveRoom = () => {
                         </span>
                     </button>
 
-                    {/* Real-Time Speech-to-Text Transcript Feed Toggle Button */}
+                    {/* Transcript Drawer Button */}
                     <button
                         id="btn-toggle-transcript"
                         type="button"
@@ -818,7 +996,6 @@ const CandidateLiveRoom = () => {
                             }`}
                         >
                             <ScrollText className="w-5 h-5" />
-                            {/* Live pulsing STT indicator badge */}
                             <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black/40"></span>
@@ -836,24 +1013,28 @@ const CandidateLiveRoom = () => {
                 </div>
             </footer>
 
-            {/* MODAL: INTERVIEW COMPLETED & SCORECARD SUMMARY */}
-            {interviewEnded && (
+            {/* MODAL: INTERVIEW COMPLETED / TERMINATED & SCORECARD SUMMARY */}
+            {(interviewEnded || terminationReason) && (
                 <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in zoom-in-95">
                     <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 text-slate-900 space-y-6 shadow-2xl border border-slate-100 text-center">
-                        <div className="w-16 h-16 rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/10">
-                            <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mx-auto shadow-md ${
+                            terminationReason ? "bg-rose-50 text-rose-600 shadow-rose-500/10" : "bg-emerald-50 text-emerald-600 shadow-emerald-500/10"
+                        }`}>
+                            {terminationReason ? <AlertTriangle className="w-9 h-9 stroke-[2.5]" /> : <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />}
                         </div>
 
                         <div className="space-y-1">
                             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                                Interview Submitted!
+                                {terminationReason ? "Interview Terminated" : "Interview Submitted!"}
                             </h2>
                             <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                                Excellent job, {interviewData.name || "Candidate"}. Your responses have been evaluated by AvaHire AI.
+                                {terminationReason
+                                    ? `Session ended due to integrity policy violation: ${terminationReason}`
+                                    : `Great job, ${interviewData.name || "Candidate"}. Your responses have been evaluated by AvaHire AI.`}
                             </p>
                         </div>
 
-                        {/* AI Evaluation Metrics Card */}
+                        {/* AI Evaluation Metrics */}
                         <div className="p-4 rounded-2xl bg-[#f8f9ff] border border-slate-100 grid grid-cols-3 gap-2 text-center">
                             <div className="p-2">
                                 <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Overall Match</div>
@@ -870,7 +1051,7 @@ const CandidateLiveRoom = () => {
                         </div>
 
                         <p className="text-xs text-slate-400 font-medium">
-                            A copy of your interview transcript and hiring recommendation has been sent to the recruiter.
+                            A copy of your interview transcript and hiring recommendation has been saved to your profile.
                         </p>
 
                         <div className="pt-2 flex items-center gap-3">

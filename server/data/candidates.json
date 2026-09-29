@@ -1,18 +1,35 @@
 [
   {
     "id": "cand-1790672105273",
-    "name": "Snehal Harde",
-    "email": "snehalharde09@gmail.com",
-    "phone": "+91 98000 00000",
-    "role": "Frontend Developer",
-    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    "interviewDate": "29 Sept 2026, 14:25",
-    "timestamp": "1790672105302",
-    "duration": "18m 30s",
     "mode": "AI Interview",
-    "score": 80,
-    "status": "Selected",
+    "name": "Snehal Harde",
+    "role": "Frontend Developer",
+    "email": "snehalharde09@gmail.com",
     "notes": "",
+    "phone": "+91 98000 00000",
+    "score": 80,
+    "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
+    "status": "Selected",
+    "duration": "18m 30s",
+    "createdAt": "2026-09-29T08:55:05.302Z",
+    "createdBy": "snehal.harde2935@gmail.com",
+    "timestamp": "1790672105302",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "transcript": [
+      {
+        "isAI": true,
+        "text": "Welcome Snehal Harde! Let's start the evaluation for the Frontend Developer position.",
+        "time": "00:00",
+        "speaker": "AI Interviewer"
+      },
+      {
+        "isAI": false,
+        "text": "Thank you. I have prepared to discuss my technical projects and background in Frontend Developer.",
+        "time": "00:15",
+        "speaker": "Snehal Harde"
+      }
+    ],
+    "interviewDate": "29 Sept 2026, 14:25",
     "summaryPoints": [
       {
         "text": "Successfully completed evaluation assessment",
@@ -24,91 +41,27 @@
       }
     ],
     "recommendation": "Evaluation recorded directly in PostgreSQL database.",
-    "transcript": [
-      {
-        "speaker": "AI Interviewer",
-        "time": "00:00",
-        "isAI": true,
-        "text": "Welcome Snehal Harde! Let's start the evaluation for the Frontend Developer position."
-      },
-      {
-        "speaker": "Snehal Harde",
-        "time": "00:15",
-        "isAI": false,
-        "text": "Thank you. I have prepared to discuss my technical projects and background in Frontend Developer."
-      }
-    ],
     "evaluationBreakdown": [
       {
-        "category": "Technical Proficiency",
         "score": 80,
-        "weight": "40%"
+        "weight": "40%",
+        "category": "Technical Proficiency"
       },
       {
-        "category": "Communication & Clarity",
         "score": 82,
-        "weight": "25%"
+        "weight": "25%",
+        "category": "Communication & Clarity"
       },
       {
-        "category": "Problem Solving",
         "score": 76,
-        "weight": "20%"
+        "weight": "20%",
+        "category": "Problem Solving"
       },
       {
-        "category": "System Architecture",
         "score": 74,
-        "weight": "15%"
+        "weight": "15%",
+        "category": "System Architecture"
       }
-    ],
-    "createdBy": "snehal.harde2935@gmail.com",
-    "userEmail": "snehal.harde2935@gmail.com",
-    "createdAt": "2026-09-29T08:55:05.302Z"
-  },
-  {
-    "id": "cand-1789141858939",
-    "mode": "AI Interview",
-    "name": "hina",
-    "role": "Frontend Developer",
-    "email": "hina@gmail.com",
-    "notes": "",
-    "phone": "+91 98765 43210",
-    "score": 96,
-    "avatar": "",
-    "status": "Under Review",
-    "duration": "8m 40s",
-    "createdAt": "2026-09-11T15:50:58.960Z",
-    "createdBy": "snehal.harde2935@gmail.com",
-    "timestamp": 1789141858960,
-    "userEmail": "snehal.harde2935@gmail.com",
-    "transcript": [
-      {
-        "text": "Welcome Hina to your AvaHire interview.",
-        "time": "00:01",
-        "roleTag": "AI Interviewer",
-        "speaker": "Ava"
-      },
-      {
-        "text": "Thank you! I have specialized experience in responsive React and state architectures.",
-        "time": "00:09",
-        "roleTag": "Candidate",
-        "speaker": "Candidate"
-      }
-    ],
-    "interviewDate": "11 Sept 2026, 15:50",
-    "summaryPoints": [
-      {
-        "text": "Demonstrated strong proficiency in Frontend Developer domain.",
-        "type": "strength"
-      },
-      {
-        "text": "High communication clarity (9.7 / 10).",
-        "type": "strength"
-      },
-      {
-        "text": "Deep technical problem-solving methodology (9.4 / 10).",
-        "type": "strength"
-      }
-    ],
-    "recommendation": "Strong Hire - Senior Technical Fit"
+    ]
   }
 ]

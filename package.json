@@ -52,6 +52,8 @@
     "framer-motion": "11.18.0",
     "input-otp": "1.4.2",
     "jsonwebtoken": "^9.0.3",
+    "livekit-client": "^2.22.3",
+    "livekit-server-sdk": "^2.19.1",
     "lodash": "4.18.1",
     "lucide-react": "0.516.0",
     "mammoth": "^1.12.3",
@@ -76,10 +78,10 @@
     "zod": "3.24.4"
   },
   "scripts": {
-    "dev": "cross-env PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true craco start",
+    "dev": "cross-env PORT=3000 HOST=0.0.0.0 WDS_SOCKET_PORT= DANGEROUSLY_DISABLE_HOST_CHECK=true DISABLE_ESLINT_PLUGIN=true craco start",
     "start": "node server/server.js",
     "server": "node server/server.js",
-    "build": "cross-env FAST_REFRESH=false BUILD_PATH=dist craco build",
+    "build": "cross-env FAST_REFRESH=false BUILD_PATH=dist DISABLE_ESLINT_PLUGIN=true craco build",
     "lint": "eslint src/ --max-warnings=0",
     "test": "craco test"
   },
