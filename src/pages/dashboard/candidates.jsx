@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { candidatesApi } from "@/services/api";
 import {
@@ -32,17 +33,33 @@ import {
     Users,
     Database,
     Plus,
-    Trash2
+    Trash2,
+    ExternalLink,
+    Copy,
+    Share2,
+    Briefcase,
+    FileText,
+    ArrowRight
 } from "lucide-react";
 
 const initialCandidates = [];
 
 const Candidates = () => {
+    const [searchParams, setSearchParams] = useSearchParams();
+    const navigate = useNavigate();
+
+    const jobQueryParam = searchParams.get("job") || "";
+    const statusQueryParam = searchParams.get("status") || "All";
+    const searchQueryParam = searchParams.get("search") || "";
+
     const [candidates, setCandidates] = useState(initialCandidates);
     const [sortBy, setSortBy] = useState("Latest Interview");
-    const [statusFilter, setStatusFilter] = useState("All");
+    const [statusFilter, setStatusFilter] = useState(statusQueryParam || "All");
+    const [jobFilter, setJobFilter] = useState(jobQueryParam);
+    const [searchQuery, setSearchQuery] = useState(searchQueryParam);
     const [pageSize, setPageSize] = useState(5);
     const [showFilterModal, setShowFilterModal] = useState(false);
+    const [copiedCandidateId, setCopiedCandidateId] = useState(null);
 
     // Expanded candidate accordion / downward drawer state
     const [expandedCandidateId, setExpandedCandidateId] = useState(null);
@@ -53,6 +70,12 @@ const Candidates = () => {
     const [playbackSpeed, setPlaybackSpeed] = useState("1x");
     const [isMuted, setIsMuted] = useState(false);
     const [currentCandidateNotes, setCurrentCandidateNotes] = useState({});
+
+    useEffect(() => {
+        if (jobQueryParam) setJobFilter(jobQueryParam);
+        if (statusQueryParam && statusQueryParam !== "All") setStatusFilter(statusQueryParam);
+        if (searchQueryParam) setSearchQuery(searchQueryParam);
+    }, [jobQueryParam, statusQueryParam, searchQueryParam]);
 
     useEffect(() => {
         const fetchCandidates = async () => {
@@ -74,17 +97,23 @@ const Candidates = () => {
         return list
             .filter((c) => {
                 if (!c) return false;
-                if (statusFilter !== "All" && c.status !== statusFilter) return false;
+                if (statusFilter !== "All" && c.status?.toLowerCase() !== statusFilter.toLowerCase()) return false;
+                if (jobFilter && !c.role?.toLowerCase().includes(jobFilter.toLowerCase())) return false;
+                if (searchQuery && !(
+                    c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                    c.role?.toLowerCase().includes(searchQuery.toLowerCase())
+                )) return false;
                 return true;
             })
             .sort((a, b) => {
-                if (sortBy === "Latest Interview") return b.timestamp - a.timestamp;
-                if (sortBy === "Oldest Interview") return a.timestamp - b.timestamp;
-                if (sortBy === "Highest Score") return b.score - a.score;
-                if (sortBy === "Lowest Score") return a.score - b.score;
+                if (sortBy === "Latest Interview") return (b.timestamp || 0) - (a.timestamp || 0);
+                if (sortBy === "Oldest Interview") return (a.timestamp || 0) - (b.timestamp || 0);
+                if (sortBy === "Highest Score") return (b.score || 0) - (a.score || 0);
+                if (sortBy === "Lowest Score") return (a.score || 0) - (b.score || 0);
                 return 0;
             });
-    }, [candidates, sortBy, statusFilter]);
+    }, [candidates, sortBy, statusFilter, jobFilter, searchQuery]);
 
     const totalCount = candidates.length || 24;
 
@@ -273,7 +302,7 @@ const Candidates = () => {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                        All Interviewed Candidates ({totalCount})
+                        All Interviewed Candidates ({filteredCandidates.length})
                     </h1>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-xs font-semibold border border-violet-200 shadow-2xs">
                         <Database className="w-3.5 h-3.5 text-violet-600" />
@@ -281,7 +310,7 @@ const Candidates = () => {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
                     {/* Add Candidate Button */}
                     <button
                         onClick={() => setShowAddModal(true)}
@@ -317,6 +346,70 @@ const Candidates = () => {
                     >
                         <Filter className="w-4 h-4" />
                     </button>
+                </div>
+            </div>
+
+            {/* HR Cross-Navigation Quick Hub & Active Filters Bar */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Navigate HR:</span>
+                    <Link to="/app/jobs" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Jobs</span>
+                    </Link>
+                    <Link to="/app/resumes" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Resumes</span>
+                    </Link>
+                    <Link to="/app/interviews" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Video className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Interviews</span>
+                    </Link>
+                    <Link to="/app/email" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Email Center</span>
+                    </Link>
+                    <Link to="/app/calendar" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Calendar</span>
+                    </Link>
+                </div>
+
+                {(jobFilter || statusFilter !== "All" || searchQuery) && (
+                    <div className="flex items-center gap-2">
+                        {jobFilter && (
+                            <span className="px-2.5 py-1 bg-violet-100 text-violet-700 rounded-lg font-bold flex items-center gap-1">
+                                Job: {jobFilter}
+                                <button onClick={() => setJobFilter("")} className="hover:text-violet-900 cursor-pointer">×</button>
+                            </span>
+                        )}
+                        {statusFilter !== "All" && (
+                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg font-bold flex items-center gap-1">
+                                Status: {statusFilter}
+                                <button onClick={() => setStatusFilter("All")} className="hover:text-emerald-900 cursor-pointer">×</button>
+                            </span>
+                        )}
+                        <button
+                            onClick={() => {
+                                setJobFilter("");
+                                setStatusFilter("All");
+                                setSearchQuery("");
+                            }}
+                            className="text-slate-400 hover:text-rose-600 font-bold underline"
+                        >
+                            Reset filters
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Candidate Portal Isolation Badge Banner */}
+            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs text-indigo-900">
+                <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span>
+                        <strong>Candidate Link Security:</strong> Interview invitation links (<code className="bg-white/80 px-1.5 py-0.5 rounded font-mono font-bold text-violet-700">/i/:code</code>) are strictly isolated. Candidates will only see their live interview portal, and can never access recruiter or HR dashboard pages.
+                    </span>
                 </div>
             </div>
 
@@ -434,6 +527,70 @@ const Candidates = () => {
                                         </div>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Candidate Interview Link & HR Cross Actions Bar */}
+                            <div className="px-5 py-2.5 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Candidate Link:</span>
+                                    <code className="px-2 py-0.5 rounded bg-white border border-slate-200 text-violet-700 font-mono font-semibold truncate max-w-xs sm:max-w-md">
+                                        {`${window.location.origin}/i/${candidate.linkCode || 'ava-' + candidate.id}`}
+                                    </code>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const code = candidate.linkCode || `ava-${candidate.id}`;
+                                            const url = `${window.location.origin}/i/${code}`;
+                                            navigator.clipboard.writeText(url);
+                                            setCopiedCandidateId(candidate.id);
+                                            toast.success(`Copied candidate interview link! (${url})`);
+                                            setTimeout(() => setCopiedCandidateId(null), 2000);
+                                        }}
+                                        className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-violet-600 transition cursor-pointer"
+                                        title="Copy candidate portal URL"
+                                    >
+                                        {copiedCandidateId === candidate.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                    </button>
+                                    <a
+                                        href={`/i/${candidate.linkCode || 'ava-' + candidate.id}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="p-1 rounded hover:bg-slate-200 text-slate-500 hover:text-violet-600 transition flex items-center gap-1 font-semibold"
+                                        title="Preview what candidate sees in their isolated portal"
+                                    >
+                                        <span>Preview</span>
+                                        <ExternalLink className="w-3 h-3" />
+                                    </a>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Link
+                                        to={`/app/email?candidateEmail=${encodeURIComponent(candidate.email)}&interviewCode=${candidate.linkCode || 'ava-' + candidate.id}`}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-semibold transition flex items-center gap-1"
+                                    >
+                                        <Mail className="w-3 h-3" />
+                                        <span>Send Email</span>
+                                    </Link>
+                                    <Link
+                                        to="/app/interviews"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold transition flex items-center gap-1"
+                                    >
+                                        <Video className="w-3 h-3" />
+                                        <span>Interviews</span>
+                                    </Link>
+                                    <Link
+                                        to="/app/resumes"
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold transition flex items-center gap-1"
+                                    >
+                                        <FileText className="w-3 h-3" />
+                                        <span>Resume</span>
+                                    </Link>
+                                </div>
                             </div>
 
                             {/* DOWNWARD EXPANDED DRAWER: Interview Transcript, Evaluation, Scores, and Audio Player */}

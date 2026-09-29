@@ -213,12 +213,6 @@ export const resumesApi = {
       headers: { "Content-Type": "multipart/form-data" }
     });
     return res.data;
-  },
-  uploadBatch: async (formData) => {
-    const res = await api.post("/resumes/upload-batch", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-    return res.data;
   }
 };
 

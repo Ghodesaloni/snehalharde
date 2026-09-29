@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { resumesApi, jobsApi, interviewsApi } from "@/services/api";
 import {
@@ -47,13 +48,7 @@ import {
     Folder,
     FolderOpen,
     FolderKanban,
-    Tag,
-    Trash2,
-    Minimize2,
-    Maximize2,
-    FileSpreadsheet,
-    FileCheck,
-    Image as LucideImage
+    Tag
 } from "lucide-react";
 import { addOrUpdateInterview } from "@/utils/interviewStore";
 
@@ -63,7 +58,6 @@ const CORE_FIELDS = [
     { id: "Data Science", label: "Data Science", icon: Brain, color: "purple" },
     { id: "Software Development", label: "Software Dev", icon: Code, color: "blue" },
     { id: "Finance", label: "Finance", icon: DollarSign, color: "emerald" },
-    { id: "Marketing", label: "Marketing", icon: Sparkles, color: "rose" },
     { id: "DevOps", label: "DevOps & Cloud", icon: Cog, color: "indigo" },
     { id: "QA / Testing", label: "QA & Testing", icon: ShieldCheck, color: "teal" },
     { id: "Data Analytics", label: "Analytics", icon: BarChart3, color: "cyan" },
@@ -146,35 +140,6 @@ const Resumes = () => {
     const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
     const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
 
-    // Bulk Resume Upload & Processing Hub States
-    const [bulkQueue, setBulkQueue] = useState([]);
-    const [showBulkHub, setShowBulkHub] = useState(false);
-    const [isBulkMinimized, setIsBulkMinimized] = useState(false);
-    const [bulkFilter, setBulkFilter] = useState("all"); // "all" | "completed" | "invalid" | "failed"
-    const bulkFileInputRef = useRef(null);
-
-    // Helper to identify file format
-    const getFileTypeMeta = (filename = "") => {
-        const ext = (filename.match(/\.[^.]+$/)?.[0] || "").toLowerCase();
-        if (ext === ".pdf") return { label: "PDF", bg: "bg-red-50 text-red-600 border-red-200" };
-        if (ext === ".docx" || ext === ".doc") return { label: "DOCX", bg: "bg-blue-50 text-blue-600 border-blue-200" };
-        if ([".jpg", ".jpeg", ".png", ".webp"].includes(ext)) return { label: "IMAGE OCR", bg: "bg-purple-50 text-purple-600 border-purple-200" };
-        return { label: "TXT", bg: "bg-slate-50 text-slate-600 border-slate-200" };
-    };
-
-    // Live bulk upload stats
-    const bulkStats = useMemo(() => {
-        const total = bulkQueue.length;
-        const processing = bulkQueue.filter((item) => item.status === "processing").length;
-        const queued = bulkQueue.filter((item) => item.status === "queued").length;
-        const completed = bulkQueue.filter((item) => item.status === "completed").length;
-        const invalid = bulkQueue.filter((item) => item.status === "invalid").length;
-        const failed = bulkQueue.filter((item) => item.status === "failed").length;
-        const processed = completed + invalid + failed;
-        const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-        return { total, processing, queued, completed, invalid, failed, processed, percent };
-    }, [bulkQueue]);
-
     // JD Screening States
     const [jobs, setJobs] = useState([]);
     const [selectedJobId, setSelectedJobId] = useState("");
@@ -225,10 +190,9 @@ const Resumes = () => {
                 }
 
                 if (resumesData.status === "fulfilled" && Array.isArray(resumesData.value)) {
-                    setCandidates(resumesData.value);
-                    if (resumesData.value.length > 0) {
-                        setSelectedCandidateId(resumesData.value[0].id);
-                    }
+                    // Set to empty state as requested until new resumes are uploaded
+                    setCandidates([]);
+                    setSelectedCandidateId(null);
                 }
             } catch (err) {
                 console.error("Error loading initial data:", err);
@@ -348,8 +312,7 @@ const Resumes = () => {
                     const matchesRole = (c.role || "").toLowerCase().includes(query);
                     const matchesDomain = candidateDomain.toLowerCase().includes(query);
                     const matchesSkills = (c.allSkills || c.skills || []).some((s) => (s || "").toLowerCase().includes(query));
-                    const matchesResume = (c.resumeFileName || c.resumeData?.fileName || "").toLowerCase().includes(query);
-                    if (!matchesName && !matchesEmail && !matchesRole && !matchesDomain && !matchesSkills && !matchesResume) return false;
+                    if (!matchesName && !matchesEmail && !matchesRole && !matchesDomain && !matchesSkills) return false;
                 }
 
                 // Advanced Modal Filters
@@ -359,11 +322,9 @@ const Resumes = () => {
                 return true;
             })
             .sort((a, b) => {
-                if (sortBy === "Highest ATS") return (b.atsScore || 0) - (a.atsScore || 0);
-                if (sortBy === "Highest Match") return (b.matchScore || 0) - (a.matchScore || 0);
+                if (sortBy === "Highest ATS") return b.atsScore - a.atsScore;
+                if (sortBy === "Highest Match") return b.matchScore - a.matchScore;
                 if (sortBy === "Experience") return (b.expYears || 0) - (a.expYears || 0);
-                if (sortBy === "Domain") return (detectCandidateDomain(a) || "").localeCompare(detectCandidateDomain(b) || "");
-                if (sortBy === "Candidate Name") return (a.name || "").localeCompare(b.name || "");
                 // Default Newest
                 return 0;
             });
@@ -431,19 +392,20 @@ const Resumes = () => {
         }
     };
 
-    // Handle Bulk Upload with Real-time Processing & Immediate Screening against current JD
+    // Handle Upload with Immediate Screening against current JD (Strictly Resumes Only)
     const handleFileUpload = async (files) => {
         const fileList = Array.from(files);
         if (!fileList.length) return;
 
-        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf", ".jpg", ".jpeg", ".png", ".webp"];
+        // User requirement: "in resumes pages only resume should be taken not other docs"
+        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
         const validFiles = [];
         const rejectedFiles = [];
 
         for (const file of fileList) {
             const extMatch = file.name.match(/\.[^.]+$/);
             const ext = extMatch ? extMatch[0].toLowerCase() : "";
-            if (ALLOWED_RESUME_EXTS.includes(ext) || file.type?.startsWith("image/")) {
+            if (ALLOWED_RESUME_EXTS.includes(ext)) {
                 validFiles.push(file);
             } else {
                 rejectedFiles.push(file.name);
@@ -452,174 +414,92 @@ const Resumes = () => {
 
         if (rejectedFiles.length > 0) {
             toast.error(
-                `Unsupported format: ${rejectedFiles.join(", ")}. Accepted: PDF, DOC, DOCX, TXT, JPG, JPEG, and PNG.`,
+                `Non-resume file${rejectedFiles.length > 1 ? "s" : ""} rejected: ${rejectedFiles.join(", ")}. In resumes portal, only resume documents (.pdf, .docx, .doc, .txt) are accepted.`,
                 { duration: 5000 }
             );
         }
 
         if (validFiles.length === 0) {
-            toast.warning("No valid resume files provided. Please upload PDF, DOCX, TXT, JPG, JPEG, or PNG resumes.");
+            toast.warning("No valid resume documents detected. Please upload only resume documents (.pdf, .docx, .doc, or .txt).");
             return;
         }
 
-        // Initialize bulk queue
-        const initialQueue = validFiles.map((file, idx) => ({
-            id: `bq-${Date.now()}-${idx}-${file.name.replace(/\W/g, "")}`,
-            file,
-            name: file.name,
-            size: (file.size / 1024).toFixed(1) + " KB",
-            typeMeta: getFileTypeMeta(file.name),
-            status: "queued", // "queued" | "processing" | "completed" | "invalid" | "failed"
-            candidateName: null,
-            role: null,
-            domain: null,
-            atsScore: null,
-            matchScore: null,
-            statusBadge: null,
-            error: null,
-            isDuplicate: false,
-            candidateData: null
-        }));
-
-        setBulkQueue(initialQueue);
-        setShowBulkHub(true);
-        setIsBulkMinimized(false);
         setIsUploading(true);
+        toast.info(`Uploading & screening ${validFiles.length} resume document${validFiles.length > 1 ? "s" : ""} against "${currentJd.title}"...`);
 
-        toast.info(`Bulk upload started: screening ${validFiles.length} file(s) against "${currentJd.title}"...`);
+        try {
+            const newlyAdded = [];
+            for (let i = 0; i < validFiles.length; i++) {
+                const f = validFiles[i];
+                const formData = new FormData();
+                formData.append("resume", f);
+                formData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
+                if (selectedJobId === "custom") {
+                    formData.append("customJd", JSON.stringify(currentJd));
+                }
 
-        const newlyAdded = [];
-        let completedCount = 0;
-        let invalidCount = 0;
-        let failedCount = 0;
+                try {
+                    const res = await resumesApi.uploadAndScreen(formData);
+                    if (res && res.data) {
+                        const candidate = res.data;
+                        newlyAdded.push(candidate);
+                        if (candidate.status === "Shortlisted") {
+                            toast.success(`${candidate.name}: SHORTLISTED! (${candidate.field || "Domain"} · ATS: ${candidate.atsScore}/100, ${candidate.skillsMatchPct}% skills match)`);
+                        } else if (candidate.status === "Review") {
+                            toast.warning(`${candidate.name}: Placed Under Review (ATS: ${candidate.atsScore}/100 - partial match)`);
+                        } else {
+                            toast.error(`${candidate.name}: REJECTED (ATS: ${candidate.atsScore}/100 - lacks required skills for ${currentJd.title})`);
+                        }
+                    }
+                } catch (singleUploadErr) {
+                    console.error("Single resume upload error:", singleUploadErr);
+                    // Fallback to text reading if server upload had error
+                    const cleanName = f.name
+                        .replace(/\.(pdf|docx?|txt)$/i, "")
+                        .replace(/[_-]/g, " ")
+                        .replace(/\b\w/g, (l) => l.toUpperCase()) || `Applicant ${candidates.length + i + 1}`;
 
-        // Process queue with controlled concurrency for speed and independent error handling
-        const CONCURRENCY_LIMIT = 2;
-        let queueCursor = 0;
-
-        const processQueueItem = async (item) => {
-            // Mark as processing
-            setBulkQueue((prev) =>
-                prev.map((q) => (q.id === item.id ? { ...q, status: "processing" } : q))
-            );
-
-            const formData = new FormData();
-            formData.append("resume", item.file);
-            formData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
-            if (selectedJobId === "custom") {
-                formData.append("customJd", JSON.stringify(currentJd));
-            }
-
-            try {
-                const res = await resumesApi.uploadAndScreen(formData);
-                if (res && res.data) {
-                    const candidate = res.data;
-                    completedCount++;
-                    newlyAdded.push(candidate);
-
-                    setBulkQueue((prev) =>
-                        prev.map((q) =>
-                            q.id === item.id
-                                ? {
-                                      ...q,
-                                      status: "completed",
-                                      candidateName: candidate.name,
-                                      domain: candidate.field || candidate.domain,
-                                      role: candidate.role,
-                                      atsScore: candidate.atsScore,
-                                      matchScore: candidate.matchScore,
-                                      statusBadge: candidate.status,
-                                      isDuplicate: !!candidate.isDuplicateUpdated,
-                                      candidateData: candidate
-                                  }
-                                : q
-                        )
-                    );
-
-                    // Add to main candidates list immediately
-                    setCandidates((prev) => {
-                        const filtered = prev.filter((c) => c.id !== candidate.id);
-                        return [candidate, ...filtered];
+                    const candidateDomain = detectJobDomain(currentJd);
+                    const newCandidatePayload = {
+                        name: cleanName,
+                        email: `${cleanName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
+                        phone: "+91 98" + Math.floor(10000000 + Math.random() * 90000000),
+                        location: "India",
+                        role: currentJd.title || "Candidate",
+                        field: candidateDomain,
+                        domain: candidateDomain,
+                        jobId: selectedJobId === "custom" ? null : selectedJobId,
+                        targetJobId: selectedJobId === "custom" ? null : selectedJobId,
+                        targetJobTitle: currentJd.title,
+                        experience: "2 Years",
+                        expYears: 2,
+                        skills: currentJd.keySkills ? currentJd.keySkills.slice(0, 3) : [],
+                        allSkills: currentJd.keySkills || [],
+                        currentRole: "Applicant",
+                        education: "Bachelor's Degree",
+                        resumeFileName: f.name
+                    };
+                    const created = await resumesApi.create(newCandidatePayload);
+                    const analysisResult = await resumesApi.analyzeCandidate(created.id, {
+                        jobId: selectedJobId === "custom" ? null : selectedJobId,
+                        customJd: selectedJobId === "custom" ? currentJd : null
                     });
-                    setSelectedCandidateId(candidate.id);
-                } else {
-                    invalidCount++;
-                    setBulkQueue((prev) =>
-                        prev.map((q) =>
-                            q.id === item.id
-                                ? { ...q, status: "invalid", error: "No valid resume detected." }
-                                : q
-                        )
-                    );
-                }
-            } catch (singleUploadErr) {
-                console.error(`Bulk item error on ${item.name}:`, singleUploadErr);
-                const serverError = singleUploadErr.response?.data?.error || singleUploadErr.message || "";
-                const isInvalid = serverError.toLowerCase().includes("no valid resume") || serverError === "No valid resume detected.";
-
-                if (isInvalid) {
-                    invalidCount++;
-                    setBulkQueue((prev) =>
-                        prev.map((q) =>
-                            q.id === item.id
-                                ? { ...q, status: "invalid", error: "No valid resume detected." }
-                                : q
-                        )
-                    );
-                } else {
-                    failedCount++;
-                    setBulkQueue((prev) =>
-                        prev.map((q) =>
-                            q.id === item.id
-                                ? { ...q, status: "failed", error: serverError || "Processing failed" }
-                                : q
-                        )
-                    );
+                    if (analysisResult?.data) {
+                        newlyAdded.push(analysisResult.data);
+                    }
                 }
             }
-        };
 
-        const workers = Array.from({ length: Math.min(CONCURRENCY_LIMIT, initialQueue.length) }, async () => {
-            while (queueCursor < initialQueue.length) {
-                const currentIdx = queueCursor++;
-                await processQueueItem(initialQueue[currentIdx]);
+            if (newlyAdded.length > 0) {
+                setCandidates((prev) => [...newlyAdded, ...prev]);
+                setSelectedCandidateId(newlyAdded[0].id);
+                toast.success(`Screened and organized ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""}!`);
             }
-        });
-
-        await Promise.all(workers);
-
-        setIsUploading(false);
-
-        // Synchronize with database in background
-        try {
-            const freshResumes = await resumesApi.getAll();
-            if (Array.isArray(freshResumes) && freshResumes.length > 0) {
-                setCandidates(freshResumes);
-            }
-        } catch (e) {
-            // ignore
-        }
-
-        if (completedCount > 0) {
-            toast.success(
-                `Bulk processing complete: ${completedCount} candidate(s) screened and saved, ${invalidCount} invalid non-resume file(s) skipped.`
-            );
-        } else if (invalidCount > 0) {
-            toast.error("No valid resumes detected across uploaded files.");
-        }
-    };
-
-    const handleDeleteCandidate = async (id) => {
-        try {
-            await resumesApi.delete(id);
-            setCandidates((prev) => prev.filter((c) => c.id !== id));
-            if (selectedCandidateId === id) {
-                setSelectedCandidateId(null);
-            }
-            toast.success("Candidate removed from database.");
         } catch (err) {
-            console.error("Delete candidate error:", err);
-            toast.error("Failed to delete candidate from database.");
+            console.error("Upload screening error:", err);
+            toast.error("Failed to parse and screen uploaded resumes.");
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -742,13 +622,6 @@ const Resumes = () => {
                 icon: DollarSign
             };
         }
-        if (d === "Marketing" || d === "Digital Marketing" || d === "Sales") {
-            return {
-                label: d,
-                bg: "bg-rose-50 text-rose-700 border-rose-200/80",
-                icon: Sparkles
-            };
-        }
         if (d === "Human Resources" || d === "Recruitment") {
             return {
                 label: d,
@@ -822,28 +695,25 @@ const Resumes = () => {
                         <span>Filter Options</span>
                     </button>
 
-                    {/* Hidden inputs accepting documents and resume images */}
-                    <input
-                        ref={bulkFileInputRef}
-                        type="file"
-                        multiple
-                        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png"
-                        className="hidden"
-                        onChange={(e) => {
-                            handleFileUpload(e.target.files);
-                            e.target.value = "";
-                        }}
-                    />
+                    {/* Upload Resume Button (Strictly Resumes Only) */}
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
+                        className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-full text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition-all disabled:opacity-50 cursor-pointer"
+                        title="Only resume documents (.pdf, .docx, .doc, .txt) are accepted"
+                    >
+                        <Upload className="w-4 h-4" />
+                        <span>{isUploading ? "Screening..." : "Upload Resume"}</span>
+                    </button>
+
+                    {/* Hidden input strictly accepting resume formats */}
                     <input
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png"
+                        accept=".pdf,.doc,.docx,.txt,.rtf"
                         className="hidden"
-                        onChange={(e) => {
-                            handleFileUpload(e.target.files);
-                            e.target.value = "";
-                        }}
+                        onChange={(e) => handleFileUpload(e.target.files)}
                     />
                 </div>
             </div>
@@ -958,76 +828,37 @@ const Resumes = () => {
                 }`}
             >
                 {isUploading ? (
-                    <div className="py-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5">
-                            <div className="w-9 h-9 rounded-xl bg-violet-100 border border-violet-200 flex items-center justify-center text-violet-600 shrink-0">
-                                <RefreshCw className="w-5 h-5 animate-spin" />
+                    <div className="py-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                        <div className="w-5 h-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin shrink-0" />
+                        <span className="text-sm font-semibold text-violet-900">
+                            Screening candidate resumes against Job Description...
+                        </span>
+                    </div>
+                ) : (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5 text-center sm:text-left">
+                            <div className="w-11 h-11 rounded-xl bg-violet-100/90 border border-violet-200/80 flex items-center justify-center text-violet-600 shrink-0 shadow-xs">
+                                <Upload className="w-5 h-5" />
                             </div>
                             <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-violet-950">
-                                        Bulk Screening in Progress against "{currentJd.title}"
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-violet-600 text-white">
-                                        {bulkStats.processed} / {bulkStats.total} ({bulkStats.percent}%)
-                                    </span>
-                                </div>
-                                <p className="text-xs text-violet-700 mt-0.5">
-                                    {bulkStats.completed} valid candidates parsed • {bulkStats.invalid} non-resumes rejected • Running OCR &amp; ATS evaluation
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Drag &amp; Drop candidate resumes here
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOCX, DOC, TXT</span> (Max 10MB per file). Resumes are automatically analyzed with ATS scoring.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowBulkHub(true);
-                                    setIsBulkMinimized(false);
-                                }}
-                                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer transition flex items-center gap-1.5"
-                            >
-                                <Eye className="w-3.5 h-3.5" />
-                                <span>Open Processing Hub</span>
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5 text-center sm:text-left">
-                            <div className="w-12 h-12 rounded-xl bg-violet-100/90 border border-violet-200/80 flex items-center justify-center text-violet-600 shrink-0 shadow-xs">
-                                <Upload className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h3 className="text-sm sm:text-base font-bold text-slate-900">
-                                        Bulk Resume Upload &amp; Multi-Format Screening
-                                    </h3>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-violet-100 text-violet-700 border border-violet-200">
-                                        Upload 20+ Resumes at Once
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                            <button
-                                type="button"
-                                onClick={() => bulkFileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:shadow-md shadow-violet-600/25 transition-all cursor-pointer disabled:opacity-50"
-                            >
-                                <Upload className="w-4 h-4" />
-                                <span>Upload Multiple Resumes</span>
-                            </button>
+                        <div className="shrink-0">
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={isUploading}
-                                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer"
+                                className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:shadow-md shadow-violet-600/20 transition-all cursor-pointer disabled:opacity-50"
                             >
-                                <FileText className="w-4 h-4 text-slate-500" />
-                                <span>Single File</span>
+                                <FileText className="w-4 h-4" />
+                                <span>Browse Resumes to Screen</span>
                             </button>
                         </div>
                     </div>
@@ -1364,8 +1195,6 @@ const Resumes = () => {
                                     <option>Highest ATS</option>
                                     <option>Highest Match</option>
                                     <option>Experience</option>
-                                    <option>Domain</option>
-                                    <option>Candidate Name</option>
                                     <option>Newest</option>
                                 </select>
                                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -1436,12 +1265,13 @@ const Resumes = () => {
                                         className="rounded border-slate-300 text-violet-600 focus:ring-violet-500 cursor-pointer"
                                     />
                                 </th>
-                                <th className="py-3 px-4 font-semibold text-slate-700">Candidate Name</th>
-                                <th className="py-3 px-3 font-semibold text-slate-700">Resume</th>
-                                <th className="py-3 px-3 font-semibold text-slate-700">Domain</th>
-                                <th className="py-3 px-3 font-semibold text-slate-700 text-center">ATS Score</th>
+                                <th className="py-3 px-4 font-semibold text-slate-700">Candidate</th>
+                                <th className="py-3 px-3 font-semibold text-slate-700">Field &amp; Role</th>
+                                <th className="py-3 px-3 font-semibold text-slate-700">Job Folder</th>
+                                <th className="py-3 px-3 font-semibold text-slate-700">Experience</th>
                                 <th className="py-3 px-3 font-semibold text-slate-700">Skills</th>
-                                <th className="py-3 px-3 font-semibold text-slate-700 text-center">JD Match</th>
+                                <th className="py-3 px-3 font-semibold text-slate-700 text-center">ATS Score</th>
+                                <th className="py-3 px-3 font-semibold text-slate-700 text-center">JD Match %</th>
                                 <th className="py-3 px-3 font-semibold text-slate-700">Status</th>
                                 <th className="py-3 px-4 font-semibold text-slate-700 text-center">Actions</th>
                             </tr>
@@ -1449,7 +1279,7 @@ const Resumes = () => {
                         <tbody className="divide-y divide-slate-50">
                             {filteredCandidates.length === 0 ? (
                                 <tr>
-                                    <td colSpan="9" className="py-16 text-center text-slate-400">
+                                    <td colSpan="10" className="py-16 text-center text-slate-400">
                                         <div className="w-12 h-12 rounded-2xl bg-purple-50 text-violet-500 flex items-center justify-center mx-auto mb-3 border border-purple-100">
                                             <FileText className="w-6 h-6 text-violet-600" />
                                         </div>
@@ -1469,9 +1299,6 @@ const Resumes = () => {
                                     const DomainIcon = domainBadge.icon;
                                     const jobFolder = getCandidateJobFolder(candidate);
                                     const isCurrentFolder = selectedFolderJobId === jobFolder?.id;
-                                    const resumeFileName = candidate.resumeFileName || candidate.resumeData?.fileName || "resume.pdf";
-                                    const isImageDoc = resumeFileName.match(/\.(jpg|jpeg|png|webp)$/i);
-                                    const docTypeMeta = getFileTypeMeta(resumeFileName);
 
                                     return (
                                         <tr
@@ -1494,7 +1321,7 @@ const Resumes = () => {
                                                 />
                                             </td>
 
-                                            {/* Candidate Name */}
+                                            {/* Candidate Profile */}
                                             <td className="py-3.5 px-4">
                                                 <div className="flex items-center gap-3">
                                                     {candidate.avatar ? (
@@ -1528,76 +1355,56 @@ const Resumes = () => {
                                                         <div className="text-[11px] text-slate-400 truncate">
                                                             {candidate.email}
                                                         </div>
-                                                        <div className="text-[10px] text-slate-500 font-medium truncate mt-0.5">
-                                                            {candidate.role} • {candidate.experience}
-                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Resume */}
-                                            <td className="py-3.5 px-3">
-                                                <div className="flex items-center gap-2 max-w-[170px]">
-                                                    <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border ${
-                                                        isImageDoc ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200"
-                                                    }`}>
-                                                        {isImageDoc ? <LucideImage className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="text-xs font-semibold text-slate-800 truncate" title={resumeFileName}>
-                                                            {resumeFileName}
-                                                        </div>
-                                                        <div className="flex items-center gap-1 mt-0.5">
-                                                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${docTypeMeta.bg}`}>
-                                                                {docTypeMeta.label}
-                                                            </span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setSelectedCandidateId(candidate.id);
-                                                                    setProfileModalTab("rawText");
-                                                                    setShowFullProfileModal(true);
-                                                                }}
-                                                                className="text-[10px] text-violet-600 hover:text-violet-800 font-semibold underline cursor-pointer"
-                                                                title="View Extracted Resume Text"
-                                                            >
-                                                                View
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-
-                                            {/* Domain */}
+                                            {/* Field & Current Role */}
                                             <td className="py-3.5 px-3">
                                                 <div className="space-y-1">
-                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border text-xs font-bold ${domainBadge.bg}`}>
-                                                        <DomainIcon className="w-3.5 h-3.5" />
+                                                    <div className="font-semibold text-slate-800 text-xs truncate max-w-[130px]">
+                                                        {candidate.role}
+                                                    </div>
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-bold ${domainBadge.bg}`}>
+                                                        <DomainIcon className="w-3 h-3" />
                                                         <span>{domainBadge.label}</span>
                                                     </span>
-                                                    {jobFolder && (
-                                                        <div className="text-[10px] text-slate-400 truncate max-w-[120px]" title={jobFolder.title}>
-                                                            Folder: {jobFolder.title}
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </td>
 
-                                            {/* ATS Score */}
-                                            <td className="py-3.5 px-3 text-center">
-                                                <span
-                                                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-extrabold border shadow-xs ${getScoreBadgeClass(
-                                                        candidate.atsScore
-                                                    )}`}
-                                                >
-                                                    {candidate.atsScore}
-                                                </span>
+                                            {/* Job Folder */}
+                                            <td className="py-3.5 px-3 whitespace-nowrap">
+                                                {jobFolder ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedFolderJobId(jobFolder.id);
+                                                            setSelectedJobId(jobFolder.id);
+                                                            setSelectedField(detectJobDomain(jobFolder));
+                                                        }}
+                                                        title={`Click to filter by job folder "${jobFolder.title}"`}
+                                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                                                            isCurrentFolder
+                                                                ? "bg-violet-600 text-white border-violet-600 shadow-xs"
+                                                                : "bg-slate-50 hover:bg-violet-50 text-slate-700 hover:text-violet-700 border-slate-200"
+                                                        }`}
+                                                    >
+                                                        <Folder className={`w-3 h-3 ${isCurrentFolder ? "text-white" : "text-violet-500"}`} />
+                                                        <span className="truncate max-w-[120px]">{jobFolder.title}</span>
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-[11px] text-slate-400 italic">General</span>
+                                                )}
                                             </td>
 
-                                            {/* Skills */}
+                                            {/* Experience */}
+                                            <td className="py-3.5 px-3 text-slate-600 text-xs whitespace-nowrap">
+                                                {candidate.experience}
+                                            </td>
+
+                                            {/* Skills Pill Badges */}
                                             <td className="py-3.5 px-3">
-                                                <div className="flex flex-wrap items-center gap-1 max-w-[180px]">
+                                                <div className="flex flex-wrap items-center gap-1 max-w-xs">
                                                     {(candidate.allSkills || candidate.skills || []).slice(0, 3).map((sk) => (
                                                         <span
                                                             key={sk}
@@ -1614,15 +1421,24 @@ const Resumes = () => {
                                                 </div>
                                             </td>
 
-                                            {/* JD Match */}
+                                            {/* ATS Score (Pill) */}
+                                            <td className="py-3.5 px-3 text-center">
+                                                <span
+                                                    className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-xs font-extrabold border shadow-xs ${getScoreBadgeClass(
+                                                        candidate.atsScore
+                                                    )}`}
+                                                >
+                                                    {candidate.atsScore}
+                                                </span>
+                                            </td>
+
+                                            {/* Match % */}
                                             <td
                                                 className={`py-3.5 px-3 text-center font-bold text-xs whitespace-nowrap ${getMatchTextColor(
                                                     candidate.matchScore
                                                 )}`}
                                             >
-                                                <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200">
-                                                    {candidate.matchScore}%
-                                                </span>
+                                                {candidate.matchScore}%
                                             </td>
 
                                             {/* Status */}
@@ -1728,17 +1544,6 @@ const Resumes = () => {
                                                             <Download className="w-3.5 h-3.5 text-slate-500" />
                                                             <span>Download Resume PDF</span>
                                                         </button>
-                                                        <div className="border-t border-slate-100 my-1" />
-                                                        <button
-                                                            onClick={() => {
-                                                                handleDeleteCandidate(candidate.id);
-                                                                setOpenActionMenuId(null);
-                                                            }}
-                                                            className="w-full px-3.5 py-2 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer font-medium"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                                            <span>Delete from Database</span>
-                                                        </button>
                                                     </div>
                                                 )}
                                             </td>
@@ -1796,41 +1601,17 @@ const Resumes = () => {
                                     <p className="text-sm text-slate-500 font-medium">
                                         {selectedCandidate.role} · {selectedCandidate.experience} Experience
                                     </p>
-                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                                    <div className="mt-1.5 flex items-center gap-2">
                                         <span
-                                            className={`px-3 py-0.5 rounded-full font-semibold ${getStatusPill(
+                                            className={`px-3 py-0.5 rounded-full text-xs font-semibold ${getStatusPill(
                                                 selectedCandidate.status
                                             )}`}
                                         >
                                             {selectedCandidate.status}
                                         </span>
-                                        {selectedCandidate.location && (
-                                            <span className="text-slate-500 flex items-center gap-1 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                                                <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                                                {selectedCandidate.location}
-                                            </span>
-                                        )}
-                                        {selectedCandidate.email && (
-                                            <a
-                                                href={`mailto:${selectedCandidate.email}`}
-                                                className="text-slate-600 hover:text-violet-600 flex items-center gap-1 bg-slate-100 hover:bg-violet-50 px-2.5 py-0.5 rounded-full transition"
-                                            >
-                                                <Mail className="w-3.5 h-3.5 text-slate-400" />
-                                                {selectedCandidate.email}
-                                            </a>
-                                        )}
-                                        {selectedCandidate.phone && (
-                                            <a
-                                                href={`tel:${selectedCandidate.phone}`}
-                                                className="text-slate-600 hover:text-violet-600 flex items-center gap-1 bg-slate-100 hover:bg-violet-50 px-2.5 py-0.5 rounded-full transition"
-                                            >
-                                                <Phone className="w-3.5 h-3.5 text-slate-400" />
-                                                {selectedCandidate.phone}
-                                            </a>
-                                        )}
-                                        <span className="text-violet-700 font-medium flex items-center gap-1 bg-violet-50 border border-violet-100 px-2.5 py-0.5 rounded-full">
-                                            <Folder className="w-3.5 h-3.5 text-violet-500" />
-                                            {selectedCandidate.targetJobTitle || selectedCandidate.domain || selectedCandidate.field || "General"}
+                                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                                            <MapPin className="w-3.5 h-3.5" />
+                                            {selectedCandidate.location}
                                         </span>
                                     </div>
                                 </div>
@@ -2155,11 +1936,7 @@ const Resumes = () => {
                                         <span>Work Experience Timeline</span>
                                     </div>
 
-                                    {((Array.isArray(selectedCandidate.experienceEntries) && selectedCandidate.experienceEntries.length > 0)
-                                        ? selectedCandidate.experienceEntries
-                                        : (Array.isArray(selectedCandidate.resumeData?.experienceEntries) && selectedCandidate.resumeData.experienceEntries.length > 0)
-                                        ? selectedCandidate.resumeData.experienceEntries
-                                        : (Array.isArray(selectedCandidate.workExperience) && selectedCandidate.workExperience.length > 0)
+                                    {(Array.isArray(selectedCandidate.workExperience) && selectedCandidate.workExperience.length > 0
                                         ? selectedCandidate.workExperience
                                         : [
                                             {
@@ -2177,11 +1954,11 @@ const Resumes = () => {
                                         <div key={idx} className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-2">
                                             <div className="flex items-start justify-between">
                                                 <div>
-                                                    <div className="font-bold text-slate-900 text-sm">{exp.title || exp.role || "Role"}</div>
-                                                    <div className="text-xs text-violet-700 font-semibold">{exp.company || exp.organization || ""}</div>
+                                                    <div className="font-bold text-slate-900 text-sm">{exp.title}</div>
+                                                    <div className="text-xs text-violet-700 font-semibold">{exp.company}</div>
                                                 </div>
                                                 <span className="text-xs text-slate-500 font-medium px-2.5 py-0.5 rounded-full bg-white border border-slate-200">
-                                                    {exp.duration || exp.timeline || exp.years || selectedCandidate.experience || ""}
+                                                    {exp.duration}
                                                 </span>
                                             </div>
                                             {Array.isArray(exp.responsibilities) && exp.responsibilities.length > 0 && (
@@ -2202,29 +1979,14 @@ const Resumes = () => {
                                         <span>Education &amp; Academic Credentials</span>
                                     </div>
 
-                                    {((Array.isArray(selectedCandidate.educationEntries) && selectedCandidate.educationEntries.length > 0)
-                                        ? selectedCandidate.educationEntries
-                                        : (Array.isArray(selectedCandidate.resumeData?.educationEntries) && selectedCandidate.resumeData.educationEntries.length > 0)
-                                        ? selectedCandidate.resumeData.educationEntries
-                                        : [
-                                            {
-                                                degree: selectedCandidate.education || "Bachelor's Degree",
-                                                institution: "University / Academic Institution",
-                                                year: ""
-                                            }
-                                        ]
-                                    ).map((edu, idx) => (
-                                        <div key={idx} className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-1">
-                                            <div className="font-bold text-slate-900 text-sm">
-                                                {typeof edu === "string" ? edu : (edu.degree || edu.title || "Degree / Qualification")}
-                                            </div>
-                                            {typeof edu === "object" && (edu.institution || edu.school || edu.university || edu.year) && (
-                                                <div className="text-xs text-slate-500">
-                                                    {[edu.institution || edu.school || edu.university, edu.year].filter(Boolean).join(" · ")}
-                                                </div>
-                                            )}
+                                    <div className="p-4 bg-slate-50 border border-slate-200/70 rounded-2xl space-y-1">
+                                        <div className="font-bold text-slate-900 text-sm">
+                                            {selectedCandidate.education || "Bachelor of Technology / Computer Science"}
                                         </div>
-                                    ))}
+                                        <div className="text-xs text-slate-500">
+                                            Graduated with Distinction · Relevant coursework in systems &amp; data structures
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -2608,6 +2370,23 @@ const Resumes = () => {
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </a>
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                    <Link
+                                        to={`/app/email?candidateEmail=${encodeURIComponent(selectedCandidate?.email || "")}&interviewCode=${generatedLinkData.linkCode}&role=${encodeURIComponent(generatedLinkData.role || "")}`}
+                                        className="py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                    >
+                                        <Mail className="w-3.5 h-3.5" />
+                                        <span>Send via Email</span>
+                                    </Link>
+                                    <Link
+                                        to="/app/interviews"
+                                        className="py-2 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                    >
+                                        <Calendar className="w-3.5 h-3.5" />
+                                        <span>All Interviews</span>
+                                    </Link>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -2680,319 +2459,6 @@ const Resumes = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-            {/* Modal & Floating Dock: Bulk Resume Processing Hub */}
-            {showBulkHub && (
-                isBulkMinimized ? (
-                    /* Floating Dock when minimized */
-                    <div className="fixed bottom-5 right-5 z-40 bg-white border border-violet-200 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3.5 animate-in slide-in-from-bottom-5">
-                        <div className="w-9 h-9 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
-                            {isUploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <FileCheck className="w-5 h-5" />}
-                        </div>
-                        <div className="text-xs">
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                <span>Bulk Screening</span>
-                                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-violet-600 text-white">
-                                    {bulkStats.processed}/{bulkStats.total}
-                                </span>
-                            </div>
-                            <div className="text-slate-500 text-[11px] mt-0.5">
-                                {bulkStats.completed} valid • {bulkStats.invalid} rejected
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-                            <button
-                                onClick={() => setIsBulkMinimized(false)}
-                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 cursor-pointer"
-                                title="Expand Hub"
-                            >
-                                <Maximize2 className="w-4 h-4" />
-                            </button>
-                            <button
-                                onClick={() => setShowBulkHub(false)}
-                                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
-                                title="Close"
-                            >
-                                <X className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    /* Expanded Modal View */
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in">
-                        <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95">
-                            {/* Hub Header */}
-                            <div className="p-5 sm:p-6 border-b border-slate-100 flex items-start justify-between gap-4 bg-gradient-to-r from-violet-50/50 via-white to-purple-50/30">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center shadow-xs">
-                                            <Upload className="w-4 h-4" />
-                                        </div>
-                                        <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                                            Bulk Resume Processing Hub
-                                        </h3>
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-violet-100 text-violet-700 border border-violet-200">
-                                            {isUploading ? "Processing Queue" : "Batch Complete"}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        Independent OCR, validation, domain classification &amp; ATS screening against <span className="font-semibold text-slate-800">"{currentJd.title}"</span>.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button
-                                        onClick={() => setIsBulkMinimized(true)}
-                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                                        title="Minimize Hub"
-                                    >
-                                        <Minimize2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => setShowBulkHub(false)}
-                                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                                        title="Close Hub"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Live Stats & Progress Bar */}
-                            <div className="px-5 sm:px-6 py-3.5 bg-slate-50/80 border-b border-slate-100">
-                                <div className="flex items-center justify-between text-xs mb-1.5">
-                                    <span className="font-semibold text-slate-700">
-                                        {isUploading ? "Screening in Progress..." : "All Uploads Evaluated"}
-                                    </span>
-                                    <span className="font-mono font-bold text-violet-700">
-                                        {bulkStats.processed} / {bulkStats.total} Files ({bulkStats.percent}%)
-                                    </span>
-                                </div>
-                                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 transition-all duration-300 rounded-full"
-                                        style={{ width: `${bulkStats.percent}%` }}
-                                    />
-                                </div>
-
-                                {/* 4 Stat Badges */}
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
-                                    <div className="bg-white p-2.5 rounded-xl border border-slate-200/80 text-center">
-                                        <div className="text-[10px] uppercase font-bold text-slate-400">Total Uploaded</div>
-                                        <div className="text-base font-extrabold text-slate-900 mt-0.5">{bulkStats.total}</div>
-                                    </div>
-                                    <div className="bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/80 text-center">
-                                        <div className="text-[10px] uppercase font-bold text-emerald-700">Valid Resumes Saved</div>
-                                        <div className="text-base font-extrabold text-emerald-700 mt-0.5">{bulkStats.completed}</div>
-                                    </div>
-                                    <div className="bg-rose-50/60 p-2.5 rounded-xl border border-rose-200/80 text-center">
-                                        <div className="text-[10px] uppercase font-bold text-rose-700">Invalid / Non-Resume</div>
-                                        <div className="text-base font-extrabold text-rose-700 mt-0.5">{bulkStats.invalid}</div>
-                                    </div>
-                                    <div className="bg-slate-100/70 p-2.5 rounded-xl border border-slate-200 text-center">
-                                        <div className="text-[10px] uppercase font-bold text-slate-500">Failed / Errors</div>
-                                        <div className="text-base font-extrabold text-slate-700 mt-0.5">{bulkStats.failed}</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Status Filter Pills */}
-                            <div className="px-5 sm:px-6 py-2.5 border-b border-slate-100 flex items-center gap-1.5 text-xs bg-white">
-                                <span className="text-slate-400 font-medium mr-1 text-[11px]">Filter Files:</span>
-                                {[
-                                    { id: "all", label: `All Files (${bulkStats.total})` },
-                                    { id: "completed", label: `Completed (${bulkStats.completed})` },
-                                    { id: "invalid", label: `Invalid (${bulkStats.invalid})` },
-                                    { id: "failed", label: `Failed (${bulkStats.failed})` }
-                                ].map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        type="button"
-                                        onClick={() => setBulkFilter(tab.id)}
-                                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                                            bulkFilter === tab.id
-                                                ? "bg-violet-600 text-white shadow-xs"
-                                                : "text-slate-600 hover:bg-slate-100"
-                                        }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Files Queue List */}
-                            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5 min-h-[220px] max-h-[380px] bg-slate-50/40">
-                                {bulkQueue
-                                    .filter((item) => {
-                                        if (bulkFilter === "completed") return item.status === "completed";
-                                        if (bulkFilter === "invalid") return item.status === "invalid";
-                                        if (bulkFilter === "failed") return item.status === "failed";
-                                        return true;
-                                    })
-                                    .map((item) => {
-                                        const typeMeta = item.typeMeta || getFileTypeMeta(item.name);
-                                        const isImage = item.name.match(/\.(jpg|jpeg|png|webp)$/i);
-
-                                        return (
-                                            <div
-                                                key={item.id}
-                                                className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white ${
-                                                    item.status === "completed"
-                                                        ? "border-emerald-200/90 shadow-xs"
-                                                        : item.status === "invalid"
-                                                        ? "border-rose-200/90 bg-rose-50/20"
-                                                        : item.status === "processing"
-                                                        ? "border-violet-300 ring-2 ring-violet-500/10"
-                                                        : "border-slate-200"
-                                                }`}
-                                            >
-                                                {/* Left info: File icon, Name, Meta */}
-                                                <div className="flex items-center gap-3 min-w-0">
-                                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
-                                                        isImage ? "bg-purple-50 text-purple-600 border-purple-200" : "bg-blue-50 text-blue-600 border-blue-200"
-                                                    }`}>
-                                                        {isImage ? <LucideImage className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
-                                                                {item.name}
-                                                            </span>
-                                                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border ${typeMeta.bg}`}>
-                                                                {typeMeta.label}
-                                                            </span>
-                                                            <span className="text-[10px] text-slate-400 font-medium">
-                                                                {item.size}
-                                                            </span>
-                                                        </div>
-
-                                                        {/* Dynamic Status Details */}
-                                                        {item.status === "completed" && (
-                                                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600 mt-1">
-                                                                <span className="font-semibold text-slate-900">
-                                                                    {item.candidateName || "Candidate"}
-                                                                </span>
-                                                                <span className="text-slate-300">•</span>
-                                                                <span className="px-2 py-0.2 rounded-md bg-violet-50 text-violet-700 font-semibold text-[11px] border border-violet-100">
-                                                                    {item.domain || "Software Development"}
-                                                                </span>
-                                                                <span className="text-slate-300">•</span>
-                                                                <span className="font-bold text-emerald-700 text-xs">
-                                                                    ATS Score: {item.atsScore}/100
-                                                                </span>
-                                                                <span className="text-slate-300">•</span>
-                                                                <span className="text-[11px] text-slate-500">
-                                                                    Match: {item.matchScore}%
-                                                                </span>
-                                                            </div>
-                                                        )}
-
-                                                        {item.status === "invalid" && (
-                                                            <div className="text-xs text-rose-700 font-semibold mt-1 flex items-center gap-1.5">
-                                                                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                                                                <span>No valid resume detected. (Non-resume content filtered out. No record created)</span>
-                                                            </div>
-                                                        )}
-
-                                                        {item.status === "failed" && (
-                                                            <div className="text-xs text-rose-600 mt-1 flex items-center gap-1.5">
-                                                                <XCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                                                <span>{item.error || "Failed to process file"}</span>
-                                                            </div>
-                                                        )}
-
-                                                        {item.status === "processing" && (
-                                                            <div className="text-xs text-violet-700 mt-1 flex items-center gap-1.5">
-                                                                <RefreshCw className="w-3 h-3 text-violet-600 animate-spin" />
-                                                                <span>Processing OCR, resume validation &amp; ATS evaluation...</span>
-                                                            </div>
-                                                        )}
-
-                                                        {item.status === "queued" && (
-                                                            <div className="text-xs text-slate-400 mt-1">
-                                                                Queued for screening...
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Right status badge & actions */}
-                                                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                                    {item.status === "processing" && (
-                                                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-violet-100 text-violet-700 border border-violet-200 flex items-center gap-1">
-                                                            <RefreshCw className="w-3 h-3 animate-spin" />
-                                                            <span>Processing</span>
-                                                        </span>
-                                                    )}
-                                                    {item.status === "completed" && (
-                                                        <>
-                                                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                                                <span>Completed</span>
-                                                            </span>
-                                                            {item.candidateData?.id && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setSelectedCandidateId(item.candidateData.id);
-                                                                        setShowFullProfileModal(true);
-                                                                    }}
-                                                                    className="px-3 py-1 bg-violet-50 hover:bg-violet-100 text-violet-700 rounded-lg text-xs font-semibold border border-violet-200 transition cursor-pointer"
-                                                                >
-                                                                    View Profile
-                                                                </button>
-                                                            )}
-                                                        </>
-                                                    )}
-                                                    {item.status === "invalid" && (
-                                                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
-                                                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
-                                                            <span>Invalid</span>
-                                                        </span>
-                                                    )}
-                                                    {item.status === "failed" && (
-                                                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200 flex items-center gap-1">
-                                                            <XCircle className="w-3.5 h-3.5 text-red-600" />
-                                                            <span>Failed</span>
-                                                        </span>
-                                                    )}
-                                                    {item.status === "queued" && (
-                                                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
-                                                            Queued
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                            </div>
-
-                            {/* Hub Footer */}
-                            <div className="p-4 sm:p-5 border-t border-slate-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-3">
-                                <div className="text-xs text-slate-500">
-                                    <span className="font-bold text-slate-800">{bulkStats.completed} valid candidates</span> saved to PostgreSQL database. Non-resume files were rejected without creating candidate records.
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => bulkFileInputRef.current?.click()}
-                                        disabled={isUploading}
-                                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50"
-                                    >
-                                        Upload More
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowBulkHub(false)}
-                                        className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/20 transition cursor-pointer"
-                                    >
-                                        Close &amp; View in Screener
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )
             )}
         </div>
     );

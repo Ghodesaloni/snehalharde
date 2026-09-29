@@ -71,20 +71,8 @@ async function extractResumeText(fileBuffer, mimeType = "", filename = "") {
   const isPdf = ext === ".pdf" || mime === "application/pdf";
   const isDocx = ext === ".docx" || mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const isDoc = ext === ".doc" || mime === "application/msword";
-  const isImage = [".jpg", ".jpeg", ".png", ".webp"].includes(ext) || mime.startsWith("image/");
 
-  if (isImage) {
-    fileType = "image";
-    return {
-      text: "",
-      cleanText: "",
-      requiresOcr: true,
-      ocrWarning: "Image file requires OCR extraction.",
-      fileType: "image",
-      charCount: 0,
-      wordCount: 0
-    };
-  } else if (isPdf) {
+  if (isPdf) {
     fileType = "pdf";
     try {
       if (pdfParseModule) {

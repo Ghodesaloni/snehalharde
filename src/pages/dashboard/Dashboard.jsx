@@ -1,17 +1,35 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell,
 } from "recharts";
+import {
+    Briefcase,
+    Users,
+    Video,
+    Calendar as CalendarIcon,
+    Mail,
+    FileText,
+    Settings as SettingsIcon,
+    ArrowRight,
+    ExternalLink,
+    Copy,
+    Check,
+    Plus,
+    Clock,
+    Sparkles,
+    ShieldCheck
+} from "lucide-react";
+import { toast } from "sonner";
 import { dashboardApi } from "@/services/api";
 
 const initialKpis = [
-    { icon: "fa-briefcase", color: "bg-violet-100 text-violet-600", label: "Total Jobs", value: "0", sub: "0 Active Jobs", subColor: "text-slate-400" },
-    { icon: "fa-users", color: "bg-emerald-100 text-emerald-600", label: "Total Candidates", value: "0", sub: "0 In Pipeline", subColor: "text-slate-400" },
-    { icon: "fa-calendar", color: "bg-blue-100 text-blue-600", label: "Interviews Scheduled", value: "0", sub: "0 Total Sessions", subColor: "text-slate-400" },
-    { icon: "fa-chart-line", color: "bg-amber-100 text-amber-600", label: "Completed Interviews", value: "0", sub: "Evaluated by AI", subColor: "text-slate-400" },
-    { icon: "fa-circle-check", color: "bg-rose-100 text-rose-600", label: "Selected Candidates", value: "0", sub: "Ready for offer", subColor: "text-slate-400" },
+    { icon: "fa-briefcase", color: "bg-violet-100 text-violet-600", label: "Total Jobs", value: "0", sub: "0 Active Jobs", subColor: "text-slate-400", link: "/app/jobs" },
+    { icon: "fa-users", color: "bg-emerald-100 text-emerald-600", label: "Total Candidates", value: "0", sub: "0 In Pipeline", subColor: "text-slate-400", link: "/app/candidates" },
+    { icon: "fa-calendar", color: "bg-blue-100 text-blue-600", label: "Interviews Scheduled", value: "0", sub: "0 Total Sessions", subColor: "text-slate-400", link: "/app/interviews" },
+    { icon: "fa-chart-line", color: "bg-amber-100 text-amber-600", label: "Completed Interviews", value: "0", sub: "Evaluated by AI", subColor: "text-slate-400", link: "/app/interviews" },
+    { icon: "fa-circle-check", color: "bg-rose-100 text-rose-600", label: "Selected Candidates", value: "0", sub: "Ready for offer", subColor: "text-slate-400", link: "/app/candidates?status=Selected" },
 ];
 
 const initialWeekData = [
@@ -28,9 +46,11 @@ const initialStageData = [
 ];
 
 const Dashboard = () => {
+    const navigate = useNavigate();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
+    const [copiedCode, setCopiedCode] = useState(null);
 
     useEffect(() => {
         setIsMounted(true);
@@ -56,7 +76,12 @@ const Dashboard = () => {
         fetchStats();
     }, []);
 
-    const kpis = stats?.kpis || initialKpis;
+    const kpiLinks = ["/app/jobs", "/app/candidates", "/app/interviews", "/app/interviews", "/app/candidates?status=Selected"];
+    const kpis = (stats?.kpis || initialKpis).map((k, idx) => ({
+        ...k,
+        link: k.link || kpiLinks[idx] || "/app/dashboard"
+    }));
+
     const weekData = stats?.weekData || initialWeekData;
     const stageData = stats?.stageData || initialStageData;
     const topJobs = stats?.topJobs || [];
@@ -66,23 +91,101 @@ const Dashboard = () => {
 
     const totalInFunnel = stageData.reduce((acc, s) => acc + (s.value || 0), 0);
 
+    const handleCopyCandidateLink = (linkCode, e) => {
+        e?.stopPropagation();
+        const fullUrl = `${window.location.origin}/i/${linkCode || "ava123"}`;
+        navigator.clipboard.writeText(fullUrl);
+        setCopiedCode(linkCode);
+        toast.success(`Copied candidate interview link: ${fullUrl}`);
+        setTimeout(() => setCopiedCode(null), 2000);
+    };
+
     return (
         <div className="space-y-6" data-testid="dashboard-page">
-            {/* KPIs */}
+            {/* Quick Action Hub Bar */}
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5" />
+                            HR Quick Actions
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900 mt-0.5">
+                            Recruitment Pipeline Shortcuts
+                        </h2>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                        <Link
+                            to="/app/jobs"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <Briefcase className="w-3.5 h-3.5" />
+                            <span>Post Job</span>
+                        </Link>
+                        <Link
+                            to="/app/resumes"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <FileText className="w-3.5 h-3.5" />
+                            <span>Upload Resumes</span>
+                        </Link>
+                        <Link
+                            to="/app/candidates"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <Users className="w-3.5 h-3.5" />
+                            <span>Candidates</span>
+                        </Link>
+                        <Link
+                            to="/app/interviews"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <Video className="w-3.5 h-3.5" />
+                            <span>Interviews</span>
+                        </Link>
+                        <Link
+                            to="/app/email"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <Mail className="w-3.5 h-3.5" />
+                            <span>Email Center</span>
+                        </Link>
+                        <Link
+                            to="/app/calendar"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition shadow-2xs"
+                        >
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            <span>Calendar</span>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
+            {/* Clickable KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {kpis.map((k) => (
-                    <div key={k.label} data-testid={`kpi-${k.label.toLowerCase().replace(/\s+/g, "-")}`} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm card-hover">
+                    <Link
+                        key={k.label}
+                        to={k.link}
+                        data-testid={`kpi-${k.label.toLowerCase().replace(/\s+/g, "-")}`}
+                        className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm card-hover hover:border-violet-300 hover:shadow-md transition-all group block"
+                        title={`Go to ${k.label}`}
+                    >
                         <div className="flex items-start justify-between">
                             <div>
-                                <div className="text-xs text-slate-500 font-medium">{k.label}</div>
+                                <div className="text-xs text-slate-500 font-medium group-hover:text-violet-600 transition-colors flex items-center gap-1">
+                                    <span>{k.label}</span>
+                                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
                                 <div className="text-3xl font-extrabold text-slate-900 mt-1">{k.value}</div>
                                 <div className={`text-xs mt-1 ${k.subColor}`}>{k.sub}</div>
                             </div>
-                            <div className={`w-11 h-11 rounded-xl ${k.color} flex items-center justify-center`}>
+                            <div className={`w-11 h-11 rounded-xl ${k.color} flex items-center justify-center group-hover:scale-105 transition-transform`}>
                                 <i className={`fa-solid ${k.icon}`}></i>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 ))}
             </div>
 
@@ -91,10 +194,9 @@ const Dashboard = () => {
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm min-w-0">
                     <div className="flex items-center justify-between mb-4">
                         <div className="font-bold text-slate-900">Interviews Overview</div>
-                        <select className="text-xs border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600">
-                            <option>This Week</option>
-                            <option>This Month</option>
-                        </select>
+                        <Link to="/app/interviews" className="text-xs text-violet-600 font-semibold hover:underline">
+                            View Interviews →
+                        </Link>
                     </div>
                     <div className="w-full h-[220px] min-w-0 min-h-[220px]">
                         {isMounted && (
@@ -117,21 +219,26 @@ const Dashboard = () => {
                     </div>
                     <div className="grid grid-cols-4 gap-3 mt-4 border-t border-slate-100 pt-3">
                         {[
-                            { l: "Total", v: kpis[2]?.value || "0", c: "text-slate-900" },
-                            { l: "Scheduled", v: kpis[2]?.value || "0", c: "text-violet-600" },
-                            { l: "In Progress", v: "0", c: "text-amber-600" },
-                            { l: "Completed", v: kpis[3]?.value || "0", c: "text-emerald-600" },
+                            { l: "Total", v: kpis[2]?.value || "0", c: "text-slate-900", link: "/app/interviews" },
+                            { l: "Scheduled", v: kpis[2]?.value || "0", c: "text-violet-600", link: "/app/interviews" },
+                            { l: "Calendar", v: "View", c: "text-amber-600", link: "/app/calendar" },
+                            { l: "Completed", v: kpis[3]?.value || "0", c: "text-emerald-600", link: "/app/interviews" },
                         ].map((s) => (
-                            <div key={s.l}>
+                            <Link key={s.l} to={s.link} className="hover:opacity-80 transition block">
                                 <div className="text-xs text-slate-500">{s.l}</div>
                                 <div className={`text-xl font-bold ${s.c}`}>{s.v}</div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm min-w-0">
-                    <div className="font-bold text-slate-900 mb-4">Candidates by Stage</div>
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="font-bold text-slate-900">Candidates by Stage</div>
+                        <Link to="/app/candidates" className="text-xs text-violet-600 font-semibold hover:underline">
+                            View All →
+                        </Link>
+                    </div>
                     <div className="flex items-center gap-4">
                         <div className="relative w-40 h-40 min-w-[160px] min-h-[160px] shrink-0 flex items-center justify-center">
                             <PieChart width={160} height={160}>
@@ -152,13 +259,17 @@ const Dashboard = () => {
                         </div>
                         <div className="flex-1 space-y-2">
                             {stageData.map((s) => (
-                                <div key={s.name} className="flex items-center justify-between text-xs">
+                                <Link
+                                    key={s.name}
+                                    to={`/app/candidates?status=${encodeURIComponent(s.name)}`}
+                                    className="flex items-center justify-between text-xs hover:bg-slate-50 p-1 rounded-md transition"
+                                >
                                     <div className="flex items-center gap-2">
                                         <span className="w-2.5 h-2.5 rounded-full" style={{ background: s.color }} />
                                         <span className="text-slate-700 font-medium">{s.name}</span>
                                     </div>
                                     <span className="text-slate-500 font-semibold">{s.value} ({s.pct})</span>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>
@@ -167,7 +278,7 @@ const Dashboard = () => {
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="font-bold text-slate-900">Top Job Openings</div>
-                        <Link to="/app/jobs" className="text-xs text-violet-600 font-semibold hover:underline">View All</Link>
+                        <Link to="/app/jobs" className="text-xs text-violet-600 font-semibold hover:underline">Manage Jobs →</Link>
                     </div>
                     <div className="space-y-3">
                         {topJobs.length === 0 ? (
@@ -180,12 +291,17 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             topJobs.map((j) => (
-                                <div key={j.id || j.title} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors">
-                                    <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center text-sm font-bold">
+                                <Link
+                                    key={j.id || j.title}
+                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
+                                    title="Click to view candidates for this job"
+                                >
+                                    <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center text-sm font-bold group-hover:bg-violet-600 group-hover:text-white transition-colors">
                                         <i className="fa-solid fa-briefcase"></i>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold text-slate-900 truncate">{j.title}</div>
+                                        <div className="text-sm font-semibold text-slate-900 truncate group-hover:text-violet-600 transition-colors">{j.title}</div>
                                         <div className="text-xs text-slate-500">{j.dept}</div>
                                     </div>
                                     <div className="text-right">
@@ -193,7 +309,7 @@ const Dashboard = () => {
                                         <div className="text-[10px] text-slate-400">Candidates</div>
                                     </div>
                                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${j.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{j.status}</span>
-                                </div>
+                                </Link>
                             ))
                         )}
                     </div>
@@ -205,7 +321,7 @@ const Dashboard = () => {
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="font-bold text-slate-900">Recent Jobs Database</div>
-                        <Link to="/app/jobs" className="text-xs text-violet-600 font-semibold hover:underline">Manage Jobs</Link>
+                        <Link to="/app/jobs" className="text-xs text-violet-600 font-semibold hover:underline">View All Jobs</Link>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -214,7 +330,7 @@ const Dashboard = () => {
                                     <th className="text-left font-medium py-2">Job Title</th>
                                     <th className="text-left font-medium">Dept</th>
                                     <th className="text-left font-medium">Cand</th>
-                                    <th className="text-left font-medium">Status</th>
+                                    <th className="text-left font-medium">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -231,7 +347,12 @@ const Dashboard = () => {
                                             <td className="text-slate-500 text-xs">{j.dept}</td>
                                             <td className="text-slate-900 font-semibold text-xs">{j.candidates}</td>
                                             <td>
-                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${j.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{j.status}</span>
+                                                <Link
+                                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                                    className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 hover:underline"
+                                                >
+                                                    Candidates →
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))
@@ -244,7 +365,7 @@ const Dashboard = () => {
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="font-bold text-slate-900">Upcoming Interviews</div>
-                        <Link to="/app/interviews" className="text-xs text-violet-600 font-semibold hover:underline">View All</Link>
+                        <Link to="/app/interviews" className="text-xs text-violet-600 font-semibold hover:underline">Schedule / View</Link>
                     </div>
                     <div className="space-y-3">
                         {upcoming.length === 0 ? (
@@ -257,17 +378,37 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             upcoming.map((u) => (
-                                <div key={u.id || u.name} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
-                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs">
-                                        {(u.name || "C").split(" ").map(n => n[0]).join("")}
+                                <div key={u.id || u.name} className="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 p-2 rounded-xl transition">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                            {(u.name || "C").split(" ").map(n => n[0]).join("")}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-semibold text-slate-900 truncate">{u.name}</div>
+                                            <div className="text-xs text-slate-500 truncate">{u.role}</div>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold text-slate-900 truncate">{u.name}</div>
-                                        <div className="text-xs text-slate-500 truncate">{u.role}</div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-[11px] text-slate-600 font-medium">{u.time}</div>
-                                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 inline-block mt-0.5">{u.status}</span>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={(e) => handleCopyCandidateLink(u.linkCode, e)}
+                                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-violet-50 hover:text-violet-600 text-slate-500 transition"
+                                            title="Copy Candidate Portal Link"
+                                        >
+                                            {copiedCode === u.linkCode ? (
+                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                            ) : (
+                                                <Copy className="w-3.5 h-3.5" />
+                                            )}
+                                        </button>
+                                        <a
+                                            href={`/i/${u.linkCode || "ava123"}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-violet-50 hover:text-violet-600 text-slate-500 transition"
+                                            title="Preview Candidate Portal"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
                                     </div>
                                 </div>
                             ))

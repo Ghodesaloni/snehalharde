@@ -65,15 +65,8 @@ async function loadFromPostgres() {
     const res = await pool.query("SELECT collection_name, data FROM public.app_collections");
     if (res.rows && res.rows.length > 0) {
       for (const row of res.rows) {
-        let val = row.data;
-        if (row.collection_name === "resumes" && Array.isArray(val)) {
-          val = val.filter(r => r && r.id && !r.id.startsWith("c-100") && !r.email?.endsWith("@example.com"));
-        }
-        if (row.collection_name === "candidates" && Array.isArray(val)) {
-          val = val.filter(c => c && c.id !== "cand-1789141858939" && !c.id.startsWith("cand-sample") && c.name !== "hina");
-        }
-        memoryCache.set(row.collection_name, val);
-        writeLocalJson(row.collection_name, val);
+        memoryCache.set(row.collection_name, row.data);
+        writeLocalJson(row.collection_name, row.data);
       }
       console.log(`✓ Synchronized ${res.rows.length} collections from PostgreSQL into memory.`);
     }
@@ -93,26 +86,9 @@ setTimeout(loadFromPostgres, 200);
  */
 function readData(collection, defaultData = []) {
   if (memoryCache.has(collection)) {
-    let cached = memoryCache.get(collection);
-    if (collection === "resumes" && Array.isArray(cached)) {
-      cached = cached.filter(r => r && r.id && !r.id.startsWith("c-100") && !r.email?.endsWith("@example.com"));
-      memoryCache.set(collection, cached);
-    }
-    if (collection === "candidates" && Array.isArray(cached)) {
-      cached = cached.filter(c => c && c.id !== "cand-1789141858939" && !c.id.startsWith("cand-sample") && c.name !== "hina");
-      memoryCache.set(collection, cached);
-    }
-    return cached;
+    return memoryCache.get(collection);
   }
-  let local = readLocalJson(collection, defaultData);
-  if (collection === "resumes" && Array.isArray(local)) {
-    local = local.filter(r => r && r.id && !r.id.startsWith("c-100") && !r.email?.endsWith("@example.com"));
-    writeLocalJson(collection, local);
-  }
-  if (collection === "candidates" && Array.isArray(local)) {
-    local = local.filter(c => c && c.id !== "cand-1789141858939" && !c.id.startsWith("cand-sample") && c.name !== "hina");
-    writeLocalJson(collection, local);
-  }
+  const local = readLocalJson(collection, defaultData);
   memoryCache.set(collection, local);
   return local;
 }
@@ -128,13 +104,7 @@ async function readDataAsync(collection, defaultData = []) {
       [collection]
     );
     if (res.rows && res.rows.length > 0) {
-      let data = res.rows[0].data;
-      if (collection === "resumes" && Array.isArray(data)) {
-        data = data.filter(r => r && r.id && !r.id.startsWith("c-100") && !r.email?.endsWith("@example.com"));
-      }
-      if (collection === "candidates" && Array.isArray(data)) {
-        data = data.filter(c => c && c.id !== "cand-1789141858939" && !c.id.startsWith("cand-sample") && c.name !== "hina");
-      }
+      const data = res.rows[0].data;
       memoryCache.set(collection, data);
       writeLocalJson(collection, data);
       return data;

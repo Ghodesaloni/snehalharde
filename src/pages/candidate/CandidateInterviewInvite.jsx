@@ -176,12 +176,20 @@ const CandidateInterviewInvite = () => {
                 <p className="text-sm text-slate-500 max-w-sm mt-1 mb-6">
                     No active interview invitation was found for code <span className="font-mono font-bold text-slate-700">{code}</span>. Please verify your link or contact your recruiter.
                 </p>
-                <Link
-                    to="/"
-                    className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-full text-sm font-semibold transition"
-                >
-                    Return to AvaHire Home
-                </Link>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer shadow-md shadow-violet-500/25"
+                    >
+                        Retry Verification
+                    </button>
+                    <button
+                        onClick={() => toast.info("Please contact your HR coordinator or recruiter to verify your personalized interview link.")}
+                        className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full text-xs sm:text-sm font-semibold transition cursor-pointer"
+                    >
+                        Contact Recruiter
+                    </button>
+                </div>
             </div>
         );
     }

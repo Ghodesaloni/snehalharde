@@ -8,39 +8,30 @@ const awsService = require("../services/awsService");
 const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
 const { parseResume } = require("../services/resumeParserService");
 const { ALL_DOMAINS } = require("../services/domainClassifier");
-const emailService = require("../services/emailService");
 
-const ALLOWED_RESUME_EXTENSIONS = [
-  ".pdf", ".docx", ".doc", ".txt", ".rtf",
-  ".jpg", ".jpeg", ".png", ".webp"
-];
+const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
 const ALLOWED_RESUME_MIMES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
   "text/plain",
   "application/rtf",
-  "text/rtf",
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp"
+  "text/rtf"
 ];
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname || "").toLowerCase();
     const mime = (file.mimetype || "").toLowerCase();
 
-    const isImage = [".jpg", ".jpeg", ".png", ".webp"].includes(ext) || mime.startsWith("image/");
     const hasValidExt = ALLOWED_RESUME_EXTENSIONS.includes(ext);
     const hasValidMime = ALLOWED_RESUME_MIMES.includes(mime) || (mime.startsWith("text/") && ext !== ".csv" && ext !== ".tsv" && ext !== ".json");
 
-    if (!isImage && !hasValidExt && !hasValidMime) {
+    if (!hasValidExt && !hasValidMime) {
       return cb(
-        new Error(`Invalid document type "${ext || file.originalname}". Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG.`)
+        new Error(`Invalid document type "${ext || file.originalname}". Only resume documents (.pdf, .docx, .doc, .txt) are accepted.`)
       );
     }
     cb(null, true);
@@ -53,7 +44,7 @@ const handleUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG."
+        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
       });
     }
     next();
@@ -61,11 +52,11 @@ const handleUpload = (req, res, next) => {
 };
 
 const handleMultipleUpload = (req, res, next) => {
-  upload.array("resumes", 50)(req, res, (err) => {
+  upload.array("resumes", 20)(req, res, (err) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Accepted formats: PDF, DOCX, DOC, TXT, JPG, JPEG, and PNG."
+        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
       });
     }
     next();
@@ -210,33 +201,6 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
       keyPoints: analysis.keyPoints,
       summary: analysis.aiSummary || parsed.professional_summary,
       resumeQuality: parsed.resume_quality,
-      resumeData: {
-        fileName: originalName,
-        rawText: parsed.raw_text,
-        education: parsed.education,
-        educationEntries: parsed.education,
-        experienceEntries: parsed.experience,
-        projects: parsed.projects,
-        certifications: parsed.certifications,
-        resumeQuality: parsed.resume_quality,
-        requiresOcr: parsed.requires_ocr,
-        ocrWarning: parsed.ocr_warning,
-        s3Url: s3Metadata?.url || null,
-        storageProvider: s3Metadata?.url ? "AWS S3" : "Local"
-      },
-      aiAnalysis: {
-        summary: analysis.aiSummary || parsed.professional_summary,
-        keyPoints: analysis.keyPoints,
-        breakdown: analysis.breakdown,
-        matchedSkills: analysis.matchedSkills,
-        missingSkills: analysis.missingSkills,
-        missingRequiredSkills: analysis.missingRequiredSkills,
-        missingPreferredSkills: analysis.missingPreferredSkills,
-        atsScore: analysis.atsScore,
-        matchScore: analysis.matchScore,
-        skillsMatchPct: analysis.skillsMatchPct,
-        status: analysis.status
-      },
       targetJobId: job.id,
       targetJobTitle: job.title,
       jobId: job.id && job.id !== "custom-jd" ? job.id : null,
@@ -260,10 +224,7 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
     });
   } catch (err) {
     console.error("Upload and screen error:", err);
-    const isInvalidResume = err.message === "No valid resume detected." || (err.message && err.message.toLowerCase().includes("no valid resume"));
-    const statusCode = isInvalidResume ? 400 : 500;
-    const errorMsg = isInvalidResume ? "No valid resume detected." : (err.message || "Failed to process resume.");
-    res.status(statusCode).json({ success: false, error: errorMsg });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -337,32 +298,6 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           keyPoints: analysis.keyPoints,
           summary: analysis.aiSummary || parsed.professional_summary,
           resumeQuality: parsed.resume_quality,
-          resumeData: {
-            fileName: originalName,
-            rawText: parsed.raw_text,
-            education: parsed.education,
-            educationEntries: parsed.education,
-            experienceEntries: parsed.experience,
-            projects: parsed.projects,
-            certifications: parsed.certifications,
-            resumeQuality: parsed.resume_quality,
-            requiresOcr: parsed.requires_ocr,
-            ocrWarning: parsed.ocr_warning,
-            storageProvider: "Local"
-          },
-          aiAnalysis: {
-            summary: analysis.aiSummary || parsed.professional_summary,
-            keyPoints: analysis.keyPoints,
-            breakdown: analysis.breakdown,
-            matchedSkills: analysis.matchedSkills,
-            missingSkills: analysis.missingSkills,
-            missingRequiredSkills: analysis.missingRequiredSkills,
-            missingPreferredSkills: analysis.missingPreferredSkills,
-            atsScore: analysis.atsScore,
-            matchScore: analysis.matchScore,
-            skillsMatchPct: analysis.skillsMatchPct,
-            status: analysis.status
-          },
           targetJobId: job.id,
           targetJobTitle: job.title,
           jobId: job.id && job.id !== "custom-jd" ? job.id : null,
@@ -372,18 +307,10 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           rawText: parsed.raw_text?.slice(0, 3000)
         });
 
-        results.push({
-          ...candidateRecord,
-          uploadFileName: originalName
-        });
+        results.push(candidateRecord);
       } catch (fileErr) {
         console.error(`Error parsing file ${originalName}:`, fileErr);
-        const isInvalidResume = fileErr.message === "No valid resume detected." || (fileErr.message && fileErr.message.toLowerCase().includes("no valid resume"));
-        errors.push({
-          filename: originalName,
-          error: isInvalidResume ? "No valid resume detected." : (fileErr.message || "Failed to process resume."),
-          status: isInvalidResume ? "Invalid" : "Failed"
-        });
+        errors.push({ filename: originalName, error: fileErr.message });
       }
     }
 
@@ -525,52 +452,12 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/resumes/:id - update resume
-router.put("/:id", async (req, res) => {
+router.put("/:id", (req, res) => {
   try {
-    const existing = resumesDb.getById(req.params.id);
     const updated = resumesDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
-
-    const candEmail = (updated.email || existing?.email || "").trim();
-    const candName = updated.name || existing?.name || "Candidate";
-    const candRole = updated.role || existing?.role || "Software Engineer";
-    const authorEmail = updated.userEmail || updated.createdBy || req.headers["x-user-email"] || "";
-
-    if (candEmail && candEmail.includes("@") && req.body.status) {
-      const newStatus = req.body.status.trim().toLowerCase();
-      const prevStatus = (existing?.status || "").trim().toLowerCase();
-
-      if ((newStatus === "selected" || newStatus === "shortlisted" || newStatus === "hired") && prevStatus !== newStatus) {
-        try {
-          await emailService.sendCandidateSelectedEmail({
-            toEmail: candEmail,
-            candidateName: candName,
-            role: candRole,
-            company: "AvaHire Technologies",
-            userEmail: authorEmail,
-          });
-          console.log(`[RESUMES-EMAIL] Selection email sent to ${candEmail}`);
-        } catch (emErr) {
-          console.warn("[RESUMES-EMAIL] Selection email notice:", emErr.message);
-        }
-      } else if (newStatus === "rejected" && prevStatus !== "rejected") {
-        try {
-          await emailService.sendCandidateRejectedEmail({
-            toEmail: candEmail,
-            candidateName: candName,
-            role: candRole,
-            company: "AvaHire Technologies",
-            userEmail: authorEmail,
-          });
-          console.log(`[RESUMES-EMAIL] Rejection email sent to ${candEmail}`);
-        } catch (emErr) {
-          console.warn("[RESUMES-EMAIL] Rejection email notice:", emErr.message);
-        }
-      }
-    }
-
     res.json({ success: true, data: updated, message: "Candidate updated successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -578,56 +465,16 @@ router.put("/:id", async (req, res) => {
 });
 
 // PATCH /api/resumes/:id/status - update status (e.g. Shortlisted, Rejected, Hired)
-router.patch("/:id/status", async (req, res) => {
+router.patch("/:id/status", (req, res) => {
   try {
     const { status } = req.body;
     if (!status) {
       return res.status(400).json({ success: false, error: "Status is required" });
     }
-    const existing = resumesDb.getById(req.params.id);
     const updated = resumesDb.updateStatus(req.params.id, status);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
-
-    const candEmail = (updated.email || existing?.email || "").trim();
-    const candName = updated.name || existing?.name || "Candidate";
-    const candRole = updated.role || existing?.role || "Software Engineer";
-    const authorEmail = updated.userEmail || updated.createdBy || req.headers["x-user-email"] || "";
-
-    if (candEmail && candEmail.includes("@")) {
-      const newStatus = status.trim().toLowerCase();
-      const prevStatus = (existing?.status || "").trim().toLowerCase();
-
-      if ((newStatus === "selected" || newStatus === "shortlisted" || newStatus === "hired") && prevStatus !== newStatus) {
-        try {
-          await emailService.sendCandidateSelectedEmail({
-            toEmail: candEmail,
-            candidateName: candName,
-            role: candRole,
-            company: "AvaHire Technologies",
-            userEmail: authorEmail,
-          });
-          console.log(`[RESUMES-EMAIL] Selection email sent to ${candEmail}`);
-        } catch (emErr) {
-          console.warn("[RESUMES-EMAIL] Selection email notice:", emErr.message);
-        }
-      } else if (newStatus === "rejected" && prevStatus !== "rejected") {
-        try {
-          await emailService.sendCandidateRejectedEmail({
-            toEmail: candEmail,
-            candidateName: candName,
-            role: candRole,
-            company: "AvaHire Technologies",
-            userEmail: authorEmail,
-          });
-          console.log(`[RESUMES-EMAIL] Rejection email sent to ${candEmail}`);
-        } catch (emErr) {
-          console.warn("[RESUMES-EMAIL] Rejection email notice:", emErr.message);
-        }
-      }
-    }
-
     res.json({ success: true, data: updated, message: `Status updated to ${status}` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { emailApi, resumesApi } from "@/services/api";
+import { Users, Video, Calendar, FileText, Send, Sparkles, ExternalLink, Link as LinkIcon } from "lucide-react";
 
 const defaultTemplates = [
     { id: 1, name: "Interview Invitation", subject: "You're invited to interview for {{role}} at {{company}}", uses: 128, category: "Interview" },
@@ -17,6 +19,10 @@ const EmailCenter = () => {
     const [categoryFilter, setCategoryFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [currentUserEmail, setCurrentUserEmail] = useState("");
+    const [searchParams] = useSearchParams();
+    const queryEmail = searchParams.get("candidateEmail") || searchParams.get("to") || "";
+    const queryCode = searchParams.get("interviewCode") || "";
+    const queryRole = searchParams.get("role") || "";
 
     // Compose form state
     const [composeForm, setComposeForm] = useState({
@@ -52,6 +58,26 @@ const EmailCenter = () => {
     useEffect(() => {
         loadData();
     }, []);
+
+    // If navigated from interview or candidate page with query parameters
+    useEffect(() => {
+        if (queryEmail || queryCode) {
+            const candidateLink = queryCode ? `${window.location.origin}/i/${queryCode}` : "";
+            const roleText = queryRole || "the scheduled position";
+            setComposeForm({
+                recipient: queryEmail,
+                recipientName: "",
+                subject: queryCode 
+                    ? `Invitation for AI Technical Interview: ${roleText} - AvaHire`
+                    : `AvaHire Recruitment: Update regarding your application`,
+                body: queryCode 
+                    ? `Dear Candidate,\n\nYou have been invited to participate in an AI-powered technical interview session with AvaHire for the position of ${roleText}.\n\nYour Unique Candidate Portal Link:\n${candidateLink}\n\nPlease click the link above when you are ready. The portal will walk you through a quick hardware check, proctoring guidelines, and introduce you to your AI interviewer Ava.\n\nBest regards,\nAvaHire HR Talent Acquisition Team`
+                    : `Dear Candidate,\n\nThank you for your interest in opportunities with our team.\n\nBest regards,\nAvaHire HR Team`,
+                templateId: queryCode ? 1 : null
+            });
+            setShowComposeModal(true);
+        }
+    }, [queryEmail, queryCode, queryRole]);
 
     const handleOpenCompose = (template = null) => {
         if (template) {
@@ -144,13 +170,36 @@ const EmailCenter = () => {
                     <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Email Center</h2>
                     <p className="text-sm text-slate-500">Recruitment email templates and candidate communication dispatch</p>
                 </div>
-                <button
-                    onClick={() => handleOpenCompose()}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-full font-semibold text-sm shadow-md shadow-violet-500/25 transition cursor-pointer"
-                >
-                    <i className="fa-solid fa-pen"></i>
-                    <span>Compose Email</span>
-                </button>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                    <Link
+                        to="/app/candidates"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                    >
+                        <Users className="w-3.5 h-3.5 text-violet-600" />
+                        <span>Candidate Pipeline</span>
+                    </Link>
+                    <Link
+                        to="/app/interviews"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                    >
+                        <Video className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Interviews</span>
+                    </Link>
+                    <Link
+                        to="/app/calendar"
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
+                    >
+                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Calendar</span>
+                    </Link>
+                    <button
+                        onClick={() => handleOpenCompose()}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-xl font-semibold text-xs sm:text-sm shadow-md shadow-violet-500/25 transition cursor-pointer"
+                    >
+                        <i className="fa-solid fa-pen"></i>
+                        <span>Compose Email</span>
+                    </button>
+                </div>
             </div>
 
             {/* Filter and Search Bar */}
