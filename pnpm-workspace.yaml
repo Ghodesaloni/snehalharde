@@ -1,0 +1,12 @@
+packages:
+  - '.'
+  - 'src/pages/candidate/liveavatar/my-agent/agent-starter-react-main'
+
+allowBuilds:
+  '@google/genai': true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
