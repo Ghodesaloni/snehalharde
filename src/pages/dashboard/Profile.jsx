@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
     Mail,
@@ -19,7 +20,10 @@ import {
     Bell,
     ChevronDown,
     Save,
-    Sparkles
+    Sparkles,
+    ArrowRight,
+    Settings as SettingsIcon,
+    LayoutDashboard
 } from "lucide-react";
 import { jobsApi, candidatesApi, interviewsApi } from "@/services/api";
 
@@ -606,52 +610,116 @@ const Profile = () => {
 
                     {/* CARD 2: HR Overview */}
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                        <h4 className="text-sm font-bold text-slate-900">HR Overview</h4>
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-slate-900">HR Overview</h4>
+                            <span className="text-[11px] font-semibold text-violet-600">Click to view</span>
+                        </div>
 
-                        <div className="space-y-3.5 text-xs">
+                        <div className="space-y-2.5 text-xs">
                             {/* Jobs Posted */}
-                            <div className="flex items-center justify-between">
+                            <Link
+                                to="/app/jobs"
+                                className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                                         <Briefcase className="w-4 h-4" />
                                     </div>
-                                    <span className="text-slate-600 font-medium">Jobs Posted</span>
+                                    <span className="text-slate-600 font-medium group-hover:text-violet-700 transition">Jobs Posted</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">{stats.jobsPosted}</span>
-                            </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-sm">{stats.jobsPosted}</span>
+                                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                                </div>
+                            </Link>
 
                             {/* Total Candidates */}
-                            <div className="flex items-center justify-between">
+                            <Link
+                                to="/app/candidates"
+                                className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                                         <Users className="w-4 h-4" />
                                     </div>
-                                    <span className="text-slate-600 font-medium">Total Candidates</span>
+                                    <span className="text-slate-600 font-medium group-hover:text-violet-700 transition">Total Candidates</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">{stats.totalCandidates}</span>
-                            </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-sm">{stats.totalCandidates}</span>
+                                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                                </div>
+                            </Link>
 
                             {/* Interviews Conducted */}
-                            <div className="flex items-center justify-between">
+                            <Link
+                                to="/app/interviews"
+                                className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                                         <Video className="w-4 h-4" />
                                     </div>
-                                    <span className="text-slate-600 font-medium">Interviews Conducted</span>
+                                    <span className="text-slate-600 font-medium group-hover:text-violet-700 transition">Interviews Conducted</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">{stats.interviewsConducted}</span>
-                            </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-sm">{stats.interviewsConducted}</span>
+                                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                                </div>
+                            </Link>
 
                             {/* Selected Candidates */}
-                            <div className="flex items-center justify-between">
+                            <Link
+                                to="/app/candidates?status=Selected"
+                                className="flex items-center justify-between p-2.5 rounded-2xl hover:bg-slate-50 transition border border-transparent hover:border-slate-100 group"
+                            >
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center group-hover:scale-105 transition-transform">
                                         <Award className="w-4 h-4" />
                                     </div>
-                                    <span className="text-slate-600 font-medium">Selected Candidates</span>
+                                    <span className="text-slate-600 font-medium group-hover:text-violet-700 transition">Selected Candidates</span>
                                 </div>
-                                <span className="font-extrabold text-slate-900 text-sm">{stats.selectedCandidates}</span>
-                            </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="font-extrabold text-slate-900 text-sm">{stats.selectedCandidates}</span>
+                                    <ArrowRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition" />
+                                </div>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* CARD 3: Quick Navigation */}
+                    <div className="bg-slate-900 text-white rounded-3xl p-6 space-y-3 shadow-lg">
+                        <div className="text-xs font-bold text-violet-400 uppercase tracking-wider">
+                            Quick Portal Navigation
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                            <Link
+                                to="/app/dashboard"
+                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
+                            >
+                                <LayoutDashboard className="w-3.5 h-3.5 text-violet-400" />
+                                <span>Dashboard</span>
+                            </Link>
+                            <Link
+                                to="/app/calendar"
+                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
+                            >
+                                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                <span>Calendar</span>
+                            </Link>
+                            <Link
+                                to="/app/email"
+                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
+                            >
+                                <Mail className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>Email Center</span>
+                            </Link>
+                            <Link
+                                to="/app/settings"
+                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
+                            >
+                                <SettingsIcon className="w-3.5 h-3.5 text-amber-400" />
+                                <span>Settings</span>
+                            </Link>
                         </div>
                     </div>
                 </div>

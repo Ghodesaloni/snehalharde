@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import {
     Calendar,
@@ -18,7 +19,10 @@ import {
     X,
     Sparkles,
     ShieldCheck,
-    ExternalLink
+    ExternalLink,
+    Mail,
+    Users,
+    Briefcase
 } from "lucide-react";
 import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
 import { interviewsApi } from "@/services/api";
@@ -190,34 +194,79 @@ const Interviews = () => {
     return (
         <div className="space-y-5 max-w-7xl mx-auto -mt-2" data-testid="interviews-page">
             {/* Top Bar / Header Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-3.5">
-                {/* Filter Dropdown */}
-                <div className="relative">
-                    <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-xs cursor-pointer">
-                        <Filter className="w-4 h-4 text-slate-500" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                            className="appearance-none bg-transparent pr-6 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                        >
-                            <option>All Status</option>
-                            <option>Active</option>
-                            <option>Scheduled</option>
-                            <option>Completed</option>
-                            <option>Expired</option>
-                        </select>
-                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
-                    </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                <div className="flex items-center gap-2">
+                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        AI Video Interviews ({filteredInterviews.length})
+                    </h1>
                 </div>
 
-                {/* Generate Interview Link Button */}
-                <button
-                    onClick={() => setIsGenerateModalOpen(true)}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
-                >
-                    <Plus className="w-4 h-4" />
-                    <span>Generate Interview Link</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Filter Dropdown */}
+                    <div className="relative">
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-xs cursor-pointer">
+                            <Filter className="w-4 h-4 text-slate-500" />
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                                className="appearance-none bg-transparent pr-6 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
+                            >
+                                <option>All Status</option>
+                                <option>Active</option>
+                                <option>Scheduled</option>
+                                <option>Completed</option>
+                                <option>Expired</option>
+                            </select>
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
+                        </div>
+                    </div>
+
+                    {/* Generate Interview Link Button */}
+                    <button
+                        onClick={() => setIsGenerateModalOpen(true)}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Generate Interview Link</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* HR Cross-Navigation Quick Hub */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Navigate HR:</span>
+                    <Link to="/app/jobs" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Jobs</span>
+                    </Link>
+                    <Link to="/app/resumes" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Resumes</span>
+                    </Link>
+                    <Link to="/app/candidates" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Candidates</span>
+                    </Link>
+                    <Link to="/app/email" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Email Center</span>
+                    </Link>
+                    <Link to="/app/calendar" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Calendar</span>
+                    </Link>
+                </div>
+            </div>
+
+            {/* Candidate Portal Isolation Reminder Banner */}
+            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs text-indigo-900">
+                <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>
+                        <strong>Candidate Link Isolation:</strong> The links generated below (<code className="bg-white/80 px-1.5 py-0.5 rounded font-mono font-bold text-violet-700">/i/:code</code>) are dedicated exclusively to candidates. When candidates click them, they only see the proctored interview room with zero visibility or access to HR dashboard pages.
+                    </span>
+                </div>
             </div>
 
             {/* Main Table Card */}
@@ -358,53 +407,62 @@ const Interviews = () => {
                                                 )}
                                             </td>
 
-                                            {/* Column 7: Actions */}
+                                             {/* Column 7: Actions */}
                                             <td className="py-4 px-6 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    {/* View button */}
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {/* Email Candidate Link */}
+                                                    <Link
+                                                        to={`/app/email?candidateEmail=${encodeURIComponent(iv.email)}&interviewCode=${iv.linkCode}`}
+                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 flex items-center justify-center text-slate-500 transition"
+                                                        title="Send Email Invitation to Candidate"
+                                                    >
+                                                        <Mail className="w-3.5 h-3.5" />
+                                                    </Link>
+
+                                                    {/* View in Candidates Pipeline */}
+                                                    <Link
+                                                        to={`/app/candidates?search=${encodeURIComponent(iv.name)}`}
+                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-300 flex items-center justify-center text-slate-500 transition"
+                                                        title="View in Candidate Pipeline"
+                                                    >
+                                                        <Users className="w-3.5 h-3.5" />
+                                                    </Link>
+
+                                                    {/* View Details button */}
                                                     <button
                                                         onClick={() => setSelectedInterviewForView(iv)}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition"
+                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
                                                         title="View Details"
                                                     >
-                                                        <Eye className="w-4 h-4" />
+                                                        <Eye className="w-3.5 h-3.5" />
                                                     </button>
 
                                                     {/* Share / Resend / Report action */}
                                                     {iv.status === "Completed" ? (
                                                         <button
                                                             onClick={() => toast.info(`Viewing assessment scorecard for ${iv.name}`)}
-                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition"
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
                                                             title="View Scorecard"
                                                         >
-                                                            <FileText className="w-4 h-4" />
+                                                            <FileText className="w-3.5 h-3.5" />
                                                         </button>
                                                     ) : iv.status === "Expired" ? (
                                                         <button
                                                             onClick={() => handleRegenerateLink(iv.id, iv.name)}
-                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-violet-600 transition"
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-violet-600 transition cursor-pointer"
                                                             title="Regenerate Interview Link"
                                                         >
-                                                            <RotateCw className="w-4 h-4" />
+                                                            <RotateCw className="w-3.5 h-3.5" />
                                                         </button>
                                                     ) : (
                                                         <button
                                                             onClick={() => copyInterviewLink(iv.linkCode, iv.id)}
-                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-violet-600 transition"
-                                                            title="Share Link"
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-violet-600 transition cursor-pointer"
+                                                            title="Copy / Share Link"
                                                         >
-                                                            <Share2 className="w-4 h-4" />
+                                                            <Share2 className="w-3.5 h-3.5" />
                                                         </button>
                                                     )}
-
-                                                    {/* More Menu */}
-                                                    <button
-                                                        onClick={() => toast.info(`Options for ${iv.name}`)}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition"
-                                                        title="More options"
-                                                    >
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

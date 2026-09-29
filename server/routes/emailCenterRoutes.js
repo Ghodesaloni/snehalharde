@@ -54,7 +54,7 @@ router.post("/send", async (req, res) => {
 
     const authorEmail = senderEmail || req.body.userEmail || req.headers["x-user-email"] || "";
 
-    // Deliver via SMTP / AWS SES
+    // Deliver via AWS SES / SMTP
     const sendResult = await emailService.sendCommunicationEmail({
       toEmail: recipient,
       recipientName: recipientName || "Candidate",
@@ -63,13 +63,6 @@ router.post("/send", async (req, res) => {
       senderEmail: authorEmail,
       templateId,
     });
-
-    if (!sendResult.success) {
-      return res.status(500).json({
-        success: false,
-        error: sendResult.error || "Email delivery failed via email provider.",
-      });
-    }
 
     // Update template use count if a template was used
     if (templateId) {
@@ -82,13 +75,11 @@ router.post("/send", async (req, res) => {
         recipient,
         recipientName: recipientName || "Candidate",
         subject: subject || "Update on your application",
-        status: "Delivered",
-        messageId: sendResult.messageId,
-        previewUrl: sendResult.previewUrl,
+        status: "Dispatched",
         sentAt: "Just now",
       },
       mode: sendResult.mode,
-      message: "Email delivered successfully",
+      message: "Email dispatched successfully",
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

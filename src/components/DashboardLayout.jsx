@@ -40,7 +40,14 @@ const DashboardLayout = () => {
     const [notifications, setNotifications] = useState(initialNotifications);
     const [notificationFilter, setNotificationFilter] = useState("all");
 
+    const [globalSearch, setGlobalSearch] = useState("");
     const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+
+    const handleGlobalSearch = (e) => {
+        if (e.key === "Enter" && globalSearch.trim()) {
+            navigate(`/app/candidates?search=${encodeURIComponent(globalSearch.trim())}`);
+        }
+    };
 
     const logout = () => {
         localStorage.removeItem("avahire_user");
@@ -168,7 +175,10 @@ const DashboardLayout = () => {
                             <input
                                 data-testid="global-search"
                                 placeholder="Search candidates, jobs..."
-                                className="w-72 pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-full focus:outline-none focus:border-violet-500 text-sm"
+                                value={globalSearch}
+                                onChange={(e) => setGlobalSearch(e.target.value)}
+                                onKeyDown={handleGlobalSearch}
+                                className="w-72 pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-full focus:outline-none focus:border-violet-500 text-sm shadow-2xs"
                             />
                         </div>
 

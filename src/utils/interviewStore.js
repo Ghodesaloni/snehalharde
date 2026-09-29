@@ -27,6 +27,8 @@ export const getStoredInterviews = () => {
     return [];
 };
 
+export const getInterviews = getStoredInterviews;
+
 export const saveInterviews = (interviews) => {
     try {
         if (!Array.isArray(interviews)) return;
