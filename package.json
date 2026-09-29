@@ -187,16 +187,5 @@
       "picomatch": "4.0.4"
     },
     "http-proxy-middleware": "2.0.10"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@google/genai",
-      "core-js",
-      "core-js-pure",
-      "esbuild",
-      "protobufjs",
-      "sharp",
-      "unrs-resolver"
-    ]
   }
 }
