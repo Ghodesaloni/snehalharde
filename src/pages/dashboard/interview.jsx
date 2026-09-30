@@ -22,13 +22,17 @@ import {
     ExternalLink,
     Mail,
     Users,
-    Briefcase
+    Briefcase,
+    Phone,
+    UserCheck,
+    Lock
 } from "lucide-react";
-import { getStoredInterviews, saveInterviews, addOrUpdateInterview, removeInterview } from "@/utils/interviewStore";
-import { interviewsApi } from "@/services/api";
+import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
+import { interviewsApi, candidatePortalApi } from "@/services/api";
 
 const Interviews = () => {
     const [interviews, setInterviews] = useState(getStoredInterviews);
+    const [resumesList, setResumesList] = useState([]);
     const [statusFilter, setStatusFilter] = useState("All Status");
     const [copiedId, setCopiedId] = useState(null);
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
@@ -39,7 +43,9 @@ const Interviews = () => {
     // Form state for generating interview link
     const [newCandidateName, setNewCandidateName] = useState("");
     const [newCandidateEmail, setNewCandidateEmail] = useState("");
-    const [newRole, setNewRole] = useState("");
+    const [newCandidatePhone, setNewCandidatePhone] = useState("");
+    const [selectedResumeId, setSelectedResumeId] = useState("");
+    const [newRole, setNewRole] = useState("Software Engineer");
     const [newDate, setNewDate] = useState("");
     const [newTime, setNewTime] = useState("");
     const [newValidity, setNewValidity] = useState("45 Minutes");
@@ -51,20 +57,22 @@ const Interviews = () => {
                 if (data) {
                     setInterviews(data);
                     saveInterviews(data);
-                    return;
                 }
             } catch (err) {
                 console.error("Failed to load interviews from backend:", err);
+                setInterviews(getStoredInterviews());
             }
-            setInterviews(getStoredInterviews());
+
+            try {
+                const rList = await candidatePortalApi.getResumes();
+                if (Array.isArray(rList)) {
+                    setResumesList(rList);
+                }
+            } catch (err) {
+                console.warn("Failed to load resumes in interviews page:", err);
+            }
         };
         fetchInterviews();
-
-        const handleSync = () => {
-            fetchInterviews();
-        };
-        window.addEventListener("avahire_interviews_updated", handleSync);
-        return () => window.removeEventListener("avahire_interviews_updated", handleSync);
     }, []);
 
     const filteredInterviews = useMemo(() => {
@@ -136,16 +144,20 @@ const Interviews = () => {
             ? dateObj.toLocaleDateString("en-US", { weekday: "long" })
             : "Tuesday";
 
+        const candidateId = selectedResumeId || `cand-${Date.now()}`;
         const newEntry = {
             id: `iv-${Date.now()}`,
+            candidateId,
+            resumeId: selectedResumeId || candidateId,
             name: newCandidateName,
             email: newCandidateEmail,
+            phone: newCandidatePhone || "",
             avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
             role: newRole,
             company: "AvaHire Technologies Pvt. Ltd.",
             date: formattedDate,
             dayOfWeek: dayName,
-            time: newTime ? `${newTime} AM` : "11:00 AM",
+            time: newTime ? (newTime.includes(":") ? (newTime.includes("M") ? newTime : `${newTime} AM`) : `${newTime}:00 AM`) : "11:00 AM",
             timeZone: "IST",
             duration: newValidity || "45 Minutes",
             linkCode: randomCode,
@@ -157,10 +169,19 @@ const Interviews = () => {
 
         const updated = addOrUpdateInterview(newEntry);
         setInterviews((prev) => [updated, ...prev.filter(x => x.id !== updated.id)]);
+        
+        interviewsApi.create(newEntry).then((created) => {
+            if (created) {
+                setInterviews((prev) => [created, ...prev.filter(x => x.id !== created.id)]);
+            }
+        }).catch((err) => console.warn("Interviews create API fallback:", err));
+
         setIsGenerateModalOpen(false);
         setNewCandidateName("");
         setNewCandidateEmail("");
-        toast.success(`Candidate interview link generated! Code: ${randomCode}`);
+        setNewCandidatePhone("");
+        setSelectedResumeId("");
+        toast.success(`Candidate interview scheduled! Linked to Candidate Portal (${randomCode})`);
     };
 
     const getStatusPill = (status) => {
@@ -203,7 +224,7 @@ const Interviews = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
                 <div className="flex items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                        AI  Interviews
+                        AI Video Interviews ({filteredInterviews.length})
                     </h1>
                 </div>
 
@@ -238,14 +259,60 @@ const Interviews = () => {
                 </div>
             </div>
 
+            {/* HR Cross-Navigation Quick Hub */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Navigate HR:</span>
+                    <Link to="/app/jobs" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Jobs</span>
+                    </Link>
+                    <Link to="/app/resumes" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Resumes</span>
+                    </Link>
+                    <Link to="/app/candidates" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Users className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Candidates</span>
+                    </Link>
+                    <Link to="/app/email" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Email Center</span>
+                    </Link>
+                    <Link to="/app/calendar" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Calendar</span>
+                    </Link>
+                </div>
+            </div>
 
-            {/* Candidate Portal Isolation Reminder Banner */}
-            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs text-indigo-900">
-                <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>
-                        <strong>Candidate Link Isolation:</strong> The links generated below (<code className="bg-white/80 px-1.5 py-0.5 rounded font-mono font-bold text-violet-700">/i/:code</code>) are dedicated exclusively to candidates. When candidates click them, they only see the proctored interview room with zero visibility or access to HR dashboard pages.
-                    </span>
+            {/* Candidate Portal & Resume Integration Hub Banner */}
+            <div className="bg-gradient-to-r from-violet-50 via-indigo-50 to-purple-50 border border-violet-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-indigo-950 shadow-xs">
+                <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-violet-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <Lock className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900">Candidate Portal Connected to All Resumes</span>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                {resumesList.length} Resumes Connected
+                            </span>
+                        </div>
+                        <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
+                            Candidate Portal strictly enforces resume email and mobile verification. Candidates can only enter at their designated schedule slot.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                        to="/candidate-portal"
+                        target="_blank"
+                        className="px-3.5 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl transition flex items-center gap-1.5 shadow-sm shadow-violet-500/20"
+                    >
+                        <span>Open Candidate Portal</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
                 </div>
             </div>
 
@@ -255,10 +322,10 @@ const Interviews = () => {
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-bold text-slate-700 tracking-wider">
-                                <th className="py-4 px-6">Candidate</th>
+                                <th className="py-4 px-6">Candidate (Resume Verified)</th>
                                 <th className="py-4 px-6">Job Role</th>
                                 <th className="py-4 px-6">Date &amp; Time</th>
-                                <th className="py-4 px-6">Link</th>
+                                <th className="py-4 px-6">Candidate Portal</th>
                                 <th className="py-4 px-6">Status</th>
                                 <th className="py-4 px-6">Expiry</th>
                                 <th className="py-4 px-6 text-right">Actions</th>
@@ -284,17 +351,23 @@ const Interviews = () => {
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center gap-3">
                                                     <img
-                                                        src={iv.avatar}
+                                                        src={iv.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
                                                         alt={iv.name}
                                                         className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
                                                     />
                                                     <div className="space-y-0.5">
-                                                        <div className="font-bold text-slate-900 text-sm">
-                                                            {iv.name}
+                                                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                            <span>{iv.name}</span>
                                                         </div>
-                                                        <div className="text-slate-400 text-xs">
+                                                        <div className="text-slate-500 text-xs">
                                                             {iv.email}
                                                         </div>
+                                                        {iv.phone && (
+                                                            <div className="text-[11px] font-mono text-violet-700 flex items-center gap-1">
+                                                                <Phone className="w-3 h-3 text-violet-500 shrink-0" />
+                                                                <span>{iv.phone}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -307,41 +380,44 @@ const Interviews = () => {
                                             {/* Column 3: Date & Time */}
                                             <td className="py-4 px-6 text-slate-600">
                                                 <div className="space-y-1">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                    <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                                                        <Calendar className="w-3.5 h-3.5 text-violet-600 shrink-0" />
                                                         <span>{iv.date}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-slate-400">
+                                                    <div className="flex items-center gap-1.5 text-slate-500">
                                                         <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                                                         <span>{iv.time}</span>
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Column 4: Link */}
+                                            {/* Column 4: Candidate Portal Link */}
                                             <td className="py-4 px-6">
-                                                <div className="flex items-center gap-2 font-semibold text-violet-600">
-                                                    <a
-                                                        href={`/i/${iv.linkCode}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="font-mono text-xs hover:underline flex items-center gap-1 text-violet-600 hover:text-violet-800"
-                                                        title="Open Candidate Interview Page"
-                                                    >
-                                                        <span>/i/{iv.linkCode}</span>
-                                                        <ExternalLink className="w-3 h-3 opacity-60" />
-                                                    </a>
-                                                    <button
-                                                        onClick={() => copyInterviewLink(iv.linkCode, iv.id)}
-                                                        className="p-1 text-slate-400 hover:text-violet-600 rounded transition"
-                                                        title="Copy interview link"
-                                                    >
-                                                        {isCopied ? (
-                                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                                        ) : (
-                                                            <Copy className="w-3.5 h-3.5" />
-                                                        )}
-                                                    </button>
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-2 font-semibold text-violet-600">
+                                                        <a
+                                                            href={`/candidate-portal?code=${iv.linkCode}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="font-mono text-xs hover:underline flex items-center gap-1 text-violet-600 hover:text-violet-800 bg-violet-50/80 px-2 py-0.5 rounded-md border border-violet-200"
+                                                            title="Open Candidate Portal Login"
+                                                        >
+                                                            <span>{iv.linkCode}</span>
+                                                            <ExternalLink className="w-3 h-3 opacity-60" />
+                                                        </a>
+                                                        <button
+                                                            onClick={() => copyInterviewLink(iv.linkCode, iv.id)}
+                                                            className="p-1 text-slate-400 hover:text-violet-600 rounded transition cursor-pointer"
+                                                            title="Copy candidate portal URL"
+                                                        >
+                                                            {isCopied ? (
+                                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-400 block">Candidate Entry Room</span>
                                                 </div>
                                             </td>
 
@@ -387,7 +463,7 @@ const Interviews = () => {
                                                 )}
                                             </td>
 
-                                            {/* Column 7: Actions */}
+                                             {/* Column 7: Actions */}
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {/* Email Candidate Link */}
@@ -399,6 +475,14 @@ const Interviews = () => {
                                                         <Mail className="w-3.5 h-3.5" />
                                                     </Link>
 
+                                                    {/* View in Candidates Pipeline */}
+                                                    <Link
+                                                        to={`/app/candidates?search=${encodeURIComponent(iv.name)}`}
+                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-300 flex items-center justify-center text-slate-500 transition"
+                                                        title="View in Candidate Pipeline"
+                                                    >
+                                                        <Users className="w-3.5 h-3.5" />
+                                                    </Link>
 
                                                     {/* View Details button */}
                                                     <button
@@ -507,6 +591,43 @@ const Interviews = () => {
                         </div>
 
                         <form onSubmit={handleCreateInterviewLink} className="space-y-4 text-xs sm:text-sm">
+                            {/* Link with Submitted Resumes */}
+                            {resumesList.length > 0 && (
+                                <div className="p-3 bg-violet-50/80 border border-violet-200/80 rounded-2xl space-y-2">
+                                    <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
+                                        <span className="flex items-center gap-1.5 font-bold text-violet-950">
+                                            <FileText className="w-3.5 h-3.5 text-violet-600" />
+                                            <span>Link to Candidate Resume ({resumesList.length})</span>
+                                        </span>
+                                        <span className="text-[10px] text-violet-700 bg-white px-2 py-0.5 rounded-full border border-violet-200 font-semibold">
+                                            Auto-Fills Verified Data
+                                        </span>
+                                    </div>
+                                    <select
+                                        onChange={(e) => {
+                                            const found = resumesList.find(r => r.id === e.target.value);
+                                            if (found) {
+                                                setNewCandidateName(found.name || "");
+                                                setNewCandidateEmail(found.email || "");
+                                                setNewCandidatePhone(found.phone || "");
+                                                if (found.role) setNewRole(found.role);
+                                                setSelectedResumeId(found.id);
+                                                toast.info(`Selected ${found.name} (Phone: ${found.phone || "No phone"})`);
+                                            }
+                                        }}
+                                        defaultValue=""
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
+                                    >
+                                        <option value="" disabled>-- Select Candidate from Submitted Resumes --</option>
+                                        {resumesList.map((r) => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name} · {r.email} ({r.phone || "No phone"}) · {r.role}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block font-bold text-slate-700 mb-1">Candidate Full Name</label>
                                 <input
@@ -518,15 +639,29 @@ const Interviews = () => {
                                 />
                             </div>
 
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Candidate Email Address</label>
-                                <input
-                                    type="email"
-                                    placeholder="e.g. ananya.rao@example.com"
-                                    value={newCandidateEmail}
-                                    onChange={(e) => setNewCandidateEmail(e.target.value)}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
-                                />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">Candidate Email Address</label>
+                                    <input
+                                        type="email"
+                                        placeholder="e.g. ananya.rao@example.com"
+                                        value={newCandidateEmail}
+                                        onChange={(e) => setNewCandidateEmail(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1">Must match resume</p>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1">Phone Number (as in Resume)</label>
+                                    <input
+                                        type="tel"
+                                        placeholder="e.g. +91-8999646955"
+                                        value={newCandidatePhone}
+                                        onChange={(e) => setNewCandidatePhone(e.target.value)}
+                                        className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1">Enforced at portal login</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">

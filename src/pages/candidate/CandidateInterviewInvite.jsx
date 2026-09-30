@@ -132,7 +132,9 @@ const CandidateInterviewInvite = () => {
             navigate(`/i/${interviewData.linkCode || code || "akc123"}/expired`);
             return;
         }
-        navigate(`/i/${interviewData.linkCode || code || "akc123"}/login`);
+        const targetCode = interviewData.linkCode || code || "akc123";
+        const emailParam = interviewData.email ? `?email=${encodeURIComponent(interviewData.email)}` : "";
+        navigate(`/i/${targetCode}/login${emailParam}`);
     };
 
     const handleEnterLiveInterview = () => {

@@ -74,6 +74,9 @@ function App() {
           <Route path="/interview/:code/expired" element={<CandidateLinkExpired />} />
 
           <Route path="/interview" element={<CandidateInterviewInvite />} />
+          <Route path="/candidate-portal" element={<CandidateLogin />} />
+          <Route path="/candidate-portal/login" element={<CandidateLogin />} />
+          <Route path="/candidate-portal/:code" element={<CandidateInterviewInvite />} />
           <Route path="/candidate-login" element={<CandidateLogin />} />
           <Route path="/system-check" element={<CandidateSystemCheck />} />
           <Route path="/instructions" element={<CandidateInstructions />} />

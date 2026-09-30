@@ -122,8 +122,10 @@ class InterviewsDatabase {
     const newInterview = {
       id,
       candidateId: data.candidateId || `cand-${Date.now()}`,
+      resumeId: data.resumeId || data.candidateId || "",
       name: data.name || "Candidate",
       email: data.email || "",
+      phone: data.phone || "",
       avatar: data.avatar || "",
       role: data.role || "Software Engineer",
       company: data.company || "AvaHire Technologies Pvt. Ltd.",
@@ -306,8 +308,10 @@ class InterviewsDatabase {
     return {
       id: row.id,
       candidateId: row.candidate_id,
+      resumeId: row.resume_id || row.candidate_id,
       name: row.name,
       email: row.email,
+      phone: row.phone || "",
       avatar: row.avatar,
       role: row.role,
       company: row.company,

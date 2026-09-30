@@ -381,6 +381,10 @@ export const awsApi = {
 };
 
 export const candidatePortalApi = {
+  getResumes: async () => {
+    const res = await api.get("/candidate-portal/resumes");
+    return Array.isArray(res.data?.data) ? res.data.data : [];
+  },
   getInterviewSettings: async () => {
     const res = await api.get("/candidate-portal/interview-settings");
     return res.data.data;
@@ -388,6 +392,10 @@ export const candidatePortalApi = {
   getSession: async (linkCode) => {
     const res = await api.get(`/candidate-portal/session/${linkCode}`);
     return res.data.data;
+  },
+  getScheduleTiming: async (linkCode) => {
+    const res = await api.get(`/candidate-portal/schedule/${linkCode}`);
+    return res.data?.data;
   },
   login: async ({ linkCode, email, phone }) => {
     const res = await api.post("/candidate-portal/login", { linkCode, email, phone });
