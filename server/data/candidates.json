@@ -1,5 +1,28 @@
 [
   {
+    "id": "c-1790778002149",
+    "name": "PRIYA SHARMA",
+    "email": "priya.sharma.testpersist@example.com",
+    "phone": "+91 9876543210",
+    "role": "Software Engineer",
+    "avatar": "",
+    "interviewDate": "30 Sept 2026, 14:20",
+    "timestamp": "1790778002169",
+    "duration": "0m 00s",
+    "mode": "AI Interview",
+    "score": 65,
+    "status": "Under Review",
+    "notes": "While Priya Sharma possesses strong technical experience in Machine Learning and Python, her profile does not align with the full-stack web development requirements of this role. She lacks the necessary proficiency in the required frontend and backend JavaScript ecosystems. Consequently, her skills match remains too low to warrant further consideration for this Software Engineer position.",
+    "summaryPoints": [],
+    "recommendation": "",
+    "transcript": [],
+    "evaluationBreakdown": [],
+    "audioUrl": "",
+    "createdBy": "bondreriya9@gmail.com",
+    "userEmail": "bondreriya9@gmail.com",
+    "createdAt": "2026-09-30T14:20:02.169Z"
+  },
+  {
     "id": "cand-saloni-01",
     "name": "Aryan Sharma",
     "role": "Software Engineer",

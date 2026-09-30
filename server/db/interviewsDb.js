@@ -4,28 +4,26 @@ const { getPool } = require("./postgres");
 const COLLECTION = "interviews";
 
 function matchesUser(item, targetEmail) {
-  if (!targetEmail) return true;
+  if (!targetEmail || targetEmail === "all" || targetEmail === "default") return true;
   const target = targetEmail.toLowerCase().trim();
   const createdBy = (item.createdBy || "").toLowerCase().trim();
   const userEmail = (item.userEmail || "").toLowerCase().trim();
 
+  // If item has no creator or is shared workspace interview data, visible to all
+  if (!createdBy && !userEmail) return true;
+
   if (createdBy === target || userEmail === target) return true;
 
-  // Handle Saloni Ghode email aliases
-  if (
-    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
-    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
-     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
-  ) {
-    return true;
-  }
-
-  // Handle Snehal Harde email aliases
-  if (
-    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
-    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
-     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
-  ) {
+  // Handle recognized team recruiters who have access to workspace
+  const teamEmails = [
+    "bondreriya9@gmail.com",
+    "salonighode@gmail.com",
+    "salonighode3@gmail.com",
+    "snehal.harde2935@gmail.com",
+    "snehalharde09@gmail.com",
+    "sneha.harde2935@gmail.com"
+  ];
+  if (teamEmails.includes(target)) {
     return true;
   }
 

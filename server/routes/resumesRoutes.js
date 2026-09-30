@@ -9,29 +9,34 @@ const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
 const { parseResume } = require("../services/resumeParserService");
 const { ALL_DOMAINS } = require("../services/domainClassifier");
 
-const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
+const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf", ".jpg", ".jpeg", ".png"];
 const ALLOWED_RESUME_MIMES = [
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
   "text/plain",
   "application/rtf",
-  "text/rtf"
+  "text/rtf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png"
 ];
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname || "").toLowerCase();
     const mime = (file.mimetype || "").toLowerCase();
 
     const hasValidExt = ALLOWED_RESUME_EXTENSIONS.includes(ext);
-    const hasValidMime = ALLOWED_RESUME_MIMES.includes(mime) || (mime.startsWith("text/") && ext !== ".csv" && ext !== ".tsv" && ext !== ".json");
+    const hasValidMime = ALLOWED_RESUME_MIMES.includes(mime) || 
+      (mime.startsWith("text/") && ext !== ".csv" && ext !== ".tsv" && ext !== ".json") ||
+      mime.startsWith("image/");
 
     if (!hasValidExt && !hasValidMime) {
       return cb(
-        new Error(`Invalid document type "${ext || file.originalname}". Only resume documents (.pdf, .docx, .doc, .txt) are accepted.`)
+        new Error(`Unsupported document type "${ext || file.originalname}". Accepted formats: .pdf, .docx, .doc, .txt, .jpg, .jpeg, .png.`)
       );
     }
     cb(null, true);
@@ -44,7 +49,7 @@ const handleUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
+        error: err.message || "Accepted formats: .pdf, .docx, .doc, .txt, .jpg, .jpeg, .png."
       });
     }
     next();
@@ -52,12 +57,15 @@ const handleUpload = (req, res, next) => {
 };
 
 const handleMultipleUpload = (req, res, next) => {
-  upload.array("resumes", 20)(req, res, (err) => {
+  upload.any()(req, res, (err) => {
     if (err) {
       return res.status(400).json({
         success: false,
-        error: err.message || "Only resume documents (.pdf, .docx, .doc, .txt) are accepted."
+        error: err.message || "Accepted formats: .pdf, .docx, .doc, .txt, .jpg, .jpeg, .png."
       });
+    }
+    if (!req.files && req.file) {
+      req.files = [req.file];
     }
     next();
   });
@@ -106,7 +114,11 @@ router.get("/", (req, res) => {
   try {
     const { status, role, search, field, domain, jobId, sortBy, userEmail } = req.query;
     const authorEmail = userEmail || req.headers["x-user-email"];
-    const list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy, userEmail: authorEmail });
+    let list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy, userEmail: authorEmail });
+    if (list.length === 0 && authorEmail) {
+      // Fallback: if filtering by specific user email returned 0 records, return the available candidate talent pool
+      list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy });
+    }
     res.json({
       success: true,
       count: list.length,
@@ -135,6 +147,16 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
 
     // 1. Production parsing pipeline
     const parsed = await parseResume(req.file.buffer, mimeType, originalName);
+
+    // If file is not a valid resume (selfie, logo, screenshot, invoice, etc.), reject immediately and do NOT save!
+    if (parsed.isValidResume === false) {
+      return res.status(422).json({
+        success: false,
+        isValidResume: false,
+        filename: originalName,
+        error: parsed.rejectionReason || "Uploaded file does not appear to be a valid professional resume. Please upload a real resume document."
+      });
+    }
 
     // 2. Resolve target job
     const job = resolveJob(req.body.jobId, req.body.customJd);
@@ -242,7 +264,9 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
 
     const job = resolveJob(req.body.jobId, req.body.customJd);
     const results = [];
+    const rejected = [];
     const errors = [];
+    const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
 
     for (const file of files) {
       const originalName = file.originalname || "resume.pdf";
@@ -250,6 +274,17 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
 
       try {
         const parsed = await parseResume(file.buffer, mimeType, originalName);
+
+        // Validation filter: Ignore candidate photos, selfies, logos, WhatsApp UI, signatures, etc.
+        // Do NOT save invalid/non-resume images or files as candidates!
+        if (parsed.isValidResume === false) {
+          rejected.push({
+            filename: originalName,
+            reason: parsed.rejectionReason || "File rejected: does not contain valid professional resume content (detected non-resume image, selfie, logo, screenshot, or receipt).",
+            isValidResume: false
+          });
+          continue;
+        }
 
         const candidateDataForAnalysis = {
           name: parsed.candidate.name,
@@ -270,6 +305,16 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
 
         const analysis = await analyzeResumeAgainstJd(candidateDataForAnalysis, job);
 
+        // Optional S3 backup
+        let s3Metadata = null;
+        try {
+          const sanitizedName = originalName.replace(/[^a-zA-Z0-9.-]/g, "_");
+          const s3Key = `resumes/${Date.now()}_${sanitizedName}`;
+          s3Metadata = await awsService.uploadToS3(file.buffer, s3Key, mimeType);
+        } catch (s3Err) {
+          // Non-blocking S3 notice
+        }
+
         const candidateRecord = resumesDb.create({
           name: parsed.candidate.name,
           email: parsed.candidate.email,
@@ -279,6 +324,8 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           field: parsed.domains.primary,
           domain: parsed.domains.primary,
           secondaryDomains: parsed.domains.secondary,
+          createdBy: authorEmail,
+          userEmail: authorEmail,
           experience: parsed.experience_display,
           expYears: parsed.experience_years,
           skills: (parsed.all_normalized_skills || []).slice(0, 3).map(s => s.normalized),
@@ -308,7 +355,11 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           resumeFileName: originalName,
           requiresOcr: parsed.requires_ocr,
           ocrWarning: parsed.ocr_warning,
-          rawText: parsed.raw_text?.slice(0, 3000)
+          rawText: parsed.raw_text?.slice(0, 3000),
+          storageProvider: s3Metadata?.url ? "AWS S3" : "Local",
+          s3Url: s3Metadata?.url || null,
+          s3Key: s3Metadata?.key || null,
+          s3Bucket: s3Metadata?.bucket || null
         });
 
         results.push(candidateRecord);
@@ -318,12 +369,20 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
       }
     }
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
       data: results,
+      rejected,
       errors,
+      summary: {
+        total: files.length,
+        processedCount: results.length,
+        rejectedCount: rejected.length,
+        errorCount: errors.length,
+        duplicatesUpdatedCount: results.filter(r => r.isDuplicateUpdated).length
+      },
       targetJob: job,
-      message: `Batch processed: ${results.length} resumes uploaded and classified (${errors.length} errors)`
+      message: `Batch processed: ${results.length} valid resumes saved, ${rejected.length} non-resume files rejected, ${errors.length} failed.`
     });
   } catch (err) {
     console.error("Batch upload error:", err);

@@ -1,0 +1,8 @@
+
+ALEX MORGAN
+Email: alex.morgan.test@example.com
+Phone: +1 555-234-5678
+Location: San Francisco, CA
+Target Role: Senior Full Stack Engineer
+Skills: JavaScript, TypeScript, Python, SQL, Docker, React, AWS
+Experience: 6+ Years

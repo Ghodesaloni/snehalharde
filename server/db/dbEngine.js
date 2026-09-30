@@ -63,12 +63,37 @@ async function loadFromPostgres() {
   try {
     const pool = getPool();
     const res = await pool.query("SELECT collection_name, data FROM public.app_collections");
+    const syncedNames = [];
+
     if (res.rows && res.rows.length > 0) {
       for (const row of res.rows) {
+        syncedNames.push(row.collection_name);
+        if (Array.isArray(row.data) && row.data.length === 0) {
+          const existing = memoryCache.get(row.collection_name);
+          if (Array.isArray(existing) && existing.length > 0) {
+            syncToPostgres(row.collection_name, existing);
+            continue;
+          }
+        }
         memoryCache.set(row.collection_name, row.data);
         writeLocalJson(row.collection_name, row.data);
       }
       console.log(`✓ Synchronized ${res.rows.length} collections from PostgreSQL into memory.`);
+    }
+
+    // Populate PostgreSQL with any existing collections not yet in public.app_collections
+    const initialFiles = [
+      "jobs", "candidates", "interviews", "resumes",
+      "email_templates", "email_sent", "settings", "interview_settings",
+      "candidate_portal_sessions"
+    ];
+    for (const col of initialFiles) {
+      if (!syncedNames.includes(col)) {
+        const localData = readLocalJson(col, []);
+        if (Array.isArray(localData) && localData.length > 0) {
+          syncToPostgres(col, localData);
+        }
+      }
     }
   } catch (err) {
     if (err && err.message) {

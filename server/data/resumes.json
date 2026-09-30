@@ -1,5 +1,468 @@
 [
   {
+    "id": "c-1790777441500",
+    "name": "Saloni Ghode",
+    "email": "salonighode@gmail.com",
+    "phone": "+91-9146980039",
+    "location": "Remote / Not Specified",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Data Science",
+    "domain": "Data Science",
+    "secondaryDomains": [
+      "Machine Learning",
+      "Software Development"
+    ],
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [
+      "Python",
+      "Java",
+      "SQL"
+    ],
+    "extraSkillsCount": 7,
+    "allSkills": [
+      "Python",
+      "Java",
+      "SQL",
+      "HTML/CSS",
+      "Machine Learning",
+      "Deep Learning",
+      "Natural Language Processing",
+      "Scikit-Learn",
+      "Pandas",
+      "NumPy"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "python",
+        "normalized": "Python",
+        "category": "Programming Languages",
+        "domains": {
+          "Data Science": 8,
+          "Machine Learning": 8,
+          "Software Development": 7,
+          "Web Development": 6,
+          "Data Analytics": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "java",
+        "normalized": "Java",
+        "category": "Programming Languages",
+        "domains": {
+          "Software Development": 10,
+          "Web Development": 7,
+          "Mobile Development": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "sql",
+        "normalized": "SQL",
+        "category": "Databases",
+        "domains": {
+          "Data Analytics": 9,
+          "Data Science": 8,
+          "Software Development": 8,
+          "Finance": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "html",
+        "normalized": "HTML/CSS",
+        "category": "Frontend",
+        "domains": {
+          "Web Development": 10,
+          "Software Development": 7,
+          "UI/UX Design": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "machine learning",
+        "normalized": "Machine Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 10,
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "deep learning",
+        "normalized": "Deep Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "natural language processing",
+        "normalized": "Natural Language Processing",
+        "category": "Data Science & AI",
+        "domains": {
+          "Artificial Intelligence": 10,
+          "Machine Learning": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "scikit-learn",
+        "normalized": "Scikit-Learn",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 10,
+          "Machine Learning": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "pandas",
+        "normalized": "Pandas",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 9,
+          "Data Analytics": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "numpy",
+        "normalized": "NumPy",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 9,
+          "Machine Learning": 8,
+          "Data Analytics": 7
+        },
+        "confidence": 0.96
+      }
+    ],
+    "education": "B.Tech",
+    "educationEntries": [],
+    "experienceEntries": [],
+    "atsScore": 48,
+    "matchScore": 48,
+    "skillsMatchPct": 29,
+    "status": "Rejected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 8.6,
+        "max": 30,
+        "percentage": 29
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 1,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 8.5,
+        "max": 10,
+        "candidateDomain": "Data Science",
+        "jdDomain": "Software Development"
+      },
+      "resumeQuality": {
+        "score": 2,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 2,
+      "issues": [
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [
+        "Scanned / flattened PDF detected. Invoking AI OCR engine for deep text extraction..."
+      ],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 10 classified technical competencies.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [
+      "Python",
+      "SQL"
+    ],
+    "missingSkills": [
+      "Recruitment",
+      "React",
+      "Node.js",
+      "TypeScript",
+      "Tailwind CSS"
+    ],
+    "missingRequiredSkills": [
+      "Recruitment",
+      "React",
+      "Node.js",
+      "TypeScript",
+      "Tailwind CSS"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Foundational knowledge in Data Science",
+        "Academic alignment with technical engineering principles"
+      ],
+      "missingSkills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Tailwind CSS",
+        "Professional software engineering experience"
+      ],
+      "experienceMatch": "The candidate has zero years of professional experience, lacking the required full-stack development expertise specified in the JD.",
+      "verdict": "Rejected due to significant skill gap in front-end technologies and lack of professional experience."
+    },
+    "summary": "Saloni Ghode is currently misaligned with the Software Engineer role, as her background is rooted in Data Science rather than full-stack development. The candidate lacks the essential front-end stack including React, TypeScript, and Tailwind CSS, and requires professional experience to meet the role's requirements.",
+    "uploadedDate": "30 Sept 2026",
+    "jobId": "job-saloni-101",
+    "targetJobTitle": "Software Engineer",
+    "resumeFileName": "saloniresume4.pdf",
+    "rawText": "SALONI GHODE +91-9146980039 salonighode@gmail.com\n\nSummary\nComputer Science engineering student currently pursuing B.Tech, with foundational knowledge of Python, SQL, and data analysis. Seeking entry-level or internship opportunities to apply analytical skills and gain practical industry experience.\n\nTechnical Skills\nProgramming Languages: SQL, Python, java(basic), Html\nLibraries: Pandas, NumPy, Matplotlib, Seaborn, Scikit-learn\nTools: google collab, Jupyter Notebook, Vs-Code\nAreas of Interests: Natural Language Processing, Machine Learning, Deep Learning.\n\nProject\nCustomer Churn Prediction using Machine Learning\n-Developed a machine learning classification model to predict customer churn with data preprocessing and feature engineering.\n-Conducted EDA using Pandas, NumPy, Matplotlib, and Seaborn to identify key churn-driving factors.\n-Implemented Logistic Regression and Random Forest models and evaluated performance using Accuracy, Precision, Recall, F1-score, and ROC-AUC.\n-Built and deployed an interactive web application using Streamlit for real-time churn prediction.\n\nCoursework\nDatabase Management System, Data Structures and Algorithms, Object Oriented Methodology, Theory Of Computation, Operating Systems, Computer Networks, Computer Organization, Digital Circuits and Micro-Processor. Artifical Neural Network. NLP\n\nEducation\nB.Tech\nG.H.Raisoni University\nExpected Graduation : 2027\nCGPA: 7.85 / 10\n\nSoft Skills\nTeam Collaboration\nQuick Learner\nCommunication\n\nExtra-Curricular Activities\nDrawing\nDancing\nAthletics",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": "resumes/1790777441490_saloniresume4.pdf",
+    "s3Bucket": "avahire-resumes-storage",
+    "createdAt": "2026-09-30T14:10:41.501Z"
+  },
+  {
+    "id": "c-1790777429110",
+    "name": "RIYA BONDRE",
+    "email": "riyabondre2@gmail.com",
+    "phone": "+91-9420689837",
+    "location": "Remote / Not Specified",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Data Science",
+    "domain": "Data Science",
+    "secondaryDomains": [
+      "Machine Learning",
+      "Software Development",
+      "Artificial Intelligence"
+    ],
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [
+      "Python",
+      "SQL",
+      "HTML/CSS"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "Python",
+      "SQL",
+      "HTML/CSS",
+      "Machine Learning",
+      "Deep Learning",
+      "Natural Language Processing"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "python",
+        "normalized": "Python",
+        "category": "Programming Languages",
+        "domains": {
+          "Data Science": 8,
+          "Machine Learning": 8,
+          "Software Development": 7,
+          "Web Development": 6,
+          "Data Analytics": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "sql",
+        "normalized": "SQL",
+        "category": "Databases",
+        "domains": {
+          "Data Analytics": 9,
+          "Data Science": 8,
+          "Software Development": 8,
+          "Finance": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "html",
+        "normalized": "HTML/CSS",
+        "category": "Frontend",
+        "domains": {
+          "Web Development": 10,
+          "Software Development": 7,
+          "UI/UX Design": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "machine learning",
+        "normalized": "Machine Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 10,
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "neural networks",
+        "normalized": "Deep Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "nlp",
+        "normalized": "Natural Language Processing",
+        "category": "Data Science & AI",
+        "domains": {
+          "Artificial Intelligence": 10,
+          "Machine Learning": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      }
+    ],
+    "education": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+    "educationEntries": [],
+    "experienceEntries": [],
+    "atsScore": 51,
+    "matchScore": 51,
+    "skillsMatchPct": 29,
+    "status": "Rejected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 8.6,
+        "max": 30,
+        "percentage": 29
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 1,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9.5,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 8.5,
+        "max": 10,
+        "candidateDomain": "Data Science",
+        "jdDomain": "Software Development"
+      },
+      "resumeQuality": {
+        "score": 4,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 4,
+      "issues": [
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 6 classified technical competencies.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [
+      "Python",
+      "SQL"
+    ],
+    "missingSkills": [
+      "Recruitment",
+      "React",
+      "Node.js",
+      "TypeScript",
+      "Tailwind CSS"
+    ],
+    "missingRequiredSkills": [
+      "Recruitment",
+      "React",
+      "Node.js",
+      "TypeScript",
+      "Tailwind CSS"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Academic background in Data Science",
+        "Relevant technical foundational knowledge"
+      ],
+      "missingSkills": [
+        "React",
+        "Node.js",
+        "TypeScript",
+        "Tailwind CSS",
+        "Professional Software Engineering experience"
+      ],
+      "experienceMatch": "The candidate has zero years of professional experience, lacking the practical application required for the Software Engineer role.",
+      "verdict": "Rejected due to significant skill gap in the core full-stack technology stack and lack of commercial experience."
+    },
+    "summary": "Riya Bondre is a Data Science candidate who lacks the essential full-stack development skills required for this Software Engineer position. Given the absence of experience with the core tech stack—React, Node.js, and TypeScript—the candidate is not a suitable match for the current opening.",
+    "uploadedDate": "30 Sept 2026",
+    "jobId": "job-saloni-101",
+    "targetJobTitle": "Software Engineer",
+    "resumeFileName": "resume riya.docx",
+    "rawText": "RIYA BONDRE\n\n +91-9420689837 riyabondre2@gmail.com\n\nSUMMARY\n\nComputer Science Engineering student currently pursuing B.Tech, with foundational knowledge of Python, SQL, and data analysis. Seeking entry-level or internship opportunities to apply analytical skills and gain practical industry experience.\n\nSKILLS\n\nProgramming Language: Python, SQL., HTML\n\nTools And Technologies: Google colab, Jupyter Notebook, VS Code\n\nMachine Learning: Supervised and Unsupervised Learning, Model Evaluation, NLP\n\nEDUCATION\n\nBachelor of Technology in Computer Science Expected Graduation:2027\n\nG.H Raisoni University CGPA: 7.65 / 10 \n\nPROJECT\n\nAI Resume Analyzer With Job Description Matching\n\n Developed an AI-powered web application using Python and Streamlit for resume analysis.\n\n Implemented NLP-based matching to compare resumes with job descriptions and generate compatibility scores.\n\n Identified skill gaps and provided personalized recommendations to improve job\n\nsuitability.\n\nCOURSEWOEK\n\nDatabase Management System, Data Structures and Algorithmt, Object-Oriented \n\nMethodology, Operating Systems, Computer Networks, Artificial Neural Networks,\n\nNLP",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": "resumes/1790777429062_resume_riya.docx",
+    "s3Bucket": "avahire-resumes-storage",
+    "createdAt": "2026-09-30T14:10:29.129Z"
+  },
+  {
     "id": "res-saloni-01",
     "name": "Aryan Sharma",
     "email": "aryan.sharma@example.com",
@@ -54,7 +517,29 @@
     "createdBy": "salonighode@gmail.com",
     "userEmail": "salonighode@gmail.com",
     "uploadedDate": "24 Sept 2026",
-    "createdAt": "2026-09-24T10:00:00.000Z"
+    "createdAt": "2026-09-24T10:00:00.000Z",
+    "jobId": null,
+    "targetJobTitle": null,
+    "currentRole": "Software Engineer",
+    "summary": "Aryan Sharma profile.",
+    "matchedSkills": [
+      "React",
+      "Node.js",
+      "TypeScript"
+    ],
+    "missingSkills": [],
+    "missingRequiredSkills": [],
+    "missingPreferredSkills": [],
+    "breakdown": null,
+    "resumeQuality": null,
+    "keyPoints": {
+      "strengths": [
+        "Proficient in: React, Node.js, TypeScript."
+      ],
+      "missingSkills": [],
+      "experienceMatch": "Experience: 3.5 Years",
+      "verdict": "Application processed."
+    }
   },
   {
     "id": "res-saloni-02",
@@ -94,7 +579,29 @@
     "createdBy": "salonighode@gmail.com",
     "userEmail": "salonighode@gmail.com",
     "uploadedDate": "12 Sept 2026",
-    "createdAt": "2026-09-12T10:00:00.000Z"
+    "createdAt": "2026-09-12T10:00:00.000Z",
+    "jobId": null,
+    "targetJobTitle": null,
+    "currentRole": "Software Engineer",
+    "summary": "anaya rao profile.",
+    "matchedSkills": [
+      "JavaScript",
+      "React",
+      "HTML5"
+    ],
+    "missingSkills": [],
+    "missingRequiredSkills": [],
+    "missingPreferredSkills": [],
+    "breakdown": null,
+    "resumeQuality": null,
+    "keyPoints": {
+      "strengths": [
+        "Proficient in: JavaScript, React, HTML5."
+      ],
+      "missingSkills": [],
+      "experienceMatch": "Experience: 2 Years",
+      "verdict": "High ATS compatibility. Shortlisted for screening round."
+    }
   },
   {
     "id": "c-1790062026728",
@@ -115,7 +622,7 @@
       "Pandas"
     ],
     "status": "Rejected",
-    "rawText": "Snehal Harde\nComputer Science Student\n\u0083 +91-8999646955 # snehal.harde2935@gmail.com \u00ef linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nAvaHire - AI Recruitment System | AI/ML, Data Science In Progress\n- Developing an AI-powered recruitment platform that automates resume screening, candidate ranking, interview\nscheduling, and AI-driven interviews.\n- Implemented a resume matching workflow that analyzes 100+ candidate resumes against job descriptions and generates\ncandidate match scores for faster shortlisting..\n- Designed an AI interview system with real-time avatar interaction, speech-to-text transcription, and 5+ evaluation\nparameters including communication, confidence, and problem-solving.\n- Building an automated recruitment workflow with 7+ AI agents/modules, including resume parsing, candidate matching,\ninterview, proctoring, evaluation, notifications, and HR assistance; project is currently in progress.\nAwards & Certifications\n\n* TechFest Data Science Workshop Certificate - 2025\n\n* IBM Machine Learning Certificate - Coursera\n\n* 5-Day AI Agents Intensive Vibe Coding Course Certificate - Kaggle\n\n* Data Engineering Masterclass - Scaler\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
+    "rawText": "Snehal Harde\nComputer Science Student\n +91-8999646955 # snehal.harde2935@gmail.com ï linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nAvaHire - AI Recruitment System | AI/ML, Data Science In Progress\n- Developing an AI-powered recruitment platform that automates resume screening, candidate ranking, interview\nscheduling, and AI-driven interviews.\n- Implemented a resume matching workflow that analyzes 100+ candidate resumes against job descriptions and generates\ncandidate match scores for faster shortlisting..\n- Designed an AI interview system with real-time avatar interaction, speech-to-text transcription, and 5+ evaluation\nparameters including communication, confidence, and problem-solving.\n- Building an automated recruitment workflow with 7+ AI agents/modules, including resume parsing, candidate matching,\ninterview, proctoring, evaluation, notifications, and HR assistance; project is currently in progress.\nAwards & Certifications\n\n* TechFest Data Science Workshop Certificate - 2025\n\n* IBM Machine Learning Certificate - Coursera\n\n* 5-Day AI Agents Intensive Vibe Coding Course Certificate - Kaggle\n\n* Data Engineering Masterclass - Scaler\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
     "summary": "Snehal Harde scored 44/100 ATS match for software engineer (Rejected). Required skill match: 8%, experience: 0 yrs vs 0+ yrs required.",
     "atsScore": 44,
     "expYears": 0,
@@ -309,7 +816,7 @@
     "ocrWarning": null,
     "resumeData": {
       "s3Url": null,
-      "rawText": "Snehal Harde\nComputer Science Student\n\u0083 +91-8999646955 # snehal.harde2935@gmail.com \u00ef linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python, SQL\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nVisora AI - Personal AI Tutor | Python, Data Science In Progress\n- Developing Visora AI, an AI-powered live tutoring platform supporting 4 input modes: PDF/document, image, text,\nand audio for personalized learning.\n- Implementing an AI avatar tutor with real-time Q&A, visual explanations, diagrams, and animations to deliver\ninteractive lessons across 10+ planned educational topics.\n- Building an adaptive quiz and evaluation system targeting 80%+ topic-assessment accuracy, with automated\nscoring, mistake analysis, and correct-answer explanations.\n- Developing a student analytics dashboard to track 100% of completed learning sessions, including recordings, quiz\nscores, weak topics, learning progress, and personalized recommendations.\nAwards & Certifications\n\n* IBM Machine Learning Certificate - Coursera\n\n* TechFest Data Science Workshop Certificate - 2025\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
+      "rawText": "Snehal Harde\nComputer Science Student\n +91-8999646955 # snehal.harde2935@gmail.com ï linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python, SQL\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nVisora AI - Personal AI Tutor | Python, Data Science In Progress\n- Developing Visora AI, an AI-powered live tutoring platform supporting 4 input modes: PDF/document, image, text,\nand audio for personalized learning.\n- Implementing an AI avatar tutor with real-time Q&A, visual explanations, diagrams, and animations to deliver\ninteractive lessons across 10+ planned educational topics.\n- Building an adaptive quiz and evaluation system targeting 80%+ topic-assessment accuracy, with automated\nscoring, mistake analysis, and correct-answer explanations.\n- Developing a student analytics dashboard to track 100% of completed learning sessions, including recordings, quiz\nscores, weak topics, learning progress, and personalized recommendations.\nAwards & Certifications\n\n* IBM Machine Learning Certificate - Coursera\n\n* TechFest Data Science Workshop Certificate - 2025\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
       "fileName": "Resume.pdf",
       "projects": [
         {

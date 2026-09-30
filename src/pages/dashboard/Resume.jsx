@@ -123,6 +123,7 @@ const Resumes = () => {
     const [sortBy, setSortBy] = useState("Highest ATS");
     const [selectedRowIds, setSelectedRowIds] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [batchUploadSummary, setBatchUploadSummary] = useState(null);
     const [showFullProfileModal, setShowFullProfileModal] = useState(false);
     const [profileModalTab, setProfileModalTab] = useState("overview");
     const [showInterviewModal, setShowInterviewModal] = useState(false);
@@ -399,15 +400,15 @@ const Resumes = () => {
         }
     };
 
-    // Handle Upload with Immediate Screening against current JD (Strictly Resumes Only)
+    // Handle Bulk Upload with Immediate Screening against current JD (Supports PDF, DOC, DOCX, TXT, JPG, JPEG, PNG)
     const handleFileUpload = async (files) => {
         const fileList = Array.from(files);
         if (!fileList.length) return;
 
-        // User requirement: "in resumes pages only resume should be taken not other docs"
-        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
+        // Supported document formats including OCR-supported image resumes
+        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf", ".jpg", ".jpeg", ".png"];
         const validFiles = [];
-        const rejectedFiles = [];
+        const invalidFormatFiles = [];
 
         for (const file of fileList) {
             const extMatch = file.name.match(/\.[^.]+$/);
@@ -415,96 +416,177 @@ const Resumes = () => {
             if (ALLOWED_RESUME_EXTS.includes(ext)) {
                 validFiles.push(file);
             } else {
-                rejectedFiles.push(file.name);
+                invalidFormatFiles.push(file.name);
             }
         }
 
-        if (rejectedFiles.length > 0) {
+        if (invalidFormatFiles.length > 0) {
             toast.error(
-                `Non-resume file${rejectedFiles.length > 1 ? "s" : ""} rejected: ${rejectedFiles.join(", ")}. In resumes portal, only resume documents (.pdf, .docx, .doc, .txt) are accepted.`,
+                `Unsupported format${invalidFormatFiles.length > 1 ? "s" : ""}: ${invalidFormatFiles.join(", ")}. Accepted formats: .pdf, .docx, .doc, .txt, .jpg, .jpeg, .png.`,
                 { duration: 5000 }
             );
         }
 
         if (validFiles.length === 0) {
-            toast.warning("No valid resume documents detected. Please upload only resume documents (.pdf, .docx, .doc, or .txt).");
+            toast.warning("No supported resume files detected. Please upload PDF, DOCX, DOC, TXT, JPG, JPEG, or PNG files.");
             return;
         }
 
         setIsUploading(true);
-        toast.info(`Uploading & screening ${validFiles.length} resume document${validFiles.length > 1 ? "s" : ""} against "${currentJd.title}"...`);
+        toast.info(
+            `Processing bulk upload of ${validFiles.length} file${validFiles.length > 1 ? "s" : ""} (PDFs & Image OCR) against "${currentJd.title}"...`
+        );
 
         try {
+            let currentUserEmail = "";
+            try {
+                const userObj = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+                currentUserEmail = (userObj.email || localStorage.getItem("avahire_registered_email") || "").trim();
+            } catch {}
+
+            const formData = new FormData();
+            for (const f of validFiles) {
+                formData.append("resumes", f);
+            }
+            formData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
+            if (selectedJobId === "custom") {
+                formData.append("customJd", JSON.stringify(currentJd));
+            }
+            if (currentUserEmail) {
+                formData.append("userEmail", currentUserEmail);
+                formData.append("createdBy", currentUserEmail);
+            }
+
+            const response = await resumesApi.uploadBatch(formData);
+
+            if (response && response.success) {
+                const savedCandidates = Array.isArray(response.data) ? response.data : [];
+                const rejectedList = Array.isArray(response.rejected) ? response.rejected : [];
+                const errorList = Array.isArray(response.errors) ? response.errors : [];
+                const duplicatesUpdated = savedCandidates.filter((c) => c.isDuplicateUpdated);
+
+                setBatchUploadSummary({
+                    timestamp: new Date().toLocaleTimeString(),
+                    total: validFiles.length,
+                    savedCount: savedCandidates.length,
+                    duplicatesCount: duplicatesUpdated.length,
+                    rejectedCount: rejectedList.length,
+                    errorCount: errorList.length,
+                    savedCandidates,
+                    rejectedList,
+                    errorList,
+                    targetJobTitle: currentJd.title
+                });
+
+                // Update candidates state without duplicating records
+                if (savedCandidates.length > 0) {
+                    setCandidates((prev) => {
+                        const prevMap = new Map(prev.map((c) => [c.id, c]));
+                        for (const cand of savedCandidates) {
+                            prevMap.set(cand.id, cand);
+                        }
+                        return Array.from(prevMap.values());
+                    });
+                    setSelectedCandidateId(savedCandidates[0].id);
+                }
+
+                // Granular notification feedback
+                if (savedCandidates.length > 0) {
+                    const shortlisted = savedCandidates.filter((c) => c.status === "Shortlisted").length;
+                    const review = savedCandidates.filter((c) => c.status === "Review" || c.status === "Under Review").length;
+                    const rejectedScore = savedCandidates.filter((c) => c.status === "Rejected").length;
+
+                    toast.success(
+                        `Bulk screening complete: ${savedCandidates.length} resume${savedCandidates.length > 1 ? "s" : ""} processed & saved! (${shortlisted} Shortlisted, ${review} Review, ${rejectedScore} Low Match)`,
+                        { duration: 6000 }
+                    );
+                }
+
+                if (rejectedList.length > 0) {
+                    toast.warning(
+                        `${rejectedList.length} non-resume file${rejectedList.length > 1 ? "s" : ""} (selfie/photo/logo/UI) automatically rejected & not saved: ${rejectedList.map((r) => r.filename).join(", ")}`,
+                        { duration: 7000 }
+                    );
+                }
+
+                if (errorList.length > 0) {
+                    toast.error(
+                        `${errorList.length} file${errorList.length > 1 ? "s" : ""} encountered read errors and could not be parsed.`,
+                        { duration: 5000 }
+                    );
+                }
+            } else {
+                throw new Error(response?.error || "Batch upload failed.");
+            }
+        } catch (batchErr) {
+            console.warn("Batch API upload failed, falling back to sequential single upload:", batchErr);
+            // Sequential fallback with strict non-resume filtering
             const newlyAdded = [];
+            const rejectedFallback = [];
+            const errorFallback = [];
+
             for (let i = 0; i < validFiles.length; i++) {
                 const f = validFiles[i];
-                const formData = new FormData();
-                formData.append("resume", f);
-                formData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
+                const singleFormData = new FormData();
+                singleFormData.append("resume", f);
+                singleFormData.append("jobId", selectedJobId === "custom" ? "custom" : selectedJobId);
                 if (selectedJobId === "custom") {
-                    formData.append("customJd", JSON.stringify(currentJd));
+                    singleFormData.append("customJd", JSON.stringify(currentJd));
+                }
+                if (currentUserEmail) {
+                    singleFormData.append("userEmail", currentUserEmail);
+                    singleFormData.append("createdBy", currentUserEmail);
                 }
 
                 try {
-                    const res = await resumesApi.uploadAndScreen(formData);
+                    const res = await resumesApi.uploadAndScreen(singleFormData);
                     if (res && res.data) {
-                        const candidate = res.data;
-                        newlyAdded.push(candidate);
-                        if (candidate.status === "Shortlisted") {
-                            toast.success(`${candidate.name}: SHORTLISTED! (${candidate.field || "Domain"} · ATS: ${candidate.atsScore}/100, ${candidate.skillsMatchPct}% skills match)`);
-                        } else if (candidate.status === "Review") {
-                            toast.warning(`${candidate.name}: Placed Under Review (ATS: ${candidate.atsScore}/100 - partial match)`);
-                        } else {
-                            toast.error(`${candidate.name}: REJECTED (ATS: ${candidate.atsScore}/100 - lacks required skills for ${currentJd.title})`);
-                        }
+                        newlyAdded.push(res.data);
                     }
                 } catch (singleUploadErr) {
-                    console.error("Single resume upload error:", singleUploadErr);
-                    // Fallback to text reading if server upload had error
-                    const cleanName = f.name
-                        .replace(/\.(pdf|docx?|txt)$/i, "")
-                        .replace(/[_-]/g, " ")
-                        .replace(/\b\w/g, (l) => l.toUpperCase()) || `Applicant ${candidates.length + i + 1}`;
-
-                    const candidateDomain = detectJobDomain(currentJd);
-                    const newCandidatePayload = {
-                        name: cleanName,
-                        email: `${cleanName.toLowerCase().replace(/\s+/g, ".")}@example.com`,
-                        phone: "+91 98" + Math.floor(10000000 + Math.random() * 90000000),
-                        location: "India",
-                        role: currentJd.title || "Candidate",
-                        field: candidateDomain,
-                        domain: candidateDomain,
-                        jobId: selectedJobId === "custom" ? null : selectedJobId,
-                        targetJobId: selectedJobId === "custom" ? null : selectedJobId,
-                        targetJobTitle: currentJd.title,
-                        experience: "2 Years",
-                        expYears: 2,
-                        skills: currentJd.keySkills ? currentJd.keySkills.slice(0, 3) : [],
-                        allSkills: currentJd.keySkills || [],
-                        currentRole: "Applicant",
-                        education: "Bachelor's Degree",
-                        resumeFileName: f.name
-                    };
-                    const created = await resumesApi.create(newCandidatePayload);
-                    const analysisResult = await resumesApi.analyzeCandidate(created.id, {
-                        jobId: selectedJobId === "custom" ? null : selectedJobId,
-                        customJd: selectedJobId === "custom" ? currentJd : null
-                    });
-                    if (analysisResult?.data) {
-                        newlyAdded.push(analysisResult.data);
+                    // Check if rejected specifically for not being a valid resume
+                    if (singleUploadErr.response?.data?.isValidResume === false) {
+                        rejectedFallback.push({
+                            filename: f.name,
+                            reason: singleUploadErr.response.data.error || "Non-resume image/file rejected."
+                        });
+                    } else {
+                        errorFallback.push({
+                            filename: f.name,
+                            error: singleUploadErr.response?.data?.error || singleUploadErr.message
+                        });
                     }
                 }
             }
 
             if (newlyAdded.length > 0) {
-                setCandidates((prev) => [...newlyAdded, ...prev]);
+                setCandidates((prev) => {
+                    const prevMap = new Map(prev.map((c) => [c.id, c]));
+                    for (const cand of newlyAdded) {
+                        prevMap.set(cand.id, cand);
+                    }
+                    return Array.from(prevMap.values());
+                });
                 setSelectedCandidateId(newlyAdded[0].id);
-                toast.success(`Screened and organized ${newlyAdded.length} candidate${newlyAdded.length > 1 ? "s" : ""}!`);
+                toast.success(`Processed & saved ${newlyAdded.length} valid resume(s)!`);
             }
-        } catch (err) {
-            console.error("Upload screening error:", err);
-            toast.error("Failed to parse and screen uploaded resumes.");
+
+            if (rejectedFallback.length > 0) {
+                toast.warning(`${rejectedFallback.length} non-resume file(s) rejected and not saved.`);
+            }
+
+            setBatchUploadSummary({
+                timestamp: new Date().toLocaleTimeString(),
+                total: validFiles.length,
+                savedCount: newlyAdded.length,
+                duplicatesCount: newlyAdded.filter((c) => c.isDuplicateUpdated).length,
+                rejectedCount: rejectedFallback.length,
+                errorCount: errorFallback.length,
+                savedCandidates: newlyAdded,
+                rejectedList: rejectedFallback,
+                errorList: errorFallback,
+                targetJobTitle: currentJd.title
+            });
         } finally {
             setIsUploading(false);
         }
@@ -696,31 +778,25 @@ const Resumes = () => {
                     {/* Filters Button */}
                     <button
                         onClick={() => setShowFilterModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm cursor-pointer"
                     >
                         <SlidersHorizontal className="w-4 h-4 text-slate-500" />
                         <span>Filter Options</span>
                     </button>
 
-                    {/* Upload Resume Button (Strictly Resumes Only) */}
-                    <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isUploading}
-                        className="flex items-center gap-2 px-4 sm:px-5 py-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-full text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition-all disabled:opacity-50 cursor-pointer"
-                        title="Only resume documents (.pdf, .docx, .doc, .txt) are accepted"
-                    >
-                        <Upload className="w-4 h-4" />
-                        <span>{isUploading ? "Screening..." : "Upload Resume"}</span>
-                    </button>
-
-                    {/* Hidden input strictly accepting resume formats */}
+                    {/* Hidden input accepting mixed resume formats */}
                     <input
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.txt,.rtf"
+                        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,image/jpeg,image/png"
                         className="hidden"
-                        onChange={(e) => handleFileUpload(e.target.files)}
+                        onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                                handleFileUpload(e.target.files);
+                                e.target.value = "";
+                            }
+                        }}
                     />
                 </div>
             </div>
@@ -835,11 +911,16 @@ const Resumes = () => {
                 }`}
             >
                 {isUploading ? (
-                    <div className="py-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <div className="w-5 h-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin shrink-0" />
-                        <span className="text-sm font-semibold text-violet-900">
-                            Screening candidate resumes against Job Description...
-                        </span>
+                    <div className="py-3 flex flex-col items-center justify-center gap-2.5">
+                        <div className="flex items-center gap-3">
+                            <div className="w-5 h-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin shrink-0" />
+                            <span className="text-sm font-bold text-violet-900">
+                                Processing &amp; screening resumes with OCR &amp; ATS engine...
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            Parsing mixed files (PDF, DOCX, JPG, PNG), verifying valid resumes, running OCR, and calculating ATS scores.
+                        </p>
                     </div>
                 ) : (
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -849,10 +930,10 @@ const Resumes = () => {
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-slate-900">
-                                    Drag &amp; Drop candidate resumes here
+                                    Bulk Upload or Drag &amp; Drop candidate resumes here
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOCX, DOC, TXT</span> (Max 10MB per file). Resumes are automatically analyzed with ATS scoring.
+                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOC, DOCX, TXT, JPG, JPEG, PNG</span> (Image OCR supported). Non-resume images (selfies, logos, WhatsApp UI) are automatically filtered out.
                                 </p>
                             </div>
                         </div>
@@ -880,6 +961,137 @@ const Resumes = () => {
                     </div>
                 )}
             </div>
+
+            {/* Batch Upload Processing Results Card */}
+            {batchUploadSummary && (
+                <div className="bg-white rounded-2xl border border-violet-200 shadow-sm p-4 sm:p-5 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-violet-100 text-violet-700 flex items-center justify-center shrink-0">
+                                <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Bulk Upload Summary
+                                </h3>
+                                <p className="text-[11px] text-slate-500">
+                                    Processed against <span className="font-semibold text-slate-700">{batchUploadSummary.targetJobTitle}</span> at {batchUploadSummary.timestamp}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                ✓ {batchUploadSummary.savedCount} Saved
+                            </span>
+                            {batchUploadSummary.duplicatesCount > 0 && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    {batchUploadSummary.duplicatesCount} Duplicates Prevented
+                                </span>
+                            )}
+                            {batchUploadSummary.rejectedCount > 0 && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    ⚠ {batchUploadSummary.rejectedCount} Non-Resumes Filtered
+                                </span>
+                            )}
+                            {batchUploadSummary.errorCount > 0 && (
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                    ✕ {batchUploadSummary.errorCount} Errors
+                                </span>
+                            )}
+                            <button
+                                onClick={() => setBatchUploadSummary(null)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer ml-1"
+                                title="Dismiss Summary"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Per-file details */}
+                    <div className="mt-3 space-y-2 max-h-60 overflow-y-auto pr-1">
+                        {/* Saved Resumes */}
+                        {(batchUploadSummary.savedCandidates || []).map((cand) => (
+                            <div
+                                key={cand.id || cand.name}
+                                className="flex items-center justify-between p-2.5 bg-slate-50/80 hover:bg-slate-50 rounded-xl border border-slate-100 text-xs"
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-slate-800 truncate">
+                                            {cand.name}
+                                            {cand.isDuplicateUpdated && (
+                                                <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">
+                                                    Profile Updated (No Duplicate)
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="text-[11px] text-slate-500 truncate">
+                                            {cand.resumeFileName || cand.role || "Resume Document"} · {cand.field || cand.domain || "General"}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <span className="px-2 py-0.5 rounded-full font-bold bg-violet-100 text-violet-700 text-[11px]">
+                                        ATS: {cand.atsScore}/100
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${getStatusPill(cand.status)}`}>
+                                        {cand.status}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Rejected Non-Resumes */}
+                        {(batchUploadSummary.rejectedList || []).map((rej, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center justify-between p-2.5 bg-amber-50/60 rounded-xl border border-amber-200/70 text-xs"
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-amber-900 truncate">
+                                            {rej.filename}
+                                        </div>
+                                        <div className="text-[11px] text-amber-700 truncate">
+                                            {rej.reason || "Not a valid resume (selfie, logo, or screenshot detected)."}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 text-[10px] shrink-0">
+                                    Not Saved
+                                </span>
+                            </div>
+                        ))}
+
+                        {/* File Errors */}
+                        {(batchUploadSummary.errorList || []).map((errItem, idx) => (
+                            <div
+                                key={idx}
+                                className="flex items-center justify-between p-2.5 bg-rose-50/60 rounded-xl border border-rose-200/70 text-xs"
+                            >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                    <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                    <div className="min-w-0">
+                                        <div className="font-bold text-rose-900 truncate">
+                                            {errItem.filename}
+                                        </div>
+                                        <div className="text-[11px] text-rose-700 truncate">
+                                            {errItem.error || "File read error."}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 text-[10px] shrink-0">
+                                    Failed
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Career Fields & Job Folders Navigation Hub (Compact dropdown filter design) */}
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-5">

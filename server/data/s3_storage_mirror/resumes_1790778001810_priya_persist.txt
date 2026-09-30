@@ -1,0 +1,22 @@
+
+PRIYA SHARMA
+Email: priya.sharma.testpersist@example.com
+Phone: +91 9876543210
+Location: Bengaluru, India
+Target Role: Machine Learning Engineer
+
+SUMMARY
+Machine Learning Engineer with 4 years experience deploying PyTorch models, NLP pipelines, and Python microservices in production.
+
+EXPERIENCE
+AI Engineer | DataCorp
+2022 - Present
+- Trained BERT transformer models for classification.
+- Deployed models with FastAPI and Docker.
+
+EDUCATION
+B.Tech in Computer Science
+IIT Madras (2018 - 2022)
+
+SKILLS
+Python, PyTorch, TensorFlow, NLP, Scikit-learn, SQL, Docker, AWS

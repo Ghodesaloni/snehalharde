@@ -5,6 +5,8 @@
  */
 
 const mammoth = require("mammoth");
+const { validateTextAsResume, processImageOcrAndValidation } = require("./ocrAndValidationService");
+
 let pdfParseModule = null;
 try {
   pdfParseModule = require("pdf-parse");
@@ -67,12 +69,29 @@ async function extractResumeText(fileBuffer, mimeType = "", filename = "") {
 
   let extractedRaw = "";
   let fileType = "txt";
+  let isValidResume = true;
+  let rejectionReason = null;
+  let candidateInfo = null;
+  let requiresOcr = false;
+  let ocrWarning = null;
 
+  const isImage = [".jpg", ".jpeg", ".png"].includes(ext) || mime.startsWith("image/");
   const isPdf = ext === ".pdf" || mime === "application/pdf";
   const isDocx = ext === ".docx" || mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   const isDoc = ext === ".doc" || mime === "application/msword";
 
-  if (isPdf) {
+  if (isImage) {
+    fileType = ext.replace(".", "") || "image";
+    requiresOcr = true;
+    const ocrResult = await processImageOcrAndValidation(fileBuffer, mime || (ext === ".png" ? "image/png" : "image/jpeg"), filename);
+    isValidResume = ocrResult.isValidResume;
+    rejectionReason = ocrResult.rejectionReason;
+    extractedRaw = ocrResult.extractedText || "";
+    candidateInfo = ocrResult.candidateInfo;
+    if (!isValidResume) {
+      ocrWarning = rejectionReason || "Uploaded image is not a valid resume document.";
+    }
+  } else if (isPdf) {
     fileType = "pdf";
     try {
       if (pdfParseModule) {
@@ -93,6 +112,27 @@ async function extractResumeText(fileBuffer, mimeType = "", filename = "") {
       console.warn(`[TextExtractor] pdf-parse failed for ${filename}:`, pdfErr.message);
       // Fallback: search for UTF-8 and ASCII text streams in the raw buffer
       extractedRaw = fileBuffer.toString("utf-8").replace(/[^\x20-\x7E\n\t]/g, " ");
+    }
+
+    // Check if PDF is a scanned image or flattened document with insufficient text
+    const alphaCount = (cleanExtractedText(extractedRaw).match(/[a-zA-Z0-9]/g) || []).length;
+    if (alphaCount < 50) {
+      requiresOcr = true;
+      ocrWarning = "Scanned / flattened PDF detected. Invoking AI OCR engine for deep text extraction...";
+      try {
+        const ocrPdfResult = await processImageOcrAndValidation(fileBuffer, "application/pdf", filename);
+        if (ocrPdfResult.extractedText && ocrPdfResult.extractedText.length > extractedRaw.length) {
+          extractedRaw = ocrPdfResult.extractedText;
+          isValidResume = ocrPdfResult.isValidResume;
+          rejectionReason = ocrPdfResult.rejectionReason;
+          candidateInfo = ocrPdfResult.candidateInfo;
+        } else if (!ocrPdfResult.isValidResume) {
+          isValidResume = false;
+          rejectionReason = ocrPdfResult.rejectionReason;
+        }
+      } catch (ocrPdfErr) {
+        console.warn(`[TextExtractor] Scanned PDF OCR fallback failed for ${filename}:`, ocrPdfErr.message);
+      }
     }
   } else if (isDocx) {
     fileType = "docx";
@@ -128,18 +168,19 @@ async function extractResumeText(fileBuffer, mimeType = "", filename = "") {
 
   const cleanText = cleanExtractedText(extractedRaw);
 
-  // Check for scanned / image PDF with insufficient text
-  // If a document has less than 40 alphanumeric characters, it is virtually certain to be scanned/image-based
-  const alphaNumericCharCount = (cleanText.match(/[a-zA-Z0-9]/g) || []).length;
-  let requiresOcr = false;
-  let ocrWarning = null;
+  // If not already classified by image/PDF OCR, run text validation
+  if (!isImage && isValidResume) {
+    const textValidation = validateTextAsResume(cleanText, filename);
+    if (!textValidation.isValid) {
+      isValidResume = false;
+      rejectionReason = textValidation.reason;
+    }
+  }
 
-  if (isPdf && alphaNumericCharCount < 50) {
+  const alphaNumericCharCount = (cleanText.match(/[a-zA-Z0-9]/g) || []).length;
+  if (!requiresOcr && alphaNumericCharCount < 30) {
     requiresOcr = true;
-    ocrWarning = "Scanned image or flattened PDF detected. The document contains insufficient text streams and requires OCR for complete data extraction.";
-  } else if (alphaNumericCharCount < 30) {
-    requiresOcr = true;
-    ocrWarning = "Insufficient text detected in uploaded resume file.";
+    ocrWarning = ocrWarning || "Insufficient text detected in uploaded resume file.";
   }
 
   return {
@@ -148,6 +189,9 @@ async function extractResumeText(fileBuffer, mimeType = "", filename = "") {
     requiresOcr,
     ocrWarning,
     fileType,
+    isValidResume,
+    rejectionReason,
+    candidateInfo,
     charCount: cleanText.length,
     wordCount: cleanText.split(/\s+/).filter(Boolean).length
   };

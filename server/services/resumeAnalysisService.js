@@ -156,13 +156,21 @@ Return a JSON object with:
   "aiSummary": "2-3 sentence executive recruitment overview."
 }`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
+    let response = null;
+    for (const m of ["gemini-3.1-flash-lite", "gemini-3.8-flash"]) {
+      try {
+        response = await ai.models.generateContent({
+          model: m,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+        if (response && response.text) break;
+      } catch (mErr) {
+        console.warn(`[AI-Analysis] Model ${m} fallback:`, mErr.message);
       }
-    });
+    }
 
     const text = response.text;
     if (text) {
