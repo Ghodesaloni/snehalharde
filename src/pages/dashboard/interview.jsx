@@ -203,7 +203,7 @@ const Interviews = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
                 <div className="flex items-center gap-2">
                     <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                        AI Video Interviews ({filteredInterviews.length})
+                        AI  Interviews
                     </h1>
                 </div>
 
@@ -238,32 +238,6 @@ const Interviews = () => {
                 </div>
             </div>
 
-            {/* HR Cross-Navigation Quick Hub */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Navigate HR:</span>
-                    <Link to="/app/jobs" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Jobs</span>
-                    </Link>
-                    <Link to="/app/resumes" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Resumes</span>
-                    </Link>
-                    <Link to="/app/candidates" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Candidates</span>
-                    </Link>
-                    <Link to="/app/email" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Email Center</span>
-                    </Link>
-                    <Link to="/app/calendar" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Calendar</span>
-                    </Link>
-                </div>
-            </div>
 
             {/* Candidate Portal Isolation Reminder Banner */}
             <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 sm:px-4 sm:py-3 flex items-center justify-between gap-3 text-xs text-indigo-900">
@@ -413,7 +387,7 @@ const Interviews = () => {
                                                 )}
                                             </td>
 
-                                             {/* Column 7: Actions */}
+                                            {/* Column 7: Actions */}
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {/* Email Candidate Link */}
@@ -425,14 +399,6 @@ const Interviews = () => {
                                                         <Mail className="w-3.5 h-3.5" />
                                                     </Link>
 
-                                                    {/* View in Candidates Pipeline */}
-                                                    <Link
-                                                        to={`/app/candidates?search=${encodeURIComponent(iv.name)}`}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-300 flex items-center justify-center text-slate-500 transition"
-                                                        title="View in Candidate Pipeline"
-                                                    >
-                                                        <Users className="w-3.5 h-3.5" />
-                                                    </Link>
 
                                                     {/* View Details button */}
                                                     <button
