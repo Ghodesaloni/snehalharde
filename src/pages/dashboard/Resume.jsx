@@ -160,6 +160,27 @@ const Resumes = () => {
     const fileInputRef = useRef(null);
     const fieldDropdownRef = useRef(null);
     const jobDropdownRef = useRef(null);
+    const fieldSearchInputRef = useRef(null);
+    const jobFolderSearchInputRef = useRef(null);
+    const [fieldSearchQuery, setFieldSearchQuery] = useState("");
+    const [jobFolderSearchQuery, setJobFolderSearchQuery] = useState("");
+
+    // Auto-focus and reset search inputs when dropdown opens/closes
+    useEffect(() => {
+        if (isFieldDropdownOpen) {
+            setTimeout(() => fieldSearchInputRef.current?.focus(), 50);
+        } else {
+            setFieldSearchQuery("");
+        }
+    }, [isFieldDropdownOpen]);
+
+    useEffect(() => {
+        if (isJobDropdownOpen) {
+            setTimeout(() => jobFolderSearchInputRef.current?.focus(), 50);
+        } else {
+            setJobFolderSearchQuery("");
+        }
+    }, [isJobDropdownOpen]);
 
     // Close dropdowns on outside click
     useEffect(() => {
@@ -281,6 +302,35 @@ const Resumes = () => {
             return detectCandidateDomain(c) === jDomain;
         }).length;
     };
+
+    // Filtered Career Fields for search input inside Career Field dropdown
+    const filteredFields = useMemo(() => {
+        if (!fieldSearchQuery.trim()) return FIELDS;
+        const q = fieldSearchQuery.toLowerCase().trim();
+        return FIELDS.filter((field) => {
+            const labelMatch = (field.label || "").toLowerCase().includes(q);
+            const idMatch = (field.id || "").toLowerCase().includes(q);
+            return labelMatch || idMatch;
+        });
+    }, [fieldSearchQuery]);
+
+    // Filtered Job Folders for search input inside Job Folder dropdown
+    const filteredFolderJobs = useMemo(() => {
+        if (!jobFolderSearchQuery.trim()) return jobs;
+        const q = jobFolderSearchQuery.toLowerCase().trim();
+        return jobs.filter((job) => {
+            const titleMatch = (job.title || "").toLowerCase().includes(q);
+            const deptMatch = (job.dept || "").toLowerCase().includes(q);
+            const domainMatch = (detectJobDomain(job) || "").toLowerCase().includes(q);
+            return titleMatch || deptMatch || domainMatch;
+        });
+    }, [jobs, jobFolderSearchQuery]);
+
+    const showAllJobsFolderOption = useMemo(() => {
+        if (!jobFolderSearchQuery.trim()) return true;
+        const q = jobFolderSearchQuery.toLowerCase().trim();
+        return "all jobs".includes(q) || "all".includes(q);
+    }, [jobFolderSearchQuery]);
 
     // Filter and Sort Candidates
     const filteredCandidates = useMemo(() => {
@@ -1155,13 +1205,44 @@ const Resumes = () => {
 
                             {/* Dropdown Menu */}
                             {isFieldDropdownOpen && (
-                                <div className="absolute left-0 lg:left-auto lg:right-0 mt-1.5 w-72 max-h-80 overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30 animate-in fade-in zoom-in-95">
+                                <div className="absolute left-0 lg:left-auto lg:right-0 mt-1.5 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30 animate-in fade-in zoom-in-95 flex flex-col">
+                                    {/* Search Input inside Career Field Dropdown */}
+                                    <div className="p-1 pb-2 border-b border-slate-100">
+                                        <div className="relative flex items-center">
+                                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                                            <input
+                                                ref={fieldSearchInputRef}
+                                                type="text"
+                                                value={fieldSearchQuery}
+                                                onChange={(e) => setFieldSearchQuery(e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                placeholder="Search career fields..."
+                                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1.5 focus:ring-violet-500 focus:bg-white transition-all"
+                                            />
+                                            {fieldSearchQuery && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFieldSearchQuery("");
+                                                        fieldSearchInputRef.current?.focus();
+                                                    }}
+                                                    className="absolute right-2 p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition"
+                                                    title="Clear search"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
                                         <span>Select Career Field</span>
                                         <span>Candidates</span>
                                     </div>
-                                    <div className="py-1 space-y-0.5">
-                                        {FIELDS.map((field) => {
+                                    <div className="py-1 space-y-0.5 max-h-60 overflow-y-auto">
+                                        {filteredFields.map((field) => {
                                             const IconComponent = field.icon;
                                             const isSelected = selectedField === field.id && selectedFolderJobId === "All";
                                             const count = fieldCounts[field.id] || 0;
@@ -1201,6 +1282,12 @@ const Resumes = () => {
                                                 </button>
                                             );
                                         })}
+
+                                        {filteredFields.length === 0 && (
+                                            <div className="py-6 text-center text-xs text-slate-400">
+                                                No career fields match "{fieldSearchQuery}"
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1240,42 +1327,75 @@ const Resumes = () => {
 
                             {/* Dropdown Menu */}
                             {isJobDropdownOpen && (
-                                <div className="absolute right-0 mt-1.5 w-76 max-h-80 overflow-y-auto bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30 animate-in fade-in zoom-in-95">
+                                <div className="absolute right-0 mt-1.5 w-76 bg-white rounded-2xl shadow-xl border border-slate-100 p-2 z-30 animate-in fade-in zoom-in-95 flex flex-col">
+                                    {/* Search Input inside Job Folder Dropdown */}
+                                    <div className="p-1 pb-2 border-b border-slate-100">
+                                        <div className="relative flex items-center">
+                                            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                                            <input
+                                                ref={jobFolderSearchInputRef}
+                                                type="text"
+                                                value={jobFolderSearchQuery}
+                                                onChange={(e) => setJobFolderSearchQuery(e.target.value)}
+                                                onClick={(e) => e.stopPropagation()}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                placeholder="Search job folder or title..."
+                                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-1.5 focus:ring-violet-500 focus:bg-white transition-all"
+                                            />
+                                            {jobFolderSearchQuery && (
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setJobFolderSearchQuery("");
+                                                        jobFolderSearchInputRef.current?.focus();
+                                                    }}
+                                                    className="absolute right-2 p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition"
+                                                    title="Clear search"
+                                                >
+                                                    <X className="w-3 h-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
                                         <span>Select Job Folder</span>
                                         <span>Candidates</span>
                                     </div>
-                                    <div className="py-1 space-y-0.5">
+                                    <div className="py-1 space-y-0.5 max-h-60 overflow-y-auto">
                                         {/* All Jobs */}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedFolderJobId("All");
-                                                setIsJobDropdownOpen(false);
-                                            }}
-                                            className={`w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                                selectedFolderJobId === "All"
-                                                    ? "bg-violet-600 text-white font-bold shadow-xs"
-                                                    : "hover:bg-slate-50 text-slate-700"
-                                            }`}
-                                        >
-                                            <span className="flex items-center gap-2">
-                                                <Folder className={`w-4 h-4 ${selectedFolderJobId === "All" ? "text-white" : "text-slate-400"}`} />
-                                                <span>All Jobs</span>
-                                            </span>
-                                            <span
-                                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        {showAllJobsFolderOption && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setSelectedFolderJobId("All");
+                                                    setIsJobDropdownOpen(false);
+                                                }}
+                                                className={`w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
                                                     selectedFolderJobId === "All"
-                                                        ? "bg-white/20 text-white"
-                                                        : "bg-slate-100 text-slate-600"
+                                                        ? "bg-violet-600 text-white font-bold shadow-xs"
+                                                        : "hover:bg-slate-50 text-slate-700"
                                                 }`}
                                             >
-                                                {candidates.length}
-                                            </span>
-                                        </button>
+                                                <span className="flex items-center gap-2">
+                                                    <Folder className={`w-4 h-4 ${selectedFolderJobId === "All" ? "text-white" : "text-slate-400"}`} />
+                                                    <span>All Jobs</span>
+                                                </span>
+                                                <span
+                                                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                        selectedFolderJobId === "All"
+                                                            ? "bg-white/20 text-white"
+                                                            : "bg-slate-100 text-slate-600"
+                                                    }`}
+                                                >
+                                                    {candidates.length}
+                                                </span>
+                                            </button>
+                                        )}
 
                                         {/* Individual Job Folders */}
-                                        {jobs.map((job) => {
+                                        {filteredFolderJobs.map((job) => {
                                             const isJobActive = selectedFolderJobId === job.id;
                                             const jobDomain = detectJobDomain(job);
                                             const count = getJobCandidateCount(job);
@@ -1317,6 +1437,12 @@ const Resumes = () => {
                                                 </button>
                                             );
                                         })}
+
+                                        {!showAllJobsFolderOption && filteredFolderJobs.length === 0 && (
+                                            <div className="py-6 text-center text-xs text-slate-400">
+                                                No job folders match "{jobFolderSearchQuery}"
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
