@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { candidatesApi } from "@/services/api";
+import { candidatesApi, jobsApi, resumesApi } from "@/services/api";
+import { getMatchingResumesForJob, enrichCandidateForJob } from "@/utils/jdMatcher";
 import {
     Mail,
     Phone,
@@ -48,6 +49,8 @@ const Candidates = () => {
     const searchQueryParam = searchParams.get("search") || "";
 
     const [candidates, setCandidates] = useState(initialCandidates);
+    const [jobs, setJobs] = useState([]);
+    const [resumes, setResumes] = useState([]);
     const [sortBy, setSortBy] = useState("Latest Interview");
     const [statusFilter, setStatusFilter] = useState(statusQueryParam || "All");
     const [jobFilter, setJobFilter] = useState(jobQueryParam);
@@ -142,9 +145,19 @@ const Candidates = () => {
     useEffect(() => {
         const fetchCandidates = async () => {
             try {
-                const data = await candidatesApi.getAll();
-                if (Array.isArray(data)) {
-                    setCandidates(data);
+                const [candData, jobsData, resumesData] = await Promise.all([
+                    candidatesApi.getAll().catch(() => []),
+                    jobsApi.getAll().catch(() => []),
+                    resumesApi.getAll().catch(() => [])
+                ]);
+                if (Array.isArray(candData)) {
+                    setCandidates(candData);
+                }
+                if (Array.isArray(jobsData)) {
+                    setJobs(jobsData);
+                }
+                if (Array.isArray(resumesData)) {
+                    setResumes(resumesData);
                 }
             } catch (err) {
                 console.error("Failed to load candidates from backend:", err);
@@ -170,10 +183,50 @@ const Candidates = () => {
         return defaultVal;
     };
 
-    // Sorting and Filtering
+    // Sorting and Filtering (includes JD-matched shortlisted resumes when filtering by a job)
     const filteredCandidates = useMemo(() => {
-        const list = Array.isArray(candidates) ? candidates : [];
-        return list
+        const baseList = Array.isArray(candidates) ? candidates : [];
+        let combinedList = [...baseList];
+
+        if (jobFilter) {
+            const targetJob = jobs.find(
+                (j) => j && (j.title || "").toLowerCase() === jobFilter.toLowerCase()
+            );
+            if (targetJob) {
+                const jdMatchedResumes = getMatchingResumesForJob(resumes, targetJob, jobs).map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    email: r.email,
+                    phone: r.phone || "Not specified",
+                    avatar:
+                        r.avatar ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(r.name || "C")}&background=ede9fe&color=6d28d9`,
+                    role: targetJob.title,
+                    interviewDate: r.uploadedDate || "Shortlisted via JD",
+                    duration: r.experience || "0 Years",
+                    mode: `JD Match: ${r.matchScore}%`,
+                    score: typeof r.atsScore === "number" ? r.atsScore : (Number(r.atsScore) || 0),
+                    status: "Shortlisted",
+                    recommendation: r.summary || `Automatically shortlisted for ${targetJob.title} based on JD match.`,
+                    summaryPoints: [
+                        ...(r.matchedSkills || []).map((sk) => ({
+                            type: "good",
+                            text: `Matched required JD skill: ${sk}`
+                        })),
+                        ...(r.missingSkills || []).slice(0, 2).map((sk) => ({
+                            type: "warn",
+                            text: `Additional skill in JD: ${sk}`
+                        }))
+                    ],
+                    transcript: [],
+                    notes: ""
+                }));
+                // Only show candidates/resumes that match the target job's JD
+                combinedList = jdMatchedResumes;
+            }
+        }
+
+        return combinedList
             .filter((c) => {
                 if (!c) return false;
                 if (statusFilter !== "All" && c.status?.toLowerCase() !== statusFilter.toLowerCase()) return false;
@@ -192,7 +245,7 @@ const Candidates = () => {
                 if (sortBy === "Lowest Score") return (a.score || 0) - (b.score || 0);
                 return 0;
             });
-    }, [candidates, sortBy, statusFilter, jobFilter, searchQuery]);
+    }, [candidates, jobs, resumes, sortBy, statusFilter, jobFilter, searchQuery]);
 
     const toggleExpandCandidate = (id) => {
         setExpandedCandidateId((prev) => (prev === id ? null : id));

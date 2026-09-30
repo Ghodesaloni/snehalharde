@@ -1,7 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { resumesApi, jobsApi, interviewsApi } from "@/services/api";
+import {
+    detectCandidateDomain,
+    detectJobDomain,
+    enrichCandidateForJob,
+    findBestMatchingJobForCandidate,
+    getMatchingResumesForJob
+} from "@/utils/jdMatcher";
 import {
     Search,
     Filter,
@@ -68,52 +75,11 @@ const CORE_FIELDS = [
 
 const FIELDS = CORE_FIELDS;
 
-// Helper to determine the professional domain / field of any candidate
-const detectCandidateDomain = (candidate) => {
-    if (!candidate) return "Software Development";
-    if (candidate.domain && candidate.domain !== "General") return candidate.domain;
-    if (candidate.field && candidate.field !== "General") return candidate.field;
-    if (candidate.domains?.primary) return candidate.domains.primary;
-    return "Software Development";
-};
-
-// Helper to determine the professional domain / field of any job posting
-const detectJobDomain = (job) => {
-    if (!job) return "Software Development";
-    if (job.domain && job.domain !== "General") return job.domain;
-    if (job.field && job.field !== "General") return job.field;
-    const text = `${job.title || ""} ${job.dept || ""} ${(job.keySkills || []).join(" ")} ${job.description || ""}`.toLowerCase();
-    if (/data scien|machine learning|\bml\b|deep learning|\bnlp\b|computer vision|tensorflow|pytorch|keras|scikit|pandas|numpy|neural network|predictive model|bigquery|generative ai|\bllm\b|\bds\b/i.test(text)) {
-        return "Data Science";
-    }
-    if (/devops|kubernetes|docker|terraform|ci\/cd|cloud|aws|azure|gcp|infrastructure|sre\b|ansible|helm/i.test(text)) {
-        return "DevOps";
-    }
-    if (/qa\b|automation|selenium|cypress|quality assurance|testing|test case|playwright|jest|junit/i.test(text)) {
-        return "QA / Testing";
-    }
-    if (/ui\b|ux\b|design|figma|wirefram|prototyp|sketch|user research/i.test(text)) {
-        return "UI/UX Design";
-    }
-    if (/mechanical|autocad|solidworks|catia|thermodynamics|fluid mechanics|\bfea\b|ansys|gd&t|\bcnc\b|manufacturing|hvac|thermal|creo/i.test(text)) {
-        return "Mechanical";
-    }
-    if (/finance|financial|accounting|accountant|auditing|\baudit\b|taxation|\btax\b|valuation|\bcpa\b|\bcfa\b|quickbooks|tally|balance sheet|p&l/i.test(text)) {
-        return "Finance";
-    }
-    if (/data analyst|business analyst|bi analyst|tableau|power\s?bi|analytics|dashboard/i.test(text)) {
-        return "Data Analytics";
-    }
-    if (/hr\b|human resources|recruiter|recruitment|talent acquisition|people ops/i.test(text)) {
-        return "Human Resources";
-    }
-    return "Software Development";
-};
-
 // Fallback initial candidate data
 const initialCandidates = [];
 
 const Resumes = () => {
+    const [searchParams] = useSearchParams();
     const [candidates, setCandidates] = useState(initialCandidates);
     const [selectedCandidateId, setSelectedCandidateId] = useState(null);
     const [activeTab, setActiveTab] = useState("All Resumes");
@@ -206,10 +172,12 @@ const Resumes = () => {
                     interviewsApi.getAll()
                 ]);
 
+                let loadedJobs = [];
                 if (jobsData.status === "fulfilled" && Array.isArray(jobsData.value)) {
-                    setJobs(jobsData.value);
-                    if (jobsData.value.length > 0) {
-                        setSelectedJobId(jobsData.value[0].id);
+                    loadedJobs = jobsData.value;
+                    setJobs(loadedJobs);
+                    if (loadedJobs.length > 0) {
+                        setSelectedJobId(loadedJobs[0].id);
                     }
                 }
 
@@ -218,10 +186,21 @@ const Resumes = () => {
                 }
 
                 if (resumesData.status === "fulfilled" && Array.isArray(resumesData.value)) {
-                    setCandidates(resumesData.value);
-                    if (resumesData.value.length > 0) {
-                        setSelectedCandidateId(resumesData.value[0].id);
+                    const enrichedResumes = resumesData.value.map((r) =>
+                        enrichCandidateForJob(r, null, loadedJobs)
+                    );
+                    setCandidates(enrichedResumes);
+                    if (enrichedResumes.length > 0) {
+                        setSelectedCandidateId(enrichedResumes[0].id);
                     }
+
+                    // Sync JD-based shortlisting statuses to backend if changed (ATS score remains separate and unchanged)
+                    resumesData.value.forEach((orig) => {
+                        const updated = enrichedResumes.find((u) => u.id === orig.id);
+                        if (updated && updated.status !== orig.status) {
+                            resumesApi.updateStatus(orig.id, updated.status).catch(() => {});
+                        }
+                    });
                 }
             } catch (err) {
                 console.error("Error loading initial data:", err);
@@ -263,17 +242,65 @@ const Resumes = () => {
         };
     }, [jobs, selectedJobId, customJd]);
 
-    const safeCandidates = useMemo(() => (Array.isArray(candidates) ? candidates : []), [candidates]);
-    const selectedCandidate = safeCandidates.find((c) => c.id === selectedCandidateId) || safeCandidates[0] || null;
+    // Sync URL query params (?jobId=... or ?job=...) to select the corresponding Job Folder
+    useEffect(() => {
+        if (!Array.isArray(jobs) || jobs.length === 0) return;
+        const paramJobId = searchParams.get("jobId");
+        const paramJobTitle = searchParams.get("job");
+        if (paramJobId) {
+            const foundById = jobs.find((j) => j.id === paramJobId);
+            if (foundById) {
+                setSelectedFolderJobId(foundById.id);
+                setSelectedJobId(foundById.id);
+                setSelectedField("All");
+            }
+        } else if (paramJobTitle) {
+            const foundByTitle = jobs.find(
+                (j) => (j.title || "").toLowerCase() === paramJobTitle.toLowerCase()
+            );
+            if (foundByTitle) {
+                setSelectedFolderJobId(foundByTitle.id);
+                setSelectedJobId(foundByTitle.id);
+                setSelectedField("All");
+            }
+        }
+    }, [jobs, searchParams]);
 
-    // Status tabs with live counts
+    // Active Job Folder object (if a specific job is selected)
+    const activeFolderJob = useMemo(() => {
+        if (selectedFolderJobId === "All") return null;
+        return jobs.find((j) => j.id === selectedFolderJobId) || null;
+    }, [jobs, selectedFolderJobId]);
+
+    // Evaluate all candidates dynamically against the active job's JD (or best matching job JD when viewing All Jobs)
+    const safeCandidates = useMemo(() => {
+        const rawList = Array.isArray(candidates) ? candidates : [];
+        return rawList.map((c) => enrichCandidateForJob(c, activeFolderJob, jobs));
+    }, [candidates, activeFolderJob, jobs]);
+
+    // Resumes scoped to the current job selection (only resumes matching the JD when a job is selected)
+    const jobScopedCandidates = useMemo(() => {
+        if (activeFolderJob) {
+            return safeCandidates.filter((c) => c && c.isJdMatch);
+        }
+        return safeCandidates;
+    }, [safeCandidates, activeFolderJob]);
+
+    const selectedCandidate =
+        jobScopedCandidates.find((c) => c.id === selectedCandidateId) ||
+        safeCandidates.find((c) => c.id === selectedCandidateId) ||
+        jobScopedCandidates[0] ||
+        safeCandidates[0] ||
+        null;
+
+    // Status tabs with live counts scoped to the selected job (or all jobs)
     const tabCounts = useMemo(() => {
-        const total = safeCandidates.length;
-        const shortlisted = safeCandidates.filter((c) => c && c.status === "Shortlisted").length;
-        const review = safeCandidates.filter((c) => c && c.status === "Review").length;
-        const rejected = safeCandidates.filter((c) => c && c.status === "Rejected").length;
+        const total = jobScopedCandidates.length;
+        const shortlisted = jobScopedCandidates.filter((c) => c && c.status === "Shortlisted").length;
+        const review = jobScopedCandidates.filter((c) => c && c.status === "Review").length;
+        const rejected = jobScopedCandidates.filter((c) => c && c.status === "Rejected").length;
         return { total, shortlisted, review, rejected };
-    }, [safeCandidates]);
+    }, [jobScopedCandidates]);
 
     // Live counts per professional field / domain
     const fieldCounts = useMemo(() => {
@@ -282,25 +309,14 @@ const Resumes = () => {
             if (!c) return;
             const domain = detectCandidateDomain(c);
             counts[domain] = (counts[domain] || 0) + 1;
-            // Also count secondary domains
-            if (Array.isArray(c.secondaryDomains)) {
-                c.secondaryDomains.forEach((sd) => {
-                    counts[sd] = (counts[sd] || 0) + 1;
-                });
-            }
         });
         return counts;
     }, [safeCandidates]);
 
-    // Live counts of candidates related to any created job
+    // Live counts of resumes matching each Job's JD
     const getJobCandidateCount = (job) => {
         if (!job) return 0;
-        const jDomain = detectJobDomain(job);
-        return safeCandidates.filter((c) => {
-            if (!c) return false;
-            if (c.jobId === job.id || c.targetJobId === job.id) return true;
-            return detectCandidateDomain(c) === jDomain;
-        }).length;
+        return getMatchingResumesForJob(candidates, job, jobs).length;
     };
 
     // Filtered Career Fields for search input inside Career Field dropdown
@@ -334,9 +350,12 @@ const Resumes = () => {
 
     // Filter and Sort Candidates
     const filteredCandidates = useMemo(() => {
-        return safeCandidates
+        return jobScopedCandidates
             .filter((c) => {
                 if (!c) return false;
+                // When a job is selected, ONLY resumes matching that job's JD are shown
+                if (activeFolderJob && !c.isJdMatch) return false;
+
                 // Tab filter: separates resumes by Shortlisted vs Review vs Rejected
                 if (activeTab === "Shortlisted" && c.status !== "Shortlisted") return false;
                 if (activeTab === "Review" && c.status !== "Review") return false;
@@ -344,22 +363,9 @@ const Resumes = () => {
 
                 const candidateDomain = detectCandidateDomain(c);
 
-                // Field folder filter: separate by Data Science, Mechanical, Software Engineer, Finance, Analyst
-                if (selectedField !== "All" && candidateDomain !== selectedField) {
+                // Field folder filter (only applied when not filtering by a specific job folder)
+                if (selectedFolderJobId === "All" && selectedField !== "All" && candidateDomain !== selectedField) {
                     return false;
-                }
-
-                // Particular job folder filter: show all candidates related to the selected job folder
-                if (selectedFolderJobId !== "All") {
-                    const activeJob = jobs.find((j) => j.id === selectedFolderJobId);
-                    if (activeJob) {
-                        const jobDomain = detectJobDomain(activeJob);
-                        const isAssigned = c.jobId === activeJob.id || c.targetJobId === activeJob.id;
-                        const isDomainMatch = candidateDomain === jobDomain;
-                        if (!isAssigned && !isDomainMatch) {
-                            return false;
-                        }
-                    }
                 }
 
                 // Search query filter
@@ -386,12 +392,13 @@ const Resumes = () => {
                 // Default Newest
                 return 0;
             });
-    }, [candidates, activeTab, selectedField, selectedFolderJobId, jobs, searchQuery, sortBy, filterRole, filterMinScore]);
+    }, [jobScopedCandidates, activeFolderJob, activeTab, selectedField, selectedFolderJobId, searchQuery, sortBy, filterRole, filterMinScore]);
 
-    // Batch Screen all candidates against current target JD
+    // Batch Screen all candidates against current target JD (Shortlist strictly by JD, keep ATS score separate)
     const handleScreenAllAgainstJd = async () => {
         setIsBatchScreening(true);
-        toast.info(`Screening candidates against "${currentJd.title}" using ATS engine...`);
+        const targetJdForEval = activeFolderJob || currentJd;
+        toast.info(`Screening candidates against "${targetJdForEval.title}" Job Description...`);
 
         try {
             const payload = {
@@ -402,13 +409,23 @@ const Resumes = () => {
             const response = await resumesApi.analyzeBatch(payload);
 
             if (response && response.data && response.data.length > 0) {
-                setCandidates(response.data);
-                const stats = response.stats || {};
+                const enrichedList = response.data.map((cand) =>
+                    enrichCandidateForJob(cand, activeFolderJob, jobs)
+                );
+                setCandidates(enrichedList);
+                response.data.forEach((orig) => {
+                    const updated = enrichedList.find((u) => u.id === orig.id);
+                    if (updated && updated.status !== orig.status) {
+                        resumesApi.updateStatus(orig.id, updated.status).catch(() => {});
+                    }
+                });
+                const shortlistedCount = enrichedList.filter((c) => c.status === "Shortlisted").length;
+                const rejectedCount = enrichedList.filter((c) => c.status === "Rejected").length;
                 toast.success(
-                    `Screening complete for ${currentJd.title}! ${stats.shortlistedCount || 0} Shortlisted, ${stats.reviewCount || 0} In Review, ${stats.rejectedCount || 0} Rejected.`
+                    `JD screening complete for ${targetJdForEval.title}! ${shortlistedCount} Shortlisted (matching JD), ${rejectedCount} Rejected.`
                 );
             } else {
-                toast.success(`Screened candidates against ${currentJd.title}`);
+                toast.success(`Screened candidates against ${targetJdForEval.title} JD`);
             }
         } catch (err) {
             console.error("Batch screening failed:", err);
@@ -418,13 +435,14 @@ const Resumes = () => {
         }
     };
 
-    // Screen single candidate against current target JD
+    // Screen single candidate against current target JD (Shortlist strictly by JD, keep ATS score separate)
     const handleAnalyzeSingleCandidate = async (candidateId) => {
         setAnalyzingCandidateId(candidateId);
         try {
             const targetCandidate = candidates.find((c) => c.id === candidateId);
             const candidateName = targetCandidate ? targetCandidate.name : "Candidate";
-            toast.info(`Analyzing ${candidateName}'s resume against ${currentJd.title}...`);
+            const targetJdForEval = activeFolderJob || currentJd;
+            toast.info(`Evaluating ${candidateName}'s resume against ${targetJdForEval.title} JD...`);
 
             const payload = {
                 jobId: selectedJobId === "custom" ? null : selectedJobId,
@@ -434,12 +452,16 @@ const Resumes = () => {
             const response = await resumesApi.analyzeCandidate(candidateId, payload);
 
             if (response && response.data) {
+                const enriched = enrichCandidateForJob(response.data, activeFolderJob, jobs);
+                if (enriched.status !== response.data.status) {
+                    resumesApi.updateStatus(candidateId, enriched.status).catch(() => {});
+                }
                 setCandidates((prev) =>
-                    prev.map((c) => (c.id === candidateId ? response.data : c))
+                    prev.map((c) => (c.id === candidateId ? enriched : c))
                 );
                 setSelectedCandidateId(candidateId);
                 toast.success(
-                    `${response.data.name}: ATS Score ${response.data.atsScore}/100 (${response.data.status})`
+                    `${enriched.name}: ${enriched.status} based on JD (${enriched.matchScore}% JD Match) · Separate ATS Score: ${enriched.atsScore}/100`
                 );
             }
         } catch (err) {
@@ -510,10 +532,21 @@ const Resumes = () => {
             const response = await resumesApi.uploadBatch(formData);
 
             if (response && response.success) {
-                const savedCandidates = Array.isArray(response.data) ? response.data : [];
+                const rawSaved = Array.isArray(response.data) ? response.data : [];
+                const savedCandidates = rawSaved.map((cand) =>
+                    enrichCandidateForJob(cand, activeFolderJob, jobs)
+                );
                 const rejectedList = Array.isArray(response.rejected) ? response.rejected : [];
                 const errorList = Array.isArray(response.errors) ? response.errors : [];
                 const duplicatesUpdated = savedCandidates.filter((c) => c.isDuplicateUpdated);
+
+                // Sync automatically shortlisted status to backend if needed
+                rawSaved.forEach((orig) => {
+                    const updated = savedCandidates.find((u) => u.id === orig.id);
+                    if (updated && updated.status !== orig.status) {
+                        resumesApi.updateStatus(orig.id, updated.status).catch(() => {});
+                    }
+                });
 
                 setBatchUploadSummary({
                     timestamp: new Date().toLocaleTimeString(),
@@ -525,7 +558,7 @@ const Resumes = () => {
                     savedCandidates,
                     rejectedList,
                     errorList,
-                    targetJobTitle: currentJd.title
+                    targetJobTitle: activeFolderJob ? activeFolderJob.title : "All Active Job JDs"
                 });
 
                 // Update candidates state without duplicating records
@@ -591,7 +624,11 @@ const Resumes = () => {
                 try {
                     const res = await resumesApi.uploadAndScreen(singleFormData);
                     if (res && res.data) {
-                        newlyAdded.push(res.data);
+                        const enriched = enrichCandidateForJob(res.data, activeFolderJob, jobs);
+                        if (enriched.status !== res.data.status) {
+                            resumesApi.updateStatus(res.data.id, enriched.status).catch(() => {});
+                        }
+                        newlyAdded.push(enriched);
                     }
                 } catch (singleUploadErr) {
                     // Check if rejected specifically for not being a valid resume
@@ -653,7 +690,7 @@ const Resumes = () => {
     // Update status (Shortlisted, Review, Rejected)
     const handleStatusChange = async (id, newStatus) => {
         setCandidates((prev) =>
-            prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+            prev.map((c) => (c.id === id ? { ...c, status: newStatus, manualStatusOverride: newStatus } : c))
         );
         if (newStatus === "Shortlisted") {
             toast.success("Candidate shortlisted successfully!");
@@ -796,21 +833,17 @@ const Resumes = () => {
         };
     };
 
-    // Helper to find the matching job folder for any candidate
+    // Helper to find the matching job folder for any candidate based on JD alignment
     const getCandidateJobFolder = (candidate) => {
         if (!candidate) return null;
-        if (candidate.jobId) {
-            const found = jobs.find((j) => j.id === candidate.jobId);
-            if (found) return found;
+        if (activeFolderJob && candidate.isJdMatch) {
+            return activeFolderJob;
         }
-        if (candidate.targetJobId) {
-            const found = jobs.find((j) => j.id === candidate.targetJobId);
-            if (found) return found;
+        const bestMatch = findBestMatchingJobForCandidate(candidate, jobs);
+        if (bestMatch && bestMatch.job) {
+            return bestMatch.job;
         }
-        const domain = detectCandidateDomain(candidate);
-        const domainJob = jobs.find((j) => detectJobDomain(j) === domain);
-        if (domainJob) return domainJob;
-        return jobs[0] || null;
+        return null;
     };
 
     return (
@@ -827,7 +860,7 @@ const Resumes = () => {
                         </span>
                     </div>
                     <p className="text-sm text-slate-500 mt-1">
-                        Evaluate candidate resumes against Job Descriptions, calculate ATS scores, and automatically separate shortlisted talent.
+                        Shortlist candidate resumes strictly based on Job Description (JD) relevance while keeping ATS scoring separate and unchanged.
                     </p>
                 </div>
 
@@ -900,7 +933,7 @@ const Resumes = () => {
                             <div className="text-xs font-medium text-emerald-700 font-semibold">Shortlisted</div>
                             <div className="text-2xl font-extrabold text-emerald-600 mt-0.5">{tabCounts.shortlisted}</div>
                             <div className="text-[11px] font-semibold text-emerald-600 flex items-center gap-0.5 mt-0.5">
-                                <span>ATS Score ≥ 75/100</span>
+                                <span>Relevant to Job Description (JD)</span>
                             </div>
                         </div>
                     </div>
@@ -923,7 +956,7 @@ const Resumes = () => {
                             <div className="text-xs font-medium text-amber-700 font-semibold">Under Review</div>
                             <div className="text-2xl font-extrabold text-amber-600 mt-0.5">{tabCounts.review}</div>
                             <div className="text-[11px] font-semibold text-amber-600 flex items-center gap-0.5 mt-0.5">
-                                <span>ATS Score 55-74/100</span>
+                                <span>Pending JD Evaluation</span>
                             </div>
                         </div>
                     </div>
@@ -946,7 +979,7 @@ const Resumes = () => {
                             <div className="text-xs font-medium text-rose-700 font-semibold">Rejected</div>
                             <div className="text-2xl font-extrabold text-rose-500 mt-0.5">{tabCounts.rejected}</div>
                             <div className="text-[11px] font-semibold text-rose-500 flex items-center gap-0.5 mt-0.5">
-                                <span>ATS Score &lt; 55/100</span>
+                                <span>Not Relevant to JD</span>
                             </div>
                         </div>
                     </div>
@@ -1092,6 +1125,9 @@ const Resumes = () => {
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <span className="px-2 py-0.5 rounded-full font-bold bg-violet-100 text-violet-700 text-[11px]">
+                                        JD Match: {cand.matchScore}%
+                                    </span>
+                                    <span className="px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-700 text-[11px]">
                                         ATS: {cand.atsScore}/100
                                     </span>
                                     <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${getStatusPill(cand.status)}`}>
@@ -1407,7 +1443,7 @@ const Resumes = () => {
                                                     onClick={() => {
                                                         setSelectedFolderJobId(job.id);
                                                         setSelectedJobId(job.id);
-                                                        setSelectedField(jobDomain);
+                                                        setSelectedField("All");
                                                         setIsJobDropdownOpen(false);
                                                     }}
                                                     className={`w-full px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
@@ -1466,19 +1502,92 @@ const Resumes = () => {
                     </div>
                 </div>
 
+                {/* Quick-Select Job JD Filter Bar */}
+                {jobs.length > 0 && (
+                    <div className="pt-3 mt-3 border-t border-slate-100 flex items-center gap-2 overflow-x-auto pb-1">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">
+                            Jobs (JD Match):
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedFolderJobId("All");
+                                setSelectedField("All");
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 border transition cursor-pointer ${
+                                selectedFolderJobId === "All"
+                                    ? "bg-violet-600 text-white border-violet-600 shadow-xs"
+                                    : "bg-slate-50 hover:bg-violet-50 text-slate-700 border-slate-200"
+                            }`}
+                        >
+                            <span>All Jobs</span>
+                            <span
+                                className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                    selectedFolderJobId === "All"
+                                        ? "bg-white/20 text-white"
+                                        : "bg-slate-200/70 text-slate-700"
+                                }`}
+                            >
+                                {safeCandidates.length}
+                            </span>
+                        </button>
+                        {jobs.map((job) => {
+                            const isJobSelected = selectedFolderJobId === job.id;
+                            const matchedCount = getJobCandidateCount(job);
+                            return (
+                                <button
+                                    key={job.id}
+                                    type="button"
+                                    data-testid={`job-folder-pill-${job.id}`}
+                                    onClick={() => {
+                                        setSelectedFolderJobId(job.id);
+                                        setSelectedJobId(job.id);
+                                        setSelectedField("All");
+                                    }}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 border transition cursor-pointer ${
+                                        isJobSelected
+                                            ? "bg-violet-600 text-white border-violet-600 shadow-xs"
+                                            : "bg-slate-50 hover:bg-violet-50 text-slate-700 border-slate-200"
+                                    }`}
+                                >
+                                    <Briefcase className={`w-3 h-3 ${isJobSelected ? "text-white" : "text-violet-500"}`} />
+                                    <span>{job.title}</span>
+                                    <span
+                                        className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                                            isJobSelected
+                                                ? "bg-white/20 text-white"
+                                                : matchedCount > 0
+                                                ? "bg-emerald-100 text-emerald-700"
+                                                : "bg-slate-200/70 text-slate-500"
+                                        }`}
+                                    >
+                                        {matchedCount}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* Subtle active filter indicator if filtered */}
                 {(selectedField !== "All" || selectedFolderJobId !== "All") && (
                     <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 animate-in fade-in">
                         <span className="flex items-center gap-1.5">
                             <FolderOpen className="w-3.5 h-3.5 text-violet-600" />
                             <span>
-                                Showing candidates in{" "}
-                                <strong className="text-slate-900">
-                                    {selectedFolderJobId !== "All"
-                                        ? `Job "${jobs.find((j) => j.id === selectedFolderJobId)?.title || selectedFolderJobId}" (${selectedField})`
-                                        : `Field "${selectedField}"`}
-                                </strong>
-                                : <strong className="text-violet-700 font-bold ml-1">{filteredCandidates.length}</strong>
+                                {selectedFolderJobId !== "All" ? (
+                                    <>
+                                        Showing <strong className="text-emerald-700">{filteredCandidates.length}</strong> automatically shortlisted resume{filteredCandidates.length === 1 ? "" : "s"} matching JD for{" "}
+                                        <strong className="text-slate-900">
+                                            "{jobs.find((j) => j.id === selectedFolderJobId)?.title || selectedFolderJobId}"
+                                        </strong>
+                                    </>
+                                ) : (
+                                    <>
+                                        Showing candidates in Field <strong className="text-slate-900">"{selectedField}"</strong>:{" "}
+                                        <strong className="text-violet-700 font-bold ml-1">{filteredCandidates.length}</strong>
+                                    </>
+                                )}
                             </span>
                         </span>
                         <button
@@ -1576,20 +1685,27 @@ const Resumes = () => {
                                 onClick={async () => {
                                     const ids = [...selectedRowIds];
                                     setSelectedRowIds([]);
-                                    toast.loading(`Auto-screening ${ids.length} candidates against ${currentJd.title}...`, { id: "batch-screen" });
+                                    const targetJdForEval = activeFolderJob || currentJd;
+                                    toast.loading(`Screening ${ids.length} candidates strictly against ${targetJdForEval.title} JD...`, { id: "batch-screen" });
                                     try {
                                         const res = await resumesApi.analyzeBatch({
                                             jobId: selectedJobId,
                                             candidateIds: ids
                                         });
-                                        if (res.success && res.candidates) {
+                                        const returnedList = res?.data || res?.candidates || [];
+                                        if (res?.success && returnedList.length > 0) {
                                             setCandidates((prev) =>
                                                 prev.map((c) => {
-                                                    const updated = res.candidates.find((u) => u.id === c.id);
-                                                    return updated ? { ...c, ...updated } : c;
+                                                    const updated = returnedList.find((u) => u.id === c.id);
+                                                    if (!updated) return c;
+                                                    const enriched = enrichCandidateForJob(updated, activeFolderJob, jobs);
+                                                    if (enriched.status !== updated.status) {
+                                                        resumesApi.updateStatus(c.id, enriched.status).catch(() => {});
+                                                    }
+                                                    return enriched;
                                                 })
                                             );
-                                            toast.success(`Automated shortlisting completed for ${ids.length} candidates!`, { id: "batch-screen" });
+                                            toast.success(`JD-based shortlisting completed for ${ids.length} candidates!`, { id: "batch-screen" });
                                         }
                                     } catch (err) {
                                         toast.error("Batch automated screening failed.", { id: "batch-screen" });
@@ -1747,7 +1863,7 @@ const Resumes = () => {
                                                             e.stopPropagation();
                                                             setSelectedFolderJobId(jobFolder.id);
                                                             setSelectedJobId(jobFolder.id);
-                                                            setSelectedField(detectJobDomain(jobFolder));
+                                                            setSelectedField("All");
                                                         }}
                                                         title={`Click to filter by job folder "${jobFolder.title}"`}
                                                         className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
@@ -2117,25 +2233,27 @@ const Resumes = () => {
                                 {/* Match & ATS Overview against Target JD */}
                                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 space-y-3">
                                     <div className="flex items-center justify-between text-xs text-slate-600">
-                                        <span className="font-semibold">Evaluated against Target JD:</span>
-                                        <span className="font-bold text-violet-700">{currentJd.title}</span>
+                                        <span className="font-semibold">Evaluated against Job Description (JD):</span>
+                                        <span className="font-bold text-violet-700">
+                                            {activeFolderJob?.title || getCandidateJobFolder(selectedCandidate)?.title || currentJd.title}
+                                        </span>
                                     </div>
 
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="text-center bg-white p-3 rounded-xl border border-slate-100 shadow-xs">
-                                            <div className="text-xs text-slate-500">ATS Score</div>
-                                            <div className="text-2xl font-extrabold text-emerald-600 mt-0.5">
+                                            <div className="text-xs text-slate-500">ATS Score (Separate)</div>
+                                            <div className="text-2xl font-extrabold text-slate-800 mt-0.5">
                                                 {selectedCandidate.atsScore}/100
                                             </div>
                                         </div>
                                         <div className="text-center bg-white p-3 rounded-xl border border-slate-100 shadow-xs">
-                                            <div className="text-xs text-slate-500">JD Match</div>
+                                            <div className="text-xs text-slate-500">JD Relevance Match</div>
                                             <div className="text-2xl font-extrabold text-emerald-600 mt-0.5">
                                                 {selectedCandidate.matchScore}%
                                             </div>
                                         </div>
                                         <div className="text-center bg-white p-3 rounded-xl border border-slate-100 shadow-xs">
-                                            <div className="text-xs text-slate-500">Skill Alignment</div>
+                                            <div className="text-xs text-slate-500">JD Skill Alignment</div>
                                             <div className="text-2xl font-extrabold text-violet-600 mt-0.5">
                                                 {selectedCandidate.skillsMatchPct || 85}%
                                             </div>
@@ -2147,7 +2265,10 @@ const Resumes = () => {
                                 <div className="p-5 rounded-2xl bg-violet-50/70 border border-violet-100/80">
                                     <div className="flex items-center gap-2 text-xs font-bold text-violet-800 uppercase tracking-wider mb-2">
                                         <Sparkles className="w-4 h-4 text-violet-600" />
-                                        <span>AI Candidate Assessment for {currentJd.title}</span>
+                                        <span>
+                                            JD Relevance Assessment for{" "}
+                                            {activeFolderJob?.title || getCandidateJobFolder(selectedCandidate)?.title || currentJd.title}
+                                        </span>
                                     </div>
                                     <p className="text-sm text-slate-700 leading-relaxed">
                                         {selectedCandidate.summary || selectedCandidate.aiSummary}
@@ -2190,15 +2311,11 @@ const Resumes = () => {
                                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 space-y-1">
                                     <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                                         <ShieldCheck className="w-4 h-4 text-violet-600" />
-                                        <span>Automated ATS Shortlist Verdict</span>
+                                        <span>Automated JD Shortlist Verdict (Strictly JD-Based, Separate from ATS Score)</span>
                                     </div>
                                     <p className="text-xs text-slate-600 leading-relaxed">
-                                        {String(selectedCandidate.status || "").trim().toLowerCase() === "rejected"
-                                            ? "Candidate status: Rejected."
-                                            : String(selectedCandidate.status || "").trim().toLowerCase() === "selected"
-                                            ? "Candidate status: Selected. Ready for formal offer / next stage."
-                                            : (selectedCandidate.keyPoints?.verdict ||
-                                                `Candidate status: ${selectedCandidate.status} with an overall ATS score of ${selectedCandidate.atsScore}/100.`)}
+                                        {selectedCandidate.keyPoints?.verdict ||
+                                            `Candidate status: ${selectedCandidate.status} strictly based on Job Description (JD) relevance. Separate ATS score: ${selectedCandidate.atsScore}/100.`}
                                     </p>
                                 </div>
                             </div>

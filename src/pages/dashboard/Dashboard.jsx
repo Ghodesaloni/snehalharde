@@ -22,7 +22,8 @@ import {
     ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
-import { dashboardApi } from "@/services/api";
+import { dashboardApi, jobsApi, resumesApi } from "@/services/api";
+import { getMatchingResumesForJob } from "@/utils/jdMatcher";
 
 const initialKpis = [
     { icon: "fa-briefcase", color: "bg-violet-100 text-violet-600", label: "Total Jobs", value: "0", sub: "0 Active Jobs", subColor: "text-slate-400", link: "/app/jobs" },
@@ -48,6 +49,8 @@ const initialStageData = [
 const Dashboard = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
+    const [allJobs, setAllJobs] = useState([]);
+    const [allResumes, setAllResumes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
     const [copiedCode, setCopiedCode] = useState(null);
@@ -63,9 +66,19 @@ const Dashboard = () => {
                 } catch {
                     // ignore
                 }
-                const data = await dashboardApi.getStats(userEmail);
+                const [data, jobsList, resumesList] = await Promise.all([
+                    dashboardApi.getStats(userEmail).catch(() => null),
+                    jobsApi.getAll().catch(() => []),
+                    resumesApi.getAll().catch(() => [])
+                ]);
                 if (data) {
                     setStats(data);
+                }
+                if (Array.isArray(jobsList)) {
+                    setAllJobs(jobsList);
+                }
+                if (Array.isArray(resumesList)) {
+                    setAllResumes(resumesList);
                 }
             } catch (err) {
                 console.error("Failed to load dashboard stats:", err);
@@ -84,8 +97,16 @@ const Dashboard = () => {
 
     const weekData = stats?.weekData || initialWeekData;
     const stageData = stats?.stageData || initialStageData;
-    const topJobs = stats?.topJobs || [];
-    const recentJobs = stats?.jobs || topJobs;
+    const rawTopJobs = allJobs.length > 0 ? allJobs.slice(0, 5) : (stats?.topJobs || []);
+    const topJobs = rawTopJobs.map((j) => ({
+        ...j,
+        candidates: getMatchingResumesForJob(allResumes, j, allJobs).length
+    }));
+    const rawRecentJobs = allJobs.length > 0 ? allJobs.slice(0, 6) : (stats?.jobs || topJobs);
+    const recentJobs = rawRecentJobs.map((j) => ({
+        ...j,
+        candidates: getMatchingResumesForJob(allResumes, j, allJobs).length
+    }));
     const upcoming = stats?.upcoming || [];
     const activity = stats?.activity || [];
 
@@ -293,9 +314,9 @@ const Dashboard = () => {
                             topJobs.map((j) => (
                                 <Link
                                     key={j.id || j.title}
-                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                    to={j.id ? `/app/resumes?jobId=${encodeURIComponent(j.id)}` : `/app/resumes?job=${encodeURIComponent(j.title)}`}
                                     className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
-                                    title="Click to view candidates for this job"
+                                    title="Click to view shortlisted resumes matching this job's JD"
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center text-sm font-bold group-hover:bg-violet-600 group-hover:text-white transition-colors">
                                         <i className="fa-solid fa-briefcase"></i>
@@ -306,7 +327,7 @@ const Dashboard = () => {
                                     </div>
                                     <div className="text-right">
                                         <div className="text-sm font-bold text-slate-900">{j.candidates}</div>
-                                        <div className="text-[10px] text-slate-400">Candidates</div>
+                                        <div className="text-[10px] text-slate-400">Shortlisted</div>
                                     </div>
                                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${j.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{j.status}</span>
                                 </Link>
@@ -348,10 +369,10 @@ const Dashboard = () => {
                                             <td className="text-slate-900 font-semibold text-xs">{j.candidates}</td>
                                             <td>
                                                 <Link
-                                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                                    to={j.id ? `/app/resumes?jobId=${encodeURIComponent(j.id)}` : `/app/resumes?job=${encodeURIComponent(j.title)}`}
                                                     className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 hover:underline"
                                                 >
-                                                    Candidates →
+                                                    Resumes →
                                                 </Link>
                                             </td>
                                         </tr>
