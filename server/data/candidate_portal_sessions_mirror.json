@@ -1,5 +1,54 @@
 [
   {
+    "id": "sess-iv-1790761890189",
+    "linkCode": "ava652",
+    "candidateName": "srtyse",
+    "candidateEmail": "awer@drtyg",
+    "candidatePhone": "+91 98765 43210",
+    "role": "Software Engineer",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "status": "System Check Completed",
+    "systemCheckStatus": {
+      "camera": true,
+      "microphone": true,
+      "audio": false,
+      "network": "Optimal",
+      "latency": "32ms",
+      "agreedProctoring": true,
+      "checkedAt": "2026-09-30T11:02:44.015Z"
+    },
+    "overallScore": "94",
+    "techDepthScore": "9.2 / 10",
+    "clarityScore": "9.5 / 10",
+    "recommendation": "Recommended for Senior Technical Review",
+    "elapsedSeconds": 0,
+    "transcripts": [],
+    "evaluationBreakdown": [
+      {
+        "score": 95,
+        "weight": "35%",
+        "category": "System Architecture & Scalability"
+      },
+      {
+        "score": 92,
+        "weight": "30%",
+        "category": "Data Structures & Performance"
+      },
+      {
+        "score": 96,
+        "weight": "20%",
+        "category": "Engineering Collaboration & Communication"
+      },
+      {
+        "score": 94,
+        "weight": "15%",
+        "category": "Code Quality & Resiliency"
+      }
+    ],
+    "completedAt": null,
+    "updatedAt": "2026-09-30T11:02:44.015Z"
+  },
+  {
     "id": "sess-iv-1790698535658",
     "linkCode": "ava328",
     "candidateName": "hello",

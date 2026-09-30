@@ -7,50 +7,47 @@
     "field": "Data Science",
     "jobId": "job-1789969577692",
     "phone": "+91-8999646955",
-    "s3Key": "resumes/1790062028972_Resume.pdf",
+    "s3Key": "resumes/1790762216366_Resume__2_.pdf",
     "s3Url": null,
     "score": 46,
     "avatar": "",
     "domain": "Data Science",
     "skills": [
       "Python",
-      "SQL",
-      "Machine Learning"
+      "Machine Learning",
+      "Pandas"
     ],
-    "status": "Shortlisted",
-    "rawText": "Snehal Harde\nComputer Science Student\n +91-8999646955 # snehal.harde2935@gmail.com ï linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python, SQL\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nVisora AI - Personal AI Tutor | Python, Data Science In Progress\n- Developing Visora AI, an AI-powered live tutoring platform supporting 4 input modes: PDF/document, image, text,\nand audio for personalized learning.\n- Implementing an AI avatar tutor with real-time Q&A, visual explanations, diagrams, and animations to deliver\ninteractive lessons across 10+ planned educational topics.\n- Building an adaptive quiz and evaluation system targeting 80%+ topic-assessment accuracy, with automated\nscoring, mistake analysis, and correct-answer explanations.\n- Developing a student analytics dashboard to track 100% of completed learning sessions, including recordings, quiz\nscores, weak topics, learning progress, and personalized recommendations.\nAwards & Certifications\n\n* IBM Machine Learning Certificate - Coursera\n\n* TechFest Data Science Workshop Certificate - 2025\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
-    "summary": "Snehal Harde scored 46/100 ATS match for software engineer (Rejected). Required skill match: 15%, experience: 0 yrs vs 0+ yrs required.",
-    "atsScore": 46,
+    "status": "Rejected",
+    "rawText": "Snehal Harde\nComputer Science Student\n +91-8999646955 # snehal.harde2935@gmail.com ï linkedin.com/in/snehal-harde\nSummary\nComputer Science student with a strong foundation in Python, Data Science, Machine Learning, and AI. Skilled in\ndeveloping data-driven and AI-powered applications using Python and modern development tools. Passionate about\nsolving real-world problems through intelligent systems and continuously building practical projects in Artificial\nIntelligence and Machine Learning.\nSkills\nProgramming & Querying: Python\nData Analysis & Visualization: Pandas, NumPy, Matplotlib ,seaborn\nTechnology & Tools: VS Code, Jupyter Notebook, Git, GitHub\nAI & Machine Learning: Machine Learning, Data Science, AI\nProjects\nAvaHire - AI Recruitment System | AI/ML, Data Science In Progress\n- Developing an AI-powered recruitment platform that automates resume screening, candidate ranking, interview\nscheduling, and AI-driven interviews.\n- Implemented a resume matching workflow that analyzes 100+ candidate resumes against job descriptions and generates\ncandidate match scores for faster shortlisting..\n- Designed an AI interview system with real-time avatar interaction, speech-to-text transcription, and 5+ evaluation\nparameters including communication, confidence, and problem-solving.\n- Building an automated recruitment workflow with 7+ AI agents/modules, including resume parsing, candidate matching,\ninterview, proctoring, evaluation, notifications, and HR assistance; project is currently in progress.\nAwards & Certifications\n\n* TechFest Data Science Workshop Certificate - 2025\n\n* IBM Machine Learning Certificate - Coursera\n\n* 5-Day AI Agents Intensive Vibe Coding Course Certificate - Kaggle\n\n* Data Engineering Masterclass - Scaler\nEducation\nB.Tech. in Computer Science and Engineering Expected Graduation: 2027\nG.H. Raisoni University, Amravati, Nagpur CGPA: 7.21 / 10\n\n-- 1 of 1 --",
+    "summary": "Snehal Harde scored 44/100 ATS match for software engineer (Rejected). Required skill match: 8%, experience: 0 yrs vs 0+ yrs required.",
+    "atsScore": 44,
     "expYears": 0,
     "location": "Remote / Not Specified",
     "projects": [
       {
-        "title": "and audio for personalized learning.",
+        "title": "scheduling, and AI-driven interviews.",
         "description": [
-          "Implementing an AI avatar tutor with real-time Q&A, visual explanations, diagrams, and animations to deliver"
+          "Implemented a resume matching workflow that analyzes 100+ candidate resumes against job descriptions and generates"
         ],
         "technologies": []
       },
       {
-        "title": "interactive lessons across 10+ planned educational topics.",
+        "title": "candidate match scores for faster shortlisting..",
         "description": [
-          "Building an adaptive quiz and evaluation system targeting 80%+ topic-assessment accuracy, with automated"
-        ],
-        "technologies": []
-      },
-      {
-        "title": "scoring, mistake analysis, and correct-answer explanations.",
-        "description": [
-          "Developing a student analytics dashboard to track 100% of completed learning sessions, including recordings, quiz",
-          "scores, weak topics, learning progress, and personalized recommendations."
+          "Designed an AI interview system with real-time avatar interaction, speech-to-text transcription, and 5+ evaluation",
+          "parameters including communication, confidence, and problem-solving.",
+          "Building an automated recruitment workflow with 7+ AI agents/modules, including resume parsing, candidate matching,",
+          "interview, proctoring, evaluation, notifications, and HR assistance; project is currently in progress."
         ],
         "technologies": []
       },
       {
         "title": "Awards & Certifications",
         "description": [
+          "TechFest Data Science Workshop Certificate - 2025",
           "IBM Machine Learning Certificate - Coursera",
-          "TechFest Data Science Workshop Certificate - 2025"
+          "5-Day AI Agents Intensive Vibe Coding Course Certificate - Kaggle",
+          "Data Engineering Masterclass - Scaler"
         ],
         "technologies": []
       }
@@ -58,10 +55,10 @@
     "s3Bucket": "avahire-resumes-storage",
     "allSkills": [
       "Python",
-      "SQL",
       "Machine Learning",
       "Pandas",
-      "NumPy"
+      "NumPy",
+      "Recruitment"
     ],
     "breakdown": {
       "keywords": {
@@ -89,8 +86,8 @@
       },
       "requiredSkills": {
         "max": 30,
-        "score": 4.6,
-        "percentage": 15
+        "score": 2.3,
+        "percentage": 8
       },
       "domainRelevance": {
         "max": 10,
@@ -107,18 +104,18 @@
     "createdAt": "2026-09-22T07:27:06.759Z",
     "education": "B.Tech. in Computer Science and Engineering Expected Graduation: 2027",
     "keyPoints": {
-      "verdict": "Candidate evaluated at 46/100 ATS Score. Status assigned: Rejected based on 15% required skill alignment.",
+      "verdict": "Candidate evaluated at 44/100 ATS Score. Status assigned: Rejected based on 8% required skill alignment.",
       "strengths": [
-        "Matches 2 essential core skills for software engineer: Python, SQL.",
+        "Matches 1 essential core skills for software engineer: Python.",
         "Strong academic background (B.Tech. in Computer Science and Engineering Expected Graduation: 2027)."
       ],
       "missingSkills": [
-        "Missing core required skills: React, Tailwind CSS, TypeScript, JavaScript, AWS, Docker, Figma, GraphQL, System Design, Git, FastAPI",
+        "Missing core required skills: React, Tailwind CSS, TypeScript, JavaScript, SQL, AWS, Docker, Figma, GraphQL, System Design, Git, FastAPI",
         "Experience shortfall: candidate has 0 years vs 2 required."
       ],
       "experienceMatch": "Candidate has 0 years of experience compared to target of 2+ years (SHORTFALL)."
     },
-    "updatedAt": "2026-09-22T07:33:18.541Z",
+    "updatedAt": "2026-09-30T09:56:58.550Z",
     "aiAnalysis": {
       "status": "Rejected",
       "summary": "Snehal Harde scored 46/100 ATS match for software engineer (Rejected). Required skill match: 15%, experience: 0 yrs vs 0+ yrs required.",
@@ -211,7 +208,7 @@
       "missingPreferredSkills": []
     },
     "experience": "0 Years",
-    "matchScore": 46,
+    "matchScore": 44,
     "ocrWarning": null,
     "resumeData": {
       "s3Url": null,
@@ -288,14 +285,14 @@
     "targetJobId": "job-1789969577692",
     "uploadedDate": "22 Sept 2026",
     "matchedSkills": [
-      "Python",
-      "SQL"
+      "Python"
     ],
     "missingSkills": [
       "React",
       "Tailwind CSS",
       "TypeScript",
       "JavaScript",
+      "SQL",
       "AWS",
       "Docker",
       "Figma",
@@ -317,7 +314,7 @@
       ]
     },
     "certifications": [],
-    "resumeFileName": "Resume.pdf",
+    "resumeFileName": "Resume (2).pdf",
     "skillsMatchPct": 20,
     "targetJobTitle": "software engineer",
     "storageProvider": "Local",
@@ -338,10 +335,10 @@
     "categorizedSkills": {
       "soft": [],
       "cloud": [],
-      "tools": [],
-      "databases": [
-        "SQL"
+      "tools": [
+        "Recruitment"
       ],
+      "databases": [],
       "technical": [
         "Python",
         "Machine Learning",
@@ -363,18 +360,6 @@
         "original": "python",
         "confidence": 0.96,
         "normalized": "Python"
-      },
-      {
-        "domains": {
-          "Finance": 5,
-          "Data Science": 8,
-          "Data Analytics": 9,
-          "Software Development": 8
-        },
-        "category": "Databases",
-        "original": "sql",
-        "confidence": 0.96,
-        "normalized": "SQL"
       },
       {
         "domains": {
@@ -407,6 +392,16 @@
         "original": "numpy",
         "confidence": 0.96,
         "normalized": "NumPy"
+      },
+      {
+        "domains": {
+          "Recruitment": 10,
+          "Human Resources": 10
+        },
+        "category": "Human Resources",
+        "original": "recruitment",
+        "confidence": 0.96,
+        "normalized": "Recruitment"
       }
     ],
     "missingRequiredSkills": [
@@ -414,6 +409,7 @@
       "Tailwind CSS",
       "TypeScript",
       "JavaScript",
+      "SQL",
       "AWS",
       "Docker",
       "Figma",

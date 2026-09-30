@@ -685,43 +685,6 @@ const Profile = () => {
                             </Link>
                         </div>
                     </div>
-
-                    {/* CARD 3: Quick Navigation */}
-                    <div className="bg-slate-900 text-white rounded-3xl p-6 space-y-3 shadow-lg">
-                        <div className="text-xs font-bold text-violet-400 uppercase tracking-wider">
-                            Quick Portal Navigation
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-                            <Link
-                                to="/app/dashboard"
-                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
-                            >
-                                <LayoutDashboard className="w-3.5 h-3.5 text-violet-400" />
-                                <span>Dashboard</span>
-                            </Link>
-                            <Link
-                                to="/app/calendar"
-                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
-                            >
-                                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                                <span>Calendar</span>
-                            </Link>
-                            <Link
-                                to="/app/email"
-                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
-                            >
-                                <Mail className="w-3.5 h-3.5 text-emerald-400" />
-                                <span>Email Center</span>
-                            </Link>
-                            <Link
-                                to="/app/settings"
-                                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 flex items-center gap-2 text-slate-200 hover:text-white transition"
-                            >
-                                <SettingsIcon className="w-3.5 h-3.5 text-amber-400" />
-                                <span>Settings</span>
-                            </Link>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

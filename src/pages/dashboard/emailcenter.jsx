@@ -171,27 +171,6 @@ const EmailCenter = () => {
                     <p className="text-sm text-slate-500">Recruitment email templates and candidate communication dispatch</p>
                 </div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                    <Link
-                        to="/app/candidates"
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
-                    >
-                        <Users className="w-3.5 h-3.5 text-violet-600" />
-                        <span>Candidate Pipeline</span>
-                    </Link>
-                    <Link
-                        to="/app/interviews"
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
-                    >
-                        <Video className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Interviews</span>
-                    </Link>
-                    <Link
-                        to="/app/calendar"
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold transition"
-                    >
-                        <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Calendar</span>
-                    </Link>
                     <button
                         onClick={() => handleOpenCompose()}
                         className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-xl font-semibold text-xs sm:text-sm shadow-md shadow-violet-500/25 transition cursor-pointer"
