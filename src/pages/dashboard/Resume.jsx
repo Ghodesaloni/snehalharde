@@ -650,13 +650,20 @@ const Resumes = () => {
     };
 
     const getStatusPill = (status) => {
-        if (status === "Shortlisted") {
+        const s = String(status || "").trim().toLowerCase();
+        if (s === "selected") {
             return "bg-emerald-50 text-emerald-700 border border-emerald-200/90";
         }
-        if (status === "Review") {
+        if (s === "shortlisted") {
+            return "bg-teal-50 text-teal-700 border border-teal-200/90";
+        }
+        if (s === "review" || s === "under review") {
             return "bg-amber-50 text-amber-700 border border-amber-200/90";
         }
-        return "bg-rose-50 text-rose-600 border border-rose-200/90";
+        if (s === "rejected") {
+            return "bg-rose-50 text-rose-600 border border-rose-200/90";
+        }
+        return "bg-slate-50 text-slate-600 border border-slate-200/90";
     };
 
     // Helper for career field styling & icons
@@ -1574,8 +1581,8 @@ const Resumes = () => {
                                                             <span className="font-bold text-slate-900 text-xs sm:text-sm truncate">
                                                                 {candidate.name}
                                                             </span>
-                                                            {isSelectedRow && (
-                                                                <span className="px-1.5 py-0.2 rounded bg-violet-100 text-violet-700 text-[10px] font-bold shrink-0">
+                                                            {String(candidate.status || "").trim().toLowerCase() === "selected" && (
+                                                                <span className="px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0">
                                                                     Selected
                                                                 </span>
                                                             )}
@@ -1838,6 +1845,38 @@ const Resumes = () => {
                                                             <Download className="w-3.5 h-3.5 text-slate-500" />
                                                             <span>Download Resume PDF</span>
                                                         </button>
+
+                                                        <div className="border-t border-slate-100 my-1" />
+                                                        <div className="px-3.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                            Update Status
+                                                        </div>
+                                                        {String(candidate.status || "").trim().toLowerCase() !== "selected" && (
+                                                            <button
+                                                                onClick={() => handleStatusChange(candidate.id, "Selected")}
+                                                                className="w-full px-3.5 py-1.5 hover:bg-emerald-50 flex items-center gap-2 text-emerald-700 cursor-pointer font-medium"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                                                <span>Mark as Selected</span>
+                                                            </button>
+                                                        )}
+                                                        {String(candidate.status || "").trim().toLowerCase() !== "shortlisted" && (
+                                                            <button
+                                                                onClick={() => handleStatusChange(candidate.id, "Shortlisted")}
+                                                                className="w-full px-3.5 py-1.5 hover:bg-teal-50 flex items-center gap-2 text-teal-700 cursor-pointer font-medium"
+                                                            >
+                                                                <Check className="w-3.5 h-3.5 text-teal-600" />
+                                                                <span>Mark as Shortlisted</span>
+                                                            </button>
+                                                        )}
+                                                        {String(candidate.status || "").trim().toLowerCase() !== "rejected" && (
+                                                            <button
+                                                                onClick={() => handleStatusChange(candidate.id, "Rejected")}
+                                                                className="w-full px-3.5 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600 cursor-pointer font-medium"
+                                                            >
+                                                                <X className="w-3.5 h-3.5 text-rose-500" />
+                                                                <span>Mark as Rejected</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )}
                                             </td>
@@ -2028,8 +2067,12 @@ const Resumes = () => {
                                         <span>Automated ATS Shortlist Verdict</span>
                                     </div>
                                     <p className="text-xs text-slate-600 leading-relaxed">
-                                        {selectedCandidate.keyPoints?.verdict ||
-                                            `Candidate status: ${selectedCandidate.status} with an overall ATS score of ${selectedCandidate.atsScore}/100.`}
+                                        {String(selectedCandidate.status || "").trim().toLowerCase() === "rejected"
+                                            ? "Candidate status: Rejected."
+                                            : String(selectedCandidate.status || "").trim().toLowerCase() === "selected"
+                                            ? "Candidate status: Selected. Ready for formal offer / next stage."
+                                            : (selectedCandidate.keyPoints?.verdict ||
+                                                `Candidate status: ${selectedCandidate.status} with an overall ATS score of ${selectedCandidate.atsScore}/100.`)}
                                     </p>
                                 </div>
                             </div>
