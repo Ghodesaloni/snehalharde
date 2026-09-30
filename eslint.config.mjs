@@ -18,6 +18,7 @@ export default [
       "no-unused-vars": "off",
       "no-empty": "off",
       "no-undef": "off",
+      "no-useless-escape": "off",
     },
   },
 ];
