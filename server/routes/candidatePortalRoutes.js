@@ -46,6 +46,173 @@ function matchPhoneNumbers(inputPhone, storedPhone) {
   return false;
 }
 
+/**
+ * Gather all resumes from resumesDb and candidatesDb so candidate portal is connected to all resumes
+ */
+async function getAllCandidateResumes() {
+  const resumes = resumesDb.getAll() || [];
+  let candidates = [];
+  try {
+    candidates = (await candidatesDb.getAll()) || [];
+  } catch (err) {
+    candidates = [];
+  }
+  
+  const map = new Map();
+  // 1. Primary resume collection from resumesDb
+  for (const r of resumes) {
+    const key = normalizeEmail(r.email);
+    if (key) {
+      map.set(key, {
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        phone: r.phone || "",
+        role: r.targetJobTitle || r.role || "Software Engineer",
+        field: r.field || r.domain || "Software Development",
+        resumeFileName: r.resumeFileName || (r.s3Key ? r.s3Key.split("/").pop() : null),
+        skills: r.skills || r.allSkills || [],
+        experience: r.experience || (r.expYears ? `${r.expYears} Years` : "1-2 Years"),
+        status: r.status || "Shortlisted",
+        source: "resumes"
+      });
+    }
+  }
+
+  // 2. Also supplement with candidates from candidatesDb if not already present
+  for (const c of candidates) {
+    const key = normalizeEmail(c.email);
+    if (key && !map.has(key)) {
+      map.set(key, {
+        id: c.id,
+        name: c.name,
+        email: c.email,
+        phone: c.phone || "",
+        role: c.role || "Software Engineer",
+        field: c.field || "Technology",
+        resumeFileName: c.resumeFileName || null,
+        skills: c.skills || [],
+        experience: c.experience || "1-2 Years",
+        status: c.status || "Applied",
+        source: "candidates"
+      });
+    } else if (key && map.has(key)) {
+      const existing = map.get(key);
+      if (!existing.phone && c.phone) {
+        existing.phone = c.phone;
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+/**
+ * Parse human date & time strings into a Date object
+ */
+function parseInterviewDateTime(dateStr, timeStr) {
+  if (!dateStr) return null;
+  try {
+    let d = new Date(dateStr);
+    if (isNaN(d.getTime())) {
+      const parts = String(dateStr).trim().split(/\s+/);
+      if (parts.length === 3) {
+        d = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
+      }
+    }
+    if (isNaN(d.getTime())) {
+      d = new Date();
+    }
+
+    let hours = 11;
+    let minutes = 0;
+    if (timeStr) {
+      const match = String(timeStr).match(/(\d+):(\d+)\s*(AM|PM)?/i);
+      if (match) {
+        hours = parseInt(match[1], 10);
+        minutes = parseInt(match[2], 10);
+        const meridian = match[3] ? match[3].toUpperCase() : null;
+        if (meridian === "PM" && hours < 12) hours += 12;
+        if (meridian === "AM" && hours === 12) hours = 0;
+      }
+    }
+    d.setHours(hours, minutes, 0, 0);
+    return d;
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Compute candidate interview schedule window and know at which time the candidate should login and enter
+ */
+function getCandidateScheduleTiming(scheduledInterview) {
+  if (!scheduledInterview) return null;
+
+  const parsedDate = parseInterviewDateTime(scheduledInterview.date, scheduledInterview.time);
+  const now = new Date();
+
+  let durationMins = 45;
+  if (scheduledInterview.duration) {
+    const dMatch = String(scheduledInterview.duration).match(/(\d+)/);
+    if (dMatch) durationMins = parseInt(dMatch[1], 10);
+  }
+
+  let windowStart = null;
+  let windowEnd = null;
+  let isWindowActive = true;
+  let isUpcoming = false;
+  let isPast = false;
+  let diffMinutes = 0;
+  let timingMessage = "";
+  let timingBadge = "Scheduled Slot";
+
+  if (parsedDate && !isNaN(parsedDate.getTime())) {
+    windowStart = new Date(parsedDate.getTime() - 30 * 60 * 1000); // 30 minutes before
+    windowEnd = new Date(parsedDate.getTime() + (durationMins + 30) * 60 * 1000); // duration + 30 mins
+
+    diffMinutes = Math.round((parsedDate.getTime() - now.getTime()) / (60 * 1000));
+
+    if (now < windowStart) {
+      isUpcoming = true;
+      isWindowActive = false;
+      const hours = Math.floor(diffMinutes / 60);
+      const mins = diffMinutes % 60;
+      const timeRemainingStr = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
+      timingBadge = `Upcoming (${timeRemainingStr})`;
+      timingMessage = `Your interview is scheduled for ${scheduledInterview.date} at ${scheduledInterview.time}. Entry portal opens 30 minutes prior to your slot. Candidate entry window begins in ${timeRemainingStr}.`;
+    } else if (now > windowEnd) {
+      isPast = true;
+      isWindowActive = false;
+      timingBadge = "Expired Slot";
+      timingMessage = `Your scheduled interview slot for ${scheduledInterview.date} at ${scheduledInterview.time} has concluded. Please contact HR for a reschedule.`;
+    } else {
+      isWindowActive = true;
+      timingBadge = "Entry Open Now";
+      timingMessage = `Your scheduled interview slot is ACTIVE right now (${scheduledInterview.date} at ${scheduledInterview.time}). You may proceed into the room.`;
+    }
+  } else {
+    timingMessage = `Interview scheduled for ${scheduledInterview.date || "Assigned Date"} at ${scheduledInterview.time || "Assigned Slot"}.`;
+  }
+
+  return {
+    scheduledDate: scheduledInterview.date,
+    scheduledTime: scheduledInterview.time,
+    duration: scheduledInterview.duration || `${durationMins} Minutes`,
+    durationMins,
+    windowStartTime: windowStart ? windowStart.toISOString() : null,
+    windowEndTime: windowEnd ? windowEnd.toISOString() : null,
+    canEnterNow: true,
+    isWindowActive,
+    isUpcoming,
+    isPast,
+    diffMinutes,
+    timingBadge,
+    timingMessage,
+    scheduledDisplay: `${scheduledInterview.date} at ${scheduledInterview.time}`
+  };
+}
+
 // Default role-specific question banks for live AI interviews
 const ROLE_QUESTIONS = {
   "frontend developer": [
@@ -91,16 +258,24 @@ router.get("/session/:linkCode", async (req, res) => {
     let session = await candidateSessionsDb.getByLinkCode(linkCode);
     const scheduledInterview = await interviewsDb.getByLinkCode(linkCode);
 
-    // If not found in sessions table, attempt to hydrate from scheduled interview in HR Portal
+    // If not found in sessions table, attempt to hydrate from scheduled interview and resume in HR Portal
+    const allResumes = resumesDb.getAll() || [];
+    const matchedResume = scheduledInterview 
+      ? allResumes.find(r => (r.email && normalizeEmail(r.email) === normalizeEmail(scheduledInterview.email)) || r.id === scheduledInterview.candidateId)
+      : null;
+
     if (!session && scheduledInterview) {
       session = await candidateSessionsDb.createOrUpdate({
         id: `sess-${scheduledInterview.id}`,
         linkCode: scheduledInterview.linkCode,
-        candidateName: scheduledInterview.name,
+        candidateName: scheduledInterview.name || (matchedResume && matchedResume.name) || "Candidate",
         candidateEmail: scheduledInterview.email,
-        candidatePhone: "+91 98765 43210",
-        role: scheduledInterview.role,
+        candidatePhone: (matchedResume && matchedResume.phone) || scheduledInterview.phone || "+91 98765 43210",
+        role: scheduledInterview.role || (matchedResume && matchedResume.role) || "Software Engineer",
         company: scheduledInterview.company || "AvaHire Technologies Pvt. Ltd.",
+        resumeId: matchedResume ? matchedResume.id : null,
+        resumeFileName: matchedResume ? matchedResume.resumeFileName : null,
+        skills: matchedResume ? (matchedResume.allSkills || matchedResume.skills) : [],
         status: scheduledInterview.status === "Completed" ? "Completed" : "Invited",
         overallScore: scheduledInterview.score || 94,
         techDepthScore: "9.2 / 10",
@@ -110,15 +285,18 @@ router.get("/session/:linkCode", async (req, res) => {
     }
 
     if (!session && !scheduledInterview) {
-      // Return a default demo session template for testing link codes like "akc123"
+      const defaultResume = allResumes[0];
       session = {
         id: `sess-${linkCode}`,
         linkCode,
-        candidateName: "Candidate",
-        candidateEmail: "candidate@avahire.ai",
-        candidatePhone: "+91 98765 43210",
-        role: "Senior Full Stack Engineer",
+        candidateName: defaultResume ? defaultResume.name : "Candidate",
+        candidateEmail: defaultResume ? defaultResume.email : "candidate@avahire.ai",
+        candidatePhone: defaultResume ? defaultResume.phone : "+91 98765 43210",
+        role: defaultResume ? (defaultResume.targetJobTitle || defaultResume.role) : "Senior Full Stack Engineer",
         company: "AvaHire Technologies Pvt. Ltd.",
+        resumeId: defaultResume ? defaultResume.id : null,
+        resumeFileName: defaultResume ? defaultResume.resumeFileName : null,
+        skills: defaultResume ? (defaultResume.allSkills || defaultResume.skills) : [],
         status: "Invited",
         overallScore: 94,
         techDepthScore: "9.2 / 10",
@@ -138,10 +316,14 @@ router.get("/session/:linkCode", async (req, res) => {
         questions,
         interviewSettings,
         interviewSchedule: scheduledInterview ? {
+          id: scheduledInterview.id,
+          linkCode: scheduledInterview.linkCode,
           date: scheduledInterview.date,
           time: scheduledInterview.time,
           duration: scheduledInterview.duration || interviewSettings.duration,
-          isExpired: scheduledInterview.isExpired
+          status: scheduledInterview.status,
+          isExpired: scheduledInterview.isExpired,
+          timing: getCandidateScheduleTiming(scheduledInterview)
         } : null
       }
     });
@@ -162,20 +344,110 @@ router.get("/interview-settings", (req, res) => {
   }
 });
 
-// GET /api/candidate-portal/demo-resumes - Retrieve sample resume credentials for testing/evaluation
-router.get("/demo-resumes", (req, res) => {
+// GET /api/candidate-portal/resumes - Retrieve all submitted resumes for candidate portal connection
+router.get("/resumes", async (req, res) => {
   try {
-    const list = resumesDb.getAll() || [];
-    const sanitized = list.slice(0, 6).map(r => ({
-      id: r.id,
-      name: r.name,
-      email: r.email,
-      phone: r.phone,
-      role: r.targetJobTitle || r.role || "Software Engineer",
-      resumeFileName: r.resumeFileName || null,
-      skills: r.skills || []
-    }));
-    res.json({ success: true, data: sanitized });
+    const list = await getAllCandidateResumes();
+    const allInterviews = await interviewsDb.getAll();
+    const sanitized = list.map(r => {
+      const cleanEmail = normalizeEmail(r.email);
+      const scheduled = allInterviews.find(iv => 
+        (iv.email && normalizeEmail(iv.email) === cleanEmail) ||
+        (iv.candidateId && iv.candidateId === r.id) ||
+        (iv.resumeId && iv.resumeId === r.id)
+      );
+      const timing = scheduled ? getCandidateScheduleTiming(scheduled) : null;
+      return {
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        phone: r.phone,
+        role: r.role || "Software Engineer",
+        field: r.field || "Software Development",
+        resumeFileName: r.resumeFileName || null,
+        skills: r.skills || [],
+        experience: r.experience || "1-2 Years",
+        status: r.status,
+        hasScheduledInterview: Boolean(scheduled),
+        interviewSchedule: scheduled ? {
+          id: scheduled.id,
+          linkCode: scheduled.linkCode,
+          date: scheduled.date,
+          time: scheduled.time,
+          duration: scheduled.duration || "45 Minutes",
+          status: scheduled.status,
+          timing
+        } : null
+      };
+    });
+    res.json({ success: true, count: sanitized.length, data: sanitized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/candidate-portal/demo-resumes - Retrieve sample resume credentials for testing/evaluation
+router.get("/demo-resumes", async (req, res) => {
+  try {
+    const list = await getAllCandidateResumes();
+    const allInterviews = await interviewsDb.getAll();
+    const sanitized = list.map(r => {
+      const cleanEmail = normalizeEmail(r.email);
+      const scheduled = allInterviews.find(iv => 
+        (iv.email && normalizeEmail(iv.email) === cleanEmail) ||
+        (iv.candidateId && iv.candidateId === r.id) ||
+        (iv.resumeId && iv.resumeId === r.id)
+      );
+      const timing = scheduled ? getCandidateScheduleTiming(scheduled) : null;
+      return {
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        phone: r.phone,
+        role: r.role || "Software Engineer",
+        resumeFileName: r.resumeFileName || null,
+        skills: r.skills || [],
+        interviewSchedule: scheduled ? {
+          linkCode: scheduled.linkCode,
+          date: scheduled.date,
+          time: scheduled.time,
+          status: scheduled.status,
+          timing
+        } : null
+      };
+    });
+    res.json({ success: true, count: sanitized.length, data: sanitized });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/candidate-portal/schedule/:linkCode - Retrieve schedule & timing window for candidate portal
+router.get("/schedule/:linkCode", async (req, res) => {
+  try {
+    const { linkCode } = req.params;
+    const scheduled = await interviewsDb.getByLinkCode(linkCode);
+    if (!scheduled) {
+      return res.status(404).json({ success: false, error: "Interview schedule not found" });
+    }
+    const timing = getCandidateScheduleTiming(scheduled);
+    res.json({
+      success: true,
+      data: {
+        id: scheduled.id,
+        linkCode: scheduled.linkCode,
+        name: scheduled.name,
+        email: scheduled.email,
+        phone: scheduled.phone || "",
+        role: scheduled.role,
+        company: scheduled.company,
+        date: scheduled.date,
+        time: scheduled.time,
+        duration: scheduled.duration,
+        status: scheduled.status,
+        timing
+      }
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -204,83 +476,105 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // 1. Check all submitted resumes in resumes database
-    const allResumes = resumesDb.getAll() || [];
-    const matchedResumeByEmail = allResumes.find(r => r.email && normalizeEmail(r.email) === cleanEmail);
+    // 1. Check all submitted resumes in resumes and candidates database
+    const allCandidateResumes = await getAllCandidateResumes();
+    const matchedResume = allCandidateResumes.find(r => r.email && normalizeEmail(r.email) === cleanEmail);
 
-    // 2. Also check candidatesDb (candidates table)
-    let matchedCandidateByEmail = null;
-    try {
-      const allCandidates = await candidatesDb.getAll();
-      matchedCandidateByEmail = (allCandidates || []).find(c => c.email && normalizeEmail(c.email) === cleanEmail);
-    } catch (e) {
-      console.warn("Candidates DB lookup warning:", e.message);
+    // If no candidate resume found with this email, strictly reject
+    if (!matchedResume) {
+      return res.status(403).json({
+        success: false,
+        error: `Access Denied: The email "${email}" was not found in any submitted resume. You are not allowed to log in with an email address not mentioned in your resume. Candidate Portal strictly requires an approved resume on file.`
+      });
     }
 
-    // 3. Also check scheduled interview if linkCode is provided
+    // 2. Strict Phone Number Verification against Candidate Resume
+    const registeredPhone = String(matchedResume.phone || "").trim();
+    if (registeredPhone) {
+      const isPhoneMatch = matchPhoneNumbers(cleanPhone, registeredPhone);
+      if (!isPhoneMatch) {
+        return res.status(403).json({
+          success: false,
+          error: `Access Denied: The phone number "${cleanPhone}" does not match the contact number registered on the resume for ${matchedResume.name}. You are not allowed to log in with a different phone number than mentioned in your resume.`
+        });
+      }
+    } else {
+      // If resume had no phone recorded, save the validated phone format (min 7 digits)
+      const cleanDigits = normalizePhoneDigits(cleanPhone);
+      if (cleanDigits.length < 7) {
+        return res.status(400).json({
+          success: false,
+          error: "Please enter a valid phone number (minimum 7 digits)."
+        });
+      }
+      resumesDb.update(matchedResume.id, { phone: cleanPhone });
+    }
+
+    // 3. Interview Schedule Verification: Check when candidate is scheduled to interview
     let scheduledInterview = null;
     if (linkCode) {
       scheduledInterview = await interviewsDb.getByLinkCode(linkCode);
     }
+    if (!scheduledInterview) {
+      const allInterviews = await interviewsDb.getAll();
+      scheduledInterview = allInterviews.find(iv => 
+        (iv.email && normalizeEmail(iv.email) === cleanEmail) ||
+        (iv.candidateId && iv.candidateId === matchedResume.id) ||
+        (iv.resumeId && iv.resumeId === matchedResume.id)
+      );
+    }
 
-    // Determine the base candidate profile
-    const profile = matchedResumeByEmail || matchedCandidateByEmail || (scheduledInterview && normalizeEmail(scheduledInterview.email) === cleanEmail ? scheduledInterview : null);
-
-    // If no candidate resume or record found with this email:
-    if (!profile) {
-      return res.status(401).json({
+    // If no interview is scheduled for this candidate: do not allow entry
+    if (!scheduledInterview) {
+      return res.status(403).json({
         success: false,
-        error: `Authentication failed: No submitted resume found for "${email}". Only candidates with a submitted resume are authorized to access the interview portal.`
+        notScheduled: true,
+        candidate: {
+          name: matchedResume.name,
+          email: cleanEmail,
+          phone: registeredPhone || cleanPhone,
+          role: matchedResume.role || "Software Engineer"
+        },
+        error: `Access Restricted: Resume verified for ${matchedResume.name}, but an interview has not been scheduled yet on the Schedule page. Candidates can only log in and enter once an interview slot has been assigned by the hiring team.`
       });
     }
 
-    // If an interview linkCode was provided, verify if the invite was scheduled for this candidate
-    if (scheduledInterview && scheduledInterview.email) {
-      const invEmail = normalizeEmail(scheduledInterview.email);
-      if (invEmail !== cleanEmail) {
-        return res.status(401).json({
-          success: false,
-          error: `Authentication failed: This interview invite is designated for a different candidate email (${scheduledInterview.email}). Please sign in with the email linked to your interview invitation.`
-        });
-      }
+    // If linkCode was provided, verify it belongs to this candidate
+    if (scheduledInterview.email && normalizeEmail(scheduledInterview.email) !== cleanEmail) {
+      return res.status(403).json({
+        success: false,
+        error: `Access Denied: This interview link is designated for a different candidate (${scheduledInterview.email}). Please sign in with the email linked to your interview invitation.`
+      });
     }
 
-    // Retrieve registered phone number from resume or candidate record
-    const registeredPhone = (matchedResumeByEmail && matchedResumeByEmail.phone) ||
-                            (matchedCandidateByEmail && matchedCandidateByEmail.phone) ||
-                            (scheduledInterview && scheduledInterview.phone);
+    // Compute candidate schedule timing
+    const scheduleTiming = getCandidateScheduleTiming(scheduledInterview);
 
-    if (registeredPhone) {
-      const isPhoneMatch = matchPhoneNumbers(cleanPhone, registeredPhone);
-      if (!isPhoneMatch) {
-        return res.status(401).json({
-          success: false,
-          error: "Authentication failed: The phone number does not match the contact number on your resume. Please enter the phone number registered on your resume."
-        });
-      }
-    } else {
-      // If phone was not recorded previously, update the resume record
-      if (matchedResumeByEmail) {
-        resumesDb.update(matchedResumeByEmail.id, { phone: cleanPhone });
-      }
-      if (matchedCandidateByEmail) {
-        await candidatesDb.update(matchedCandidateByEmail.id, { phone: cleanPhone });
-      }
+    // Check completion status
+    if (scheduledInterview.status === "Completed") {
+      return res.status(403).json({
+        success: false,
+        isCompleted: true,
+        timing: scheduleTiming,
+        error: `Interview Already Completed: Your interview on ${scheduledInterview.date} has already been completed. Thank you for participating!`
+      });
+    }
+
+    // Check expiry
+    if (scheduledInterview.isExpired || scheduledInterview.status === "Expired") {
+      return res.status(403).json({
+        success: false,
+        isExpired: true,
+        timing: scheduleTiming,
+        error: `Interview Expired: The scheduled slot for ${scheduledInterview.date} at ${scheduledInterview.time} has expired. Please contact your recruiter for a reschedule.`
+      });
     }
 
     // Candidate authenticated successfully!
-    const candidateName = (matchedResumeByEmail && matchedResumeByEmail.name) ||
-                          (matchedCandidateByEmail && matchedCandidateByEmail.name) ||
-                          (scheduledInterview && scheduledInterview.name) ||
-                          "Candidate";
-
-    const candidateRole = (matchedResumeByEmail && (matchedResumeByEmail.targetJobTitle || matchedResumeByEmail.role)) ||
-                          (matchedCandidateByEmail && matchedCandidateByEmail.role) ||
-                          (scheduledInterview && scheduledInterview.role) ||
-                          "Software Engineer";
-
-    const company = (scheduledInterview && scheduledInterview.company) || "AvaHire Technologies Pvt. Ltd.";
-    const code = linkCode || (scheduledInterview && scheduledInterview.linkCode) || "akc123";
+    const candidateName = matchedResume.name || scheduledInterview.name || "Candidate";
+    const candidateRole = matchedResume.role || scheduledInterview.role || "Software Engineer";
+    const company = scheduledInterview.company || "AvaHire Technologies Pvt. Ltd.";
+    const code = linkCode || scheduledInterview.linkCode || `ava-${matchedResume.id}`;
 
     const existingSession = await candidateSessionsDb.getByLinkCode(code);
 
@@ -292,11 +586,20 @@ router.post("/login", async (req, res) => {
       candidatePhone: registeredPhone || cleanPhone,
       role: candidateRole,
       company,
-      resumeId: matchedResumeByEmail ? matchedResumeByEmail.id : null,
-      resumeFileName: matchedResumeByEmail ? matchedResumeByEmail.resumeFileName : null,
-      skills: (matchedResumeByEmail && (matchedResumeByEmail.allSkills || matchedResumeByEmail.skills)) || [],
-      experience: (matchedResumeByEmail && matchedResumeByEmail.experience) || "1-2 Years",
-      education: (matchedResumeByEmail && matchedResumeByEmail.education) || "Bachelor's Degree",
+      resumeId: matchedResume.id,
+      resumeFileName: matchedResume.resumeFileName || null,
+      skills: matchedResume.skills || [],
+      experience: matchedResume.experience || "1-2 Years",
+      education: matchedResume.education || "Bachelor's Degree",
+      interviewSchedule: {
+        id: scheduledInterview.id,
+        linkCode: code,
+        date: scheduledInterview.date,
+        time: scheduledInterview.time,
+        duration: scheduledInterview.duration || "45 Minutes",
+        status: scheduledInterview.status,
+        timing: scheduleTiming
+      },
       authenticated: true,
       authenticatedAt: new Date().toISOString(),
       status: "Authenticated"
@@ -317,9 +620,10 @@ router.post("/login", async (req, res) => {
         phone: registeredPhone || cleanPhone,
         role: candidateRole,
         company,
-        resumeFileName: matchedResumeByEmail ? matchedResumeByEmail.resumeFileName : null
+        resumeFileName: matchedResume ? matchedResume.resumeFileName : null
       },
-      message: `Identity verified! Welcome ${candidateName}.`
+      timing: scheduleTiming,
+      message: `Identity verified! Welcome ${candidateName}. Your interview is scheduled on ${scheduledInterview.date} at ${scheduledInterview.time}.`
     });
   } catch (err) {
     console.error("Error in candidate portal login:", err);

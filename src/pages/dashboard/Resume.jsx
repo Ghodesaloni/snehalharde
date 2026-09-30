@@ -139,6 +139,7 @@ const Resumes = () => {
     const [openActionMenuId, setOpenActionMenuId] = useState(null);
     const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
     const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
+    const [interviews, setInterviews] = useState([]);
 
     // JD Screening States
     const [jobs, setJobs] = useState([]);
@@ -173,13 +174,14 @@ const Resumes = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Initial Fetch of Resumes and Jobs from backend
+    // Initial Fetch of Resumes, Jobs, and Interviews from backend
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [resumesData, jobsData] = await Promise.allSettled([
+                const [resumesData, jobsData, interviewsData] = await Promise.allSettled([
                     resumesApi.getAll(),
-                    jobsApi.getAll()
+                    jobsApi.getAll(),
+                    interviewsApi.getAll()
                 ]);
 
                 if (jobsData.status === "fulfilled" && Array.isArray(jobsData.value)) {
@@ -189,10 +191,15 @@ const Resumes = () => {
                     }
                 }
 
+                if (interviewsData.status === "fulfilled" && Array.isArray(interviewsData.value)) {
+                    setInterviews(interviewsData.value);
+                }
+
                 if (resumesData.status === "fulfilled" && Array.isArray(resumesData.value)) {
-                    // Set to empty state as requested until new resumes are uploaded
-                    setCandidates([]);
-                    setSelectedCandidateId(null);
+                    setCandidates(resumesData.value);
+                    if (resumesData.value.length > 0) {
+                        setSelectedCandidateId(resumesData.value[0].id);
+                    }
                 }
             } catch (err) {
                 console.error("Error loading initial data:", err);
@@ -850,7 +857,16 @@ const Resumes = () => {
                             </div>
                         </div>
 
-                        <div className="shrink-0">
+                        <div className="shrink-0 flex items-center gap-2">
+                            <Link
+                                to="/candidate-login"
+                                target="_blank"
+                                className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:border-violet-300 hover:bg-violet-50/50 text-slate-700 hover:text-violet-700 rounded-xl text-xs sm:text-sm font-semibold shadow-2xs transition"
+                                title="Open Candidate Portal Login"
+                            >
+                                <ExternalLink className="w-4 h-4 text-violet-600" />
+                                <span>Candidate Portal</span>
+                            </Link>
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
@@ -1352,8 +1368,14 @@ const Resumes = () => {
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="text-[11px] text-slate-400 truncate">
-                                                            {candidate.email}
+                                                        <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5 flex-wrap">
+                                                            <span>{candidate.email}</span>
+                                                            {candidate.phone && (
+                                                                <>
+                                                                    <span className="text-slate-300">•</span>
+                                                                    <span className="font-mono text-violet-700 font-semibold">{candidate.phone}</span>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1441,15 +1463,39 @@ const Resumes = () => {
                                                 {candidate.matchScore}%
                                             </td>
 
-                                            {/* Status */}
+                                            {/* Status & Candidate Portal */}
                                             <td className="py-3.5 px-3 whitespace-nowrap">
-                                                <span
-                                                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${getStatusPill(
-                                                        candidate.status
-                                                    )}`}
-                                                >
-                                                    {candidate.status}
-                                                </span>
+                                                <div className="space-y-1">
+                                                    <span
+                                                        className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold ${getStatusPill(
+                                                            candidate.status
+                                                        )}`}
+                                                    >
+                                                        {candidate.status}
+                                                    </span>
+                                                    {(() => {
+                                                        const cleanEmail = (candidate.email || "").toLowerCase().trim();
+                                                        const iv = interviews.find(i => (i.email && i.email.toLowerCase().trim() === cleanEmail) || i.candidateId === candidate.id);
+                                                        if (iv) {
+                                                            return (
+                                                                <div>
+                                                                    <a
+                                                                        href={`/i/${iv.linkCode}`}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-bold transition shadow-2xs"
+                                                                        title={`Candidate Portal Ready: ${iv.date} ${iv.time}`}
+                                                                    >
+                                                                        <ExternalLink className="w-2.5 h-2.5 text-violet-600" />
+                                                                        <span>Portal ({iv.time})</span>
+                                                                    </a>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </div>
                                             </td>
 
                                             {/* Actions */}
@@ -1498,9 +1544,9 @@ const Resumes = () => {
                                                     </button>
                                                 </div>
 
-                                                {/* Dropdown Action Menu (Automated AI Options - No manual shortlisting) */}
+                                                {/* Dropdown Action Menu */}
                                                 {openActionMenuId === candidate.id && (
-                                                    <div className="absolute right-4 top-10 w-52 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30 text-left text-xs font-medium text-slate-700 animate-in fade-in-50 zoom-in-95">
+                                                    <div className="absolute right-4 top-10 w-56 bg-white rounded-xl shadow-xl border border-slate-100 py-1.5 z-30 text-left text-xs font-medium text-slate-700 animate-in fade-in-50 zoom-in-95">
                                                         <button
                                                             onClick={() => {
                                                                 handleAnalyzeSingleCandidate(candidate.id);
@@ -1523,6 +1569,42 @@ const Resumes = () => {
                                                             <span>View Full Breakdown</span>
                                                         </button>
                                                         <div className="border-t border-slate-100 my-1" />
+                                                        
+                                                        {/* Candidate Portal Direct Actions */}
+                                                        {(() => {
+                                                            const cleanEmail = (candidate.email || "").toLowerCase().trim();
+                                                            const iv = interviews.find(i => (i.email && i.email.toLowerCase().trim() === cleanEmail) || i.candidateId === candidate.id);
+                                                            const portalUrl = iv ? `/i/${iv.linkCode}` : `/candidate-login?email=${encodeURIComponent(candidate.email || "")}`;
+                                                            return (
+                                                                <>
+                                                                    <a
+                                                                        href={portalUrl}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        onClick={() => setOpenActionMenuId(null)}
+                                                                        className="w-full px-3.5 py-2 hover:bg-violet-50 flex items-center gap-2 text-violet-700 font-semibold cursor-pointer"
+                                                                    >
+                                                                        <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
+                                                                        <span>Open Candidate Portal</span>
+                                                                    </a>
+                                                                    {iv && (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const fullLink = `${window.location.origin}/i/${iv.linkCode}`;
+                                                                                navigator.clipboard.writeText(fullLink);
+                                                                                toast.success(`Copied Candidate Portal Link for ${candidate.name}!`);
+                                                                                setOpenActionMenuId(null);
+                                                                            }}
+                                                                            className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
+                                                                        >
+                                                                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                                                                            <span>Copy Portal Link</span>
+                                                                        </button>
+                                                                    )}
+                                                                </>
+                                                            );
+                                                        })()}
+
                                                         <button
                                                             onClick={() => {
                                                                 setSelectedCandidateId(candidate.id);
@@ -2241,10 +2323,21 @@ const Resumes = () => {
                                     </select>
                                 </div>
 
+                                <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5 text-xs text-slate-600">
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Candidate Email:</span>
+                                        <span className="font-semibold text-slate-800">{selectedCandidate.email}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Phone (as per Resume):</span>
+                                        <span className="font-semibold font-mono text-violet-700">{selectedCandidate.phone || "No phone extracted"}</span>
+                                    </div>
+                                </div>
+
                                 <div className="p-3 bg-violet-50/70 border border-violet-100 rounded-2xl flex items-center gap-2.5 text-slate-700 font-medium">
                                     <ShieldCheck className="w-4 h-4 text-violet-600 shrink-0" />
                                     <span>
-                                        AI will prepare personalized questions based on <strong>{selectedCandidate.name}'s resume</strong> and <strong>{currentJd.title}</strong> requirements.
+                                        AI will prepare personalized questions based on <strong>{selectedCandidate.name}'s resume</strong> and <strong>{currentJd.title}</strong> requirements. Candidate must authenticate using this exact email and phone.
                                     </span>
                                 </div>
 
@@ -2275,28 +2368,32 @@ const Resumes = () => {
                                             const newIv = {
                                                 id: `iv-${selectedCandidate.id}`,
                                                 candidateId: selectedCandidate.id,
+                                                resumeId: selectedCandidate.id,
                                                 name: selectedCandidate.name,
                                                 email: selectedCandidate.email,
+                                                phone: selectedCandidate.phone || "",
                                                 avatar: selectedCandidate.avatar,
                                                 role: currentJd.title || selectedCandidate.role,
                                                 company: "AvaHire Technologies Pvt. Ltd.",
                                                 date: formattedDate,
                                                 dayOfWeek: dayName,
-                                                time: schedTime ? `${schedTime} AM` : "11:00 AM",
+                                                time: schedTime ? (schedTime.includes(":") ? schedTime : `${schedTime} AM`) : "11:00 AM",
                                                 timeZone: "IST",
                                                 duration: schedDuration,
                                                 linkCode: code,
-                                                status: "Active",
+                                                status: "Scheduled",
                                                 expiry: "05:00 Remaining",
                                                 expiryTime: `${formattedDate}, ${schedTime}`,
                                                 isExpired: false
                                             };
 
                                             addOrUpdateInterview(newIv);
-                                            interviewsApi.create(newIv).catch((err) => console.warn("Failed to persist interview to DB:", err));
+                                            interviewsApi.create(newIv).then((created) => {
+                                                setInterviews(prev => [created || newIv, ...prev.filter(x => x.id !== newIv.id)]);
+                                            }).catch((err) => console.warn("Failed to persist interview to DB:", err));
                                             setGeneratedLinkData(newIv);
                                             handleStatusChange(selectedCandidate.id, "Shortlisted");
-                                            toast.success(`Interview invitation created for ${selectedCandidate.name}!`);
+                                            toast.success(`Interview invitation scheduled for ${selectedCandidate.name}!`);
                                         }}
                                         className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 active:scale-[0.98] transition"
                                     >
@@ -2337,6 +2434,14 @@ const Resumes = () => {
 
                                 <div className="space-y-2 p-3 bg-slate-50/70 rounded-2xl border border-slate-100 text-slate-600">
                                     <div className="flex justify-between">
+                                        <span className="text-slate-400">Candidate:</span>
+                                        <span className="font-semibold text-slate-800">{generatedLinkData.name} ({generatedLinkData.email})</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-slate-400">Contact Number:</span>
+                                        <span className="font-semibold font-mono text-violet-700">{generatedLinkData.phone || "No phone"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
                                         <span className="text-slate-400">Scheduled For:</span>
                                         <span className="font-semibold text-slate-800">
                                             {generatedLinkData.date} at {generatedLinkData.time}
@@ -2355,18 +2460,18 @@ const Resumes = () => {
                                             navigator.clipboard.writeText(url);
                                             toast.success("Interview URL copied to clipboard!");
                                         }}
-                                        className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5"
+                                        className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                         <Copy className="w-3.5 h-3.5" />
-                                        <span>Copy Link</span>
+                                        <span>Copy Portal Link</span>
                                     </button>
                                     <a
                                         href={`/i/${generatedLinkData.linkCode}`}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 flex items-center justify-center gap-1.5 text-center"
+                                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 flex items-center justify-center gap-1.5 text-center transition"
                                     >
-                                        <span>Open Portal</span>
+                                        <span>Open Candidate Portal</span>
                                         <ExternalLink className="w-3.5 h-3.5" />
                                     </a>
                                 </div>

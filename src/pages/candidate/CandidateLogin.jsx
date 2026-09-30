@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
     Mail,
     Phone,
@@ -8,21 +8,25 @@ import {
     ArrowLeft,
     Sparkles,
     ShieldCheck,
-    HelpCircle,
+    AlertCircle,
     CheckCircle2,
-    Video,
-    Camera,
-    Mic,
-    Volume2,
-    ChevronRight,
-    Bot
+    Calendar,
+    Clock,
+    FileText,
+    ChevronDown,
+    Lock,
+    HelpCircle,
+    UserCheck
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
+import { candidatePortalApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateLogin = () => {
     const { code } = useParams();
+    const [searchParams] = useSearchParams();
+    const queryEmail = searchParams.get("email") || "";
     const navigate = useNavigate();
 
     const [interviewData, setInterviewData] = useState(() => {
@@ -31,7 +35,7 @@ const CandidateLogin = () => {
         return {
             id: "iv-default",
             name: "Candidate",
-            email: "",
+            email: queryEmail || "",
             phone: "",
             role: "Job Assessment",
             company: "AvaHire Recruiter",
@@ -39,36 +43,140 @@ const CandidateLogin = () => {
         };
     });
 
-    const [email, setEmail] = useState("");
+    const [resumesList, setResumesList] = useState([]);
+    const [email, setEmail] = useState(queryEmail || "");
     const [phone, setPhone] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [loginError, setLoginError] = useState("");
+    const [scheduleInfo, setScheduleInfo] = useState(null);
 
+    // Fetch all submitted resumes and hydrate candidate credentials
     useEffect(() => {
-        const found = getInterviewByCodeOrId(code);
-        if (found) {
-            setInterviewData(found);
-            setEmail(found.email || "");
-            setPhone(found.phone || "");
-        }
-    }, [code]);
+        const loadResumesAndSession = async () => {
+            try {
+                const list = await candidatePortalApi.getResumes();
+                if (Array.isArray(list) && list.length > 0) {
+                    setResumesList(list);
 
-    const handleLoginSubmit = (e) => {
+                    // If code or email is provided, try to match to a submitted resume
+                    if (queryEmail) {
+                        const matched = list.find(r => r.email?.toLowerCase() === queryEmail.toLowerCase());
+                        if (matched) {
+                            setEmail(matched.email);
+                            if (matched.phone) setPhone(matched.phone);
+                            if (matched.interviewSchedule) setScheduleInfo(matched.interviewSchedule);
+                        }
+                    } else if (code) {
+                        // Check if an interview matches this code
+                        const matchedByCode = list.find(r => r.interviewSchedule?.linkCode === code);
+                        if (matchedByCode) {
+                            setEmail(matchedByCode.email);
+                            if (matchedByCode.phone) setPhone(matchedByCode.phone);
+                            setScheduleInfo(matchedByCode.interviewSchedule);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to load resumes for candidate portal:", err.message);
+            }
+
+            // Also fetch session by code if available
+            if (code) {
+                try {
+                    const session = await candidatePortalApi.getSession(code);
+                    if (session) {
+                        setInterviewData(prev => ({
+                            ...prev,
+                            name: session.candidateName || prev.name,
+                            email: session.candidateEmail || prev.email,
+                            phone: session.candidatePhone || prev.phone,
+                            role: session.role || prev.role,
+                            company: session.company || prev.company,
+                            linkCode: session.linkCode || code
+                        }));
+                        if (session.interviewSchedule) {
+                            setScheduleInfo(session.interviewSchedule);
+                        }
+                        if (session.candidateEmail && !email) {
+                            setEmail(session.candidateEmail);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Session fetch warning:", e.message);
+                }
+            }
+        };
+
+        loadResumesAndSession();
+    }, [code, queryEmail]);
+
+    // Handle resume selection for quick testing / auto-fill
+    const handleSelectResumeCandidate = (resume) => {
+        if (!resume) return;
+        setEmail(resume.email || "");
+        setPhone(resume.phone || "");
+        setLoginError("");
+        if (resume.interviewSchedule) {
+            setScheduleInfo(resume.interviewSchedule);
+        } else {
+            setScheduleInfo(null);
+        }
+        toast.info(`Loaded candidate credentials for ${resume.name}`);
+    };
+
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
-        if (!email.trim()) {
-            toast.error("Please enter your Email ID.");
+        setLoginError("");
+
+        const cleanEmail = email.trim();
+        const cleanPhone = phone.trim();
+
+        if (!cleanEmail) {
+            toast.error("Please enter the Email ID mentioned on your submitted resume.");
             return;
         }
-        if (!phone.trim()) {
-            toast.error("Please enter your Phone Number.");
+        if (!cleanPhone) {
+            toast.error("Please enter the Phone Number mentioned on your submitted resume.");
             return;
         }
 
         setIsLoading(true);
-        setTimeout(() => {
+
+        try {
+            const effectiveCode = code || interviewData.linkCode || (scheduleInfo && scheduleInfo.linkCode) || "";
+            const response = await candidatePortalApi.login({
+                linkCode: effectiveCode,
+                email: cleanEmail,
+                phone: cleanPhone
+            });
+
+            if (response && response.success) {
+                const sessionData = response.data;
+                const candidateData = response.candidate || sessionData;
+
+                // Store verified authentication state in localStorage for the interview session
+                localStorage.setItem("avahire_candidate_session", JSON.stringify(sessionData));
+                localStorage.setItem("avahire_candidate_interview", JSON.stringify(candidateData));
+                localStorage.setItem("avahire_candidate_auth", "true");
+
+                const targetCode = sessionData.linkCode || effectiveCode || "akc123";
+                const scheduleDate = sessionData.interviewSchedule?.date || "today";
+                const scheduleTime = sessionData.interviewSchedule?.time || "your scheduled slot";
+
+                toast.success(`Identity Verified! Welcome ${candidateData.name}. Interview scheduled for ${scheduleDate} at ${scheduleTime}.`);
+                navigate(`/i/${targetCode}/system-check`);
+            } else {
+                const errMsg = response?.error || "Authentication failed. Please verify your resume contact information.";
+                setLoginError(errMsg);
+                toast.error(errMsg);
+            }
+        } catch (err) {
+            const serverError = err.response?.data?.error || err.message || "Failed to verify credentials against submitted resumes.";
+            setLoginError(serverError);
+            toast.error(serverError, { duration: 6000 });
+        } finally {
             setIsLoading(false);
-            toast.success(`Welcome ${interviewData.name || "Candidate"}! Identity verified.`);
-            navigate(`/i/${interviewData.linkCode || code || "akc123"}/system-check`);
-        }, 500);
+        }
     };
 
     return (
@@ -80,148 +188,149 @@ const CandidateLogin = () => {
             {/* Top Bar Header */}
             <header className="w-full max-w-6xl mx-auto flex items-center justify-between pb-4 relative z-10">
                 <Link
-                    to={`/i/${interviewData.linkCode || code || "akc123"}`}
+                    to={code ? `/i/${interviewData.linkCode || code}` : "/"}
                     className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-violet-600 transition bg-white/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/60 shadow-2xs"
                 >
                     <ArrowLeft className="w-3.5 h-3.5" />
-                    <span>Back to Invitation</span>
+                    <span>{code ? "Back to Invitation" : "Back to Home"}</span>
                 </Link>
 
                 <div className="flex items-center gap-2">
                     <span className="text-xs font-semibold px-3 py-1 bg-white/80 backdrop-blur-md rounded-full text-violet-700 border border-violet-100 shadow-2xs flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        Live Interview Portal
+                        AI Interview Portal · Connected to Resumes ({resumesList.length})
                     </span>
                 </div>
             </header>
 
             {/* Main Center Two-Column Login Card */}
             <main className="flex-1 flex items-center justify-center relative z-10 my-auto">
-                <div className="w-full max-w-[960px] bg-white rounded-[32px] shadow-[0_25px_60px_rgba(79,70,229,0.12)] border border-slate-100/90 overflow-hidden grid grid-cols-1 lg:grid-cols-12 animate-in fade-in zoom-in-95">
+                <div className="w-full max-w-[1020px] bg-white rounded-[32px] shadow-[0_25px_60px_rgba(79,70,229,0.12)] border border-slate-100/90 overflow-hidden grid grid-cols-1 lg:grid-cols-12 animate-in fade-in zoom-in-95">
                     
-                    {/* LEFT COLUMN: Dark Navy/Slate Blue Branding & Illustration */}
-                    <div className="lg:col-span-6 bg-[#131b2e] text-white p-8 sm:p-10 lg:p-12 flex flex-col justify-between relative overflow-hidden">
+                    {/* LEFT COLUMN: Dark Navy Branding, Scheduled Interview Timing & Info */}
+                    <div className="lg:col-span-5 bg-[#131b2e] text-white p-7 sm:p-9 lg:p-10 flex flex-col justify-between relative overflow-hidden">
                         {/* Background subtle light effects */}
                         <div className="absolute top-0 right-0 w-64 h-64 bg-violet-600/10 rounded-full blur-3xl pointer-events-none" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
 
                         {/* Top AvaHire Logo */}
-                        <div className="relative z-10 mb-8">
+                        <div className="relative z-10 mb-6">
                             <AvaHireLogo size="md" variant="darkBg" />
                         </div>
 
-                        {/* Hero Headline & Subtitle */}
-                        <div className="space-y-3 relative z-10 mb-8">
-                            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight leading-snug">
-                                Your next opportunity starts with a{" "}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-indigo-300 font-black">
-                                    conversation.
-                                </span>
+                        {/* Hero Headline & Instructions */}
+                        <div className="space-y-3 relative z-10 mb-6">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/30 text-violet-200 text-[11px] font-semibold">
+                                <Lock className="w-3.5 h-3.5 text-violet-400" />
+                                <span>Resume-Verified Authentication</span>
+                            </div>
+                            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight leading-snug">
+                                Candidate Interview Entry
                             </h1>
-                            <p className="text-xs sm:text-sm text-slate-300/90 leading-relaxed max-w-md">
-                                Step into an AI-powered interview and showcase your skills, experience, and potential.
+                            <p className="text-xs text-slate-300/90 leading-relaxed">
+                                Enter the exact <strong>Email ID</strong> and <strong>Phone Number</strong> mentioned on your submitted resume to enter your scheduled interview.
                             </p>
                         </div>
 
-                        {/* Custom Modern SVG Illustration (Candidate + AI Interviewer Card) */}
-                        <div className="relative z-10 mt-auto pt-4 flex items-end justify-center">
-                            <div className="w-full max-w-[360px] relative">
-                                <svg viewBox="0 0 360 220" className="w-full h-auto drop-shadow-md" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                    {/* Backdrop soft lilac circle */}
-                                    <circle cx="120" cy="130" r="80" fill="#1E293B" />
-                                    <circle cx="120" cy="130" r="65" fill="#334155" opacity="0.4" />
-
-                                    {/* Office Plant (Left) */}
-                                    <path d="M25 155 L35 155 L32 180 L28 180 Z" fill="#64748B" />
-                                    <ellipse cx="28" cy="135" rx="7" ry="16" fill="#818CF8" transform="rotate(-25 28 135)" />
-                                    <ellipse cx="32" cy="125" rx="8" ry="18" fill="#6366F1" />
-                                    <ellipse cx="42" cy="132" rx="7" ry="15" fill="#A5B4FC" transform="rotate(30 42 132)" />
-
-                                    {/* Candidate Character sitting at laptop */}
-                                    <ellipse cx="120" cy="85" rx="15" ry="17" fill="#FDE047" />
-                                    {/* Hair */}
-                                    <path d="M106 80 Q120 62 134 80 Q136 95 132 105 Q126 92 120 92 Q114 92 108 105 Z" fill="#0F172A" />
-                                    {/* Face & Features */}
-                                    <ellipse cx="120" cy="88" rx="12" ry="14" fill="#FFE4E6" />
-                                    <ellipse cx="116" cy="86" rx="1.5" ry="1.5" fill="#0F172A" />
-                                    <ellipse cx="124" cy="86" rx="1.5" ry="1.5" fill="#0F172A" />
-                                    <path d="M118 94 Q120 96 122 94" stroke="#E11D48" strokeWidth="1.2" strokeLinecap="round" fill="none" />
-
-                                    {/* Purple Sweater */}
-                                    <path d="M100 115 C100 106 108 102 120 102 C132 102 140 106 140 115 L144 165 L96 165 Z" fill="#6366F1" />
-
-                                    {/* Candidate Arms */}
-                                    <path d="M102 125 L92 155 L108 162" stroke="#6366F1" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                                    <path d="M138 125 L148 155 L132 162" stroke="#6366F1" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-
-                                    {/* Desk line */}
-                                    <line x1="0" y1="170" x2="360" y2="170" stroke="#475569" strokeWidth="3" strokeLinecap="round" />
-
-                                    {/* Laptop */}
-                                    <rect x="95" y="132" width="48" height="32" rx="3" fill="#0F172A" stroke="#64748B" strokeWidth="1.5" />
-                                    <circle cx="119" cy="148" r="3.5" fill="#818CF8" />
-                                    <polygon points="85,168 153,168 147,164 91,164" fill="#64748B" />
-
-                                    {/* FLOATING AI INTERVIEWER CARD (Right) */}
-                                    <g transform="translate(180, 20)">
-                                        {/* Card container */}
-                                        <rect x="0" y="0" width="160" height="135" rx="16" fill="#1E293B" stroke="#4338CA" strokeWidth="1.5" opacity="0.95" />
-                                        
-                                        {/* AI Interviewer Badge */}
-                                        <rect x="12" y="10" width="95" height="20" rx="10" fill="#312E81" />
-                                        <path d="M18 20 L21 17 L24 20 L21 23 Z" fill="#A5B4FC" />
-                                        <text x="28" y="24" fill="#E0E7FF" fontSize="9" fontWeight="bold" fontFamily="sans-serif">AI Interviewer</text>
-
-                                        {/* Female Avatar in Blazer */}
-                                        <circle cx="65" cy="72" r="28" fill="#334155" />
-                                        {/* Avatar Hair */}
-                                        <path d="M42 68 C42 45 88 45 88 68 C88 95 84 98 84 98 L46 98 C46 98 42 95 42 68 Z" fill="#451A03" />
-                                        <ellipse cx="65" cy="70" rx="13" ry="15" fill="#FDE68A" />
-                                        <ellipse cx="60" cy="68" rx="1.5" ry="1.5" fill="#1E293B" />
-                                        <ellipse cx="70" cy="68" rx="1.5" ry="1.5" fill="#1E293B" />
-                                        <path d="M63 76 Q65 78 67 76" stroke="#DC2626" strokeWidth="1" fill="none" strokeLinecap="round" />
-
-                                        {/* Blazer Suit */}
-                                        <path d="M48 95 L55 85 L65 98 L75 85 L82 95 L85 110 L45 110 Z" fill="#1E3A8A" />
-                                        <polygon points="60,86 70,86 65,95" fill="white" />
-
-                                        {/* Chat bubble on AI screen */}
-                                        <rect x="105" y="55" width="42" height="30" rx="10" fill="white" />
-                                        <path d="M108 80 L102 87 L115 84 Z" fill="white" />
-                                        <circle cx="118" cy="70" r="2.5" fill="#4F46E5" />
-                                        <circle cx="126" cy="70" r="2.5" fill="#4F46E5" />
-                                        <circle cx="134" cy="70" r="2.5" fill="#4F46E5" />
-                                    </g>
-                                </svg>
+                        {/* Scheduled Time Banner (If Known) */}
+                        <div className="relative z-10 mb-6 bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between text-xs border-b border-slate-700/60 pb-2">
+                                <span className="text-slate-400 font-medium">Interview Schedule</span>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                    {scheduleInfo?.status || interviewData?.status || "Scheduled"}
+                                </span>
                             </div>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-2 text-slate-200 font-semibold">
+                                    <Calendar className="w-4 h-4 text-violet-400 shrink-0" />
+                                    <span>Date: {scheduleInfo?.date || interviewData?.date || "Check with Recruiter"}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-200 font-semibold">
+                                    <Clock className="w-4 h-4 text-violet-400 shrink-0" />
+                                    <span>Time: {scheduleInfo?.time || interviewData?.time || "Assigned Slot"}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-300 text-[11px]">
+                                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span>Proctored Session · Duration: {scheduleInfo?.duration || "45 Minutes"}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Security Notice */}
+                        <div className="relative z-10 mt-auto pt-3 border-t border-slate-800/60 text-[11px] text-slate-400 flex items-start gap-2">
+                            <ShieldCheck className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                            <span>
+                                For candidate integrity, accounts with different contact information than what was submitted on the resume are strictly blocked.
+                            </span>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: Candidate Login Form */}
-                    <div className="lg:col-span-6 bg-white p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
-                        <div className="w-full max-w-md mx-auto space-y-6">
+                    {/* RIGHT COLUMN: Candidate Login Form & Resume Quick-Fill */}
+                    <div className="lg:col-span-7 bg-white p-7 sm:p-9 lg:p-10 flex flex-col justify-center">
+                        <div className="w-full max-w-md mx-auto space-y-5">
                             
                             {/* Header Icon + Title */}
-                            <div className="space-y-3 text-left">
-                                <div className="w-14 h-14 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100 shadow-2xs">
-                                    <User className="w-7 h-7 stroke-[1.8]" />
+                            <div className="space-y-2 text-left">
+                                <div className="w-12 h-12 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center border border-violet-100 shadow-2xs">
+                                    <User className="w-6 h-6 stroke-[1.8]" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                                        Candidate Login
+                                    <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                                        Verify Resume Credentials
                                     </h2>
-                                    <p className="text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed">
-                                        Welcome back! Please enter your details to continue with your interview.
+                                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                        Login using your registered contact details as submitted in your resume.
                                     </p>
                                 </div>
                             </div>
+
+                            {/* Submitted Resumes Quick Selector (Connected to All Resumes) */}
+                            {resumesList.length > 0 && (
+                                <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-3 space-y-2 text-left">
+                                    <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                                        <span className="flex items-center gap-1.5 text-slate-800 font-bold">
+                                            <FileText className="w-3.5 h-3.5 text-violet-600" />
+                                            <span>Submitted Resumes ({resumesList.length})</span>
+                                        </span>
+                                        <span className="text-[10px] text-violet-600 font-medium bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">
+                                            Auto-Fill Helper
+                                        </span>
+                                    </div>
+                                    <select
+                                        onChange={(e) => {
+                                            const selected = resumesList.find(r => r.id === e.target.value);
+                                            handleSelectResumeCandidate(selected);
+                                        }}
+                                        defaultValue=""
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
+                                    >
+                                        <option value="" disabled>-- Select from Submitted Resumes to Test/Fill --</option>
+                                        {resumesList.map((r) => (
+                                            <option key={r.id} value={r.id}>
+                                                {r.name} · {r.email} ({r.phone || "No phone"}) · {r.role} {r.interviewSchedule ? `[Interview: ${r.interviewSchedule.date} ${r.interviewSchedule.time}]` : "[No Interview]"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Error Alert Box */}
+                            {loginError && (
+                                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-2.5 text-rose-800 text-xs text-left animate-in fade-in">
+                                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                                    <div className="space-y-1">
+                                        <span className="font-bold block">Access Restricted</span>
+                                        <p className="leading-relaxed text-rose-700">{loginError}</p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Form */}
                             <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
                                 {/* Email Field */}
                                 <div className="space-y-1.5">
                                     <label className="block text-xs font-bold text-slate-800">
-                                        Email ID
+                                        Email ID (as mentioned on Resume)
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -230,10 +339,13 @@ const CandidateLogin = () => {
                                         <input
                                             type="email"
                                             required
-                                            placeholder="Enter your email address"
+                                            placeholder="e.g. snehal.harde2935@gmail.com"
                                             value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-3 focus:ring-violet-500/10 transition shadow-2xs"
+                                            onChange={(e) => {
+                                                setEmail(e.target.value);
+                                                setLoginError("");
+                                            }}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-3 focus:ring-violet-500/10 transition shadow-2xs"
                                         />
                                     </div>
                                 </div>
@@ -241,7 +353,7 @@ const CandidateLogin = () => {
                                 {/* Phone Field */}
                                 <div className="space-y-1.5">
                                     <label className="block text-xs font-bold text-slate-800">
-                                        Phone Number (as per Resume)
+                                        Phone Number (as mentioned on Resume)
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -250,12 +362,18 @@ const CandidateLogin = () => {
                                         <input
                                             type="tel"
                                             required
-                                            placeholder="Enter your phone number"
+                                            placeholder="e.g. +91-8999646955"
                                             value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-3 focus:ring-violet-500/10 transition shadow-2xs"
+                                            onChange={(e) => {
+                                                setPhone(e.target.value);
+                                                setLoginError("");
+                                            }}
+                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-500 focus:ring-3 focus:ring-violet-500/10 transition shadow-2xs"
                                         />
                                     </div>
+                                    <p className="text-[11px] text-slate-400">
+                                        Must strictly match the contact number registered on your resume.
+                                    </p>
                                 </div>
 
                                 {/* Login CTA Button */}
@@ -263,13 +381,13 @@ const CandidateLogin = () => {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className="w-full py-3.5 px-6 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 hover:from-violet-700 hover:to-indigo-700 active:scale-[0.99] text-white rounded-xl text-sm font-bold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-75"
+                                        className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 hover:from-violet-700 hover:to-indigo-700 active:scale-[0.99] text-white rounded-xl text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2 group cursor-pointer disabled:opacity-75"
                                     >
                                         {isLoading ? (
                                             <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                                         ) : (
                                             <>
-                                                <span>Login</span>
+                                                <span>Verify &amp; Enter Interview Room</span>
                                                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
                                             </>
                                         )}
@@ -277,24 +395,15 @@ const CandidateLogin = () => {
                                 </div>
                             </form>
 
-                            {/* OR Divider */}
-                            <div className="relative flex py-2 items-center">
-                                <div className="flex-grow border-t border-slate-200"></div>
-                                <span className="flex-shrink mx-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                    OR
-                                </span>
-                                <div className="flex-grow border-t border-slate-200"></div>
-                            </div>
-
                             {/* Help & Support Footer */}
-                            <div className="text-center text-xs text-slate-500">
-                                Need Help?{" "}
+                            <div className="pt-2 text-center text-xs text-slate-500 border-t border-slate-100">
+                                Not scheduled yet or need to reschedule?{" "}
                                 <button
                                     type="button"
-                                    onClick={() => toast.info("HR Support: support@avahire.com • +91 800-AVA-HIRE")}
+                                    onClick={() => toast.info("HR Support: support@avahire.ai • Please contact your assigned recruiter.")}
                                     className="font-bold text-violet-600 hover:text-violet-700 hover:underline transition cursor-pointer"
                                 >
-                                    Contact HR
+                                    Contact HR Team
                                 </button>
                             </div>
 
@@ -306,8 +415,8 @@ const CandidateLogin = () => {
 
             {/* Footer info */}
             <footer className="w-full max-w-5xl mx-auto py-3 text-center text-xs text-slate-400 relative z-10 flex flex-wrap items-center justify-between gap-2">
-                <span>AvaHire AI Proctored Assessment</span>
-                <span>Role: {interviewData.role || "Frontend Developer"}</span>
+                <span>AvaHire AI Proctored Candidate Portal</span>
+                <span>Protected by AI Proctoring &amp; Identity Verification</span>
             </footer>
         </div>
     );
