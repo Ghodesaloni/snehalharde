@@ -390,4 +390,142 @@ router.post("/register", async (req, res) => {
   }
 });
 
+// POST /api/users/change-password - securely change password
+router.post("/change-password", async (req, res) => {
+  try {
+    const { currentPassword, newPassword, email } = req.body;
+    const authorEmail = (email || req.headers["x-user-email"] || "").trim().toLowerCase();
+
+    if (!authorEmail) {
+      return res.status(400).json({ success: false, error: "User email is required" });
+    }
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, error: "Current password and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: "New password must be at least 6 characters" });
+    }
+
+    const localUsers = readData(USERS_COLLECTION, defaultUsers);
+    const userIndex = localUsers.findIndex(u => u.email?.toLowerCase() === authorEmail);
+
+    if (userIndex === -1) {
+      return res.status(404).json({ success: false, error: "User account not found" });
+    }
+
+    const user = localUsers[userIndex];
+    const storedHash = user.password_hash || user.passwordHash;
+
+    const isMatch = verifyPassword(currentPassword, storedHash);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: "Current password is incorrect" });
+    }
+
+    const newSha256 = crypto.createHash("sha256").update(newPassword).digest("hex");
+    localUsers[userIndex].password_hash = newSha256;
+    localUsers[userIndex].passwordHash = newSha256;
+    localUsers[userIndex].updated_at = new Date().toISOString();
+    writeData(USERS_COLLECTION, localUsers);
+
+    try {
+      await query("UPDATE public.users SET password_hash = $1, updated_at = NOW() WHERE LOWER(email) = $2", [newSha256, authorEmail]);
+    } catch (e) {}
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || "Failed to update password" });
+  }
+});
+
+// PUT /api/users/profile - update user profile details
+router.put("/profile", async (req, res) => {
+  try {
+    const { name, fullName, designation, phone, company, location, bio } = req.body;
+    const authorEmail = (req.body.email || req.headers["x-user-email"] || "").trim().toLowerCase();
+
+    if (!authorEmail) {
+      return res.status(400).json({ success: false, error: "User email is required" });
+    }
+
+    const localUsers = readData(USERS_COLLECTION, defaultUsers);
+    const userIndex = localUsers.findIndex(u => u.email?.toLowerCase() === authorEmail);
+
+    if (userIndex >= 0) {
+      const u = localUsers[userIndex];
+      u.name = (name || fullName || u.name || "").trim();
+      if (designation) u.designation = designation.trim();
+      if (phone) u.phone = phone.trim();
+      if (company) u.company = company.trim();
+      if (location) u.location = location.trim();
+      if (bio) u.bio = bio.trim();
+      u.updated_at = new Date().toISOString();
+
+      writeData(USERS_COLLECTION, localUsers);
+
+      try {
+        await query(
+          "UPDATE public.users SET name = COALESCE($1, name), designation = COALESCE($2, designation), phone = COALESCE($3, phone), company = COALESCE($4, company), updated_at = NOW() WHERE LOWER(email) = $5",
+          [u.name, u.designation, u.phone, u.company, authorEmail]
+        );
+      } catch (e) {}
+
+      return res.json({ success: true, data: u, message: "Profile updated successfully" });
+    }
+
+    res.status(404).json({ success: false, error: "User not found" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || "Failed to update profile" });
+  }
+});
+
+// POST /api/users/2fa - toggle two factor auth
+router.post("/2fa", async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const authorEmail = (req.body.email || req.headers["x-user-email"] || "").trim().toLowerCase();
+    
+    const localUsers = readData(USERS_COLLECTION, defaultUsers);
+    const userIndex = localUsers.findIndex(u => u.email?.toLowerCase() === authorEmail);
+    if (userIndex >= 0) {
+      localUsers[userIndex].twoFactorEnabled = Boolean(enabled);
+      writeData(USERS_COLLECTION, localUsers);
+    }
+
+    const backupCodes = Array.from({ length: 8 }, () => 
+      `${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`
+    );
+
+    res.json({
+      success: true,
+      enabled: Boolean(enabled),
+      backupCodes,
+      message: enabled ? "2FA enabled with backup recovery codes" : "2FA disabled"
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/users/delete-account - delete user account
+router.post("/delete-account", async (req, res) => {
+  try {
+    const authorEmail = (req.body.email || req.headers["x-user-email"] || "").trim().toLowerCase();
+    if (!authorEmail) {
+      return res.status(400).json({ success: false, error: "User email is required" });
+    }
+
+    const localUsers = readData(USERS_COLLECTION, defaultUsers);
+    const filtered = localUsers.filter(u => u.email?.toLowerCase() !== authorEmail);
+    writeData(USERS_COLLECTION, filtered);
+
+    try {
+      await query("DELETE FROM public.users WHERE LOWER(email) = $1", [authorEmail]);
+    } catch (e) {}
+
+    res.json({ success: true, message: "Account deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;

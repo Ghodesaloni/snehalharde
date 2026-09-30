@@ -39,56 +39,36 @@ export const GoogleLogoSvg = ({ size = 22, className = "" }) => (
   </svg>
 );
 
-const DEFAULT_ACCOUNTS = [
-  {
-    id: "acc_1",
-    email: "salonighode3@gmail.com",
-    name: "Saloni Ghode",
-    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=200",
-    color: "bg-purple-600",
-    isDefault: true,
-  },
-  {
-    id: "acc_2",
-    email: "snehal.harde2935@gmail.com",
-    name: "Snehal Harde",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=200",
-    color: "bg-blue-600",
-    isDefault: true,
-  },
-  {
-    id: "acc_3",
-    email: "vanshikashrirame@gmail.com",
-    name: "Vanshika Shrirame",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200",
-    color: "bg-rose-600",
-    isDefault: true,
-  },
-  {
-    id: "acc_4",
-    email: "sneha.harde@gmail.com",
-    name: "Snehal Harde (Personal)",
-    avatar: "",
-    color: "bg-teal-600",
-    isDefault: true,
-  },
-  {
-    id: "acc_5",
-    email: "saloni.work@gmail.com",
-    name: "Saloni Ghode (Work)",
-    avatar: "",
-    color: "bg-emerald-600",
-    isDefault: true,
-  },
-  {
-    id: "acc_6",
-    email: "hr@avahire.ai",
-    name: "AvaHire HR Lead",
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=200",
-    color: "bg-indigo-600",
-    isDefault: true,
-  },
-];
+const getDefaultAccounts = () => {
+  try {
+    const userStr = localStorage.getItem("avahire_user");
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u && u.email) {
+        return [{
+          id: "acc_current",
+          email: u.email,
+          name: u.name || u.fullName || u.email.split("@")[0],
+          avatar: u.avatar || "",
+          color: "bg-purple-600",
+          isDefault: true
+        }];
+      }
+    }
+    const regEmail = localStorage.getItem("avahire_registered_email");
+    if (regEmail) {
+      return [{
+        id: "acc_reg",
+        email: regEmail,
+        name: regEmail.split("@")[0],
+        avatar: "",
+        color: "bg-purple-600",
+        isDefault: true
+      }];
+    }
+  } catch (e) {}
+  return [];
+};
 
 const GoogleAccountChooserModal = ({
   isOpen,
@@ -99,7 +79,7 @@ const GoogleAccountChooserModal = ({
   initialName = "",
 }) => {
   const [view, setView] = useState("choose"); // "choose" or "add"
-  const [accounts, setAccounts] = useState(DEFAULT_ACCOUNTS);
+  const [accounts, setAccounts] = useState([]);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -121,20 +101,19 @@ const GoogleAccountChooserModal = ({
 
     try {
       const stored = localStorage.getItem("avahire_google_accounts");
-      let list = DEFAULT_ACCOUNTS;
+      let list = getDefaultAccounts();
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Merge unique by email
           const emailMap = new Map();
-          [...DEFAULT_ACCOUNTS, ...parsed].forEach((a) => {
+          [...list, ...parsed].forEach((a) => {
             if (a.email) emailMap.set(a.email.toLowerCase(), a);
           });
           list = Array.from(emailMap.values());
         }
       }
 
-      // If initialEmail was passed and not in list, prefill add view or add as suggestion
+      // If initialEmail was passed and not in list, add as suggestion
       if (initialEmail && initialEmail.includes("@")) {
         const exists = list.some(
           (a) => a.email.toLowerCase() === initialEmail.toLowerCase()
@@ -153,8 +132,14 @@ const GoogleAccountChooserModal = ({
       }
 
       setAccounts(list);
+      // If no account is stored yet, immediately show enter account view
+      if (list.length === 0) {
+        setView("add");
+      } else {
+        setView("choose");
+      }
     } catch {
-      setAccounts(DEFAULT_ACCOUNTS);
+      setAccounts(getDefaultAccounts());
     }
   }, [isOpen, initialEmail, initialName]);
 

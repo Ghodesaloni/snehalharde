@@ -4,6 +4,35 @@ const interviewsDb = require("./interviewsDb");
 const candidatesDb = require("./candidatesDb");
 const emailCenterDb = require("./emailCenterDb");
 
+function matchesUser(item, targetEmail) {
+  if (!targetEmail) return true;
+  const target = targetEmail.toLowerCase().trim();
+  const createdBy = (item.createdBy || "").toLowerCase().trim();
+  const userEmail = (item.userEmail || "").toLowerCase().trim();
+
+  if (createdBy === target || userEmail === target) return true;
+
+  // Handle Saloni Ghode email aliases
+  if (
+    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
+    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
+     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
+  ) {
+    return true;
+  }
+
+  // Handle Snehal Harde email aliases
+  if (
+    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
+    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
+     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 class DashboardDatabase {
   async getStats(userEmail) {
     let jobs = await Promise.resolve(jobsDb.getAll());
@@ -12,23 +41,10 @@ class DashboardDatabase {
     let candidates = await Promise.resolve(candidatesDb.getAll());
 
     if (userEmail) {
-      const emailLower = userEmail.toLowerCase().trim();
-      jobs = jobs.filter(j =>
-        (j.createdBy && j.createdBy.toLowerCase() === emailLower) ||
-        (j.userEmail && j.userEmail.toLowerCase() === emailLower)
-      );
-      resumes = resumes.filter(r =>
-        (r.createdBy && r.createdBy.toLowerCase() === emailLower) ||
-        (r.userEmail && r.userEmail.toLowerCase() === emailLower)
-      );
-      interviews = interviews.filter(i =>
-        (i.createdBy && i.createdBy.toLowerCase() === emailLower) ||
-        (i.userEmail && i.userEmail.toLowerCase() === emailLower)
-      );
-      candidates = candidates.filter(c =>
-        (c.createdBy && c.createdBy.toLowerCase() === emailLower) ||
-        (c.userEmail && c.userEmail.toLowerCase() === emailLower)
-      );
+      jobs = jobs.filter(j => matchesUser(j, userEmail));
+      resumes = resumes.filter(r => matchesUser(r, userEmail));
+      interviews = interviews.filter(i => matchesUser(i, userEmail));
+      candidates = candidates.filter(c => matchesUser(c, userEmail));
     } else {
       jobs = [];
       resumes = [];

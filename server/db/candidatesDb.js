@@ -3,6 +3,35 @@ const { getPool } = require("./postgres");
 
 const COLLECTION = "candidates";
 
+function matchesUser(item, targetEmail) {
+  if (!targetEmail) return true;
+  const target = targetEmail.toLowerCase().trim();
+  const createdBy = (item.createdBy || "").toLowerCase().trim();
+  const userEmail = (item.userEmail || "").toLowerCase().trim();
+
+  if (createdBy === target || userEmail === target) return true;
+
+  // Handle Saloni Ghode email aliases
+  if (
+    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
+    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
+     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
+  ) {
+    return true;
+  }
+
+  // Handle Snehal Harde email aliases
+  if (
+    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
+    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
+     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 class CandidatesDatabase {
   async getAll(filters = {}) {
     // 1. Try PostgreSQL first
@@ -14,9 +43,10 @@ class CandidatesDatabase {
 
       if (filters.userEmail) {
         const emailLower = filters.userEmail.toLowerCase().trim();
-        const isDemo = emailLower === "hr@avahire.ai" || emailLower === "admin@avahire.ai";
-        if (!isDemo) {
-          params.push(emailLower);
+        params.push(emailLower);
+        if (emailLower === "salonighode@gmail.com" || emailLower === "salonighode3@gmail.com") {
+          conditions.push(`(LOWER(created_by) IN ('salonighode@gmail.com', 'salonighode3@gmail.com') OR LOWER(user_email) IN ('salonighode@gmail.com', 'salonighode3@gmail.com'))`);
+        } else {
           conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
         }
       }
@@ -43,9 +73,7 @@ class CandidatesDatabase {
       query += " ORDER BY created_at DESC";
 
       const res = await p.query(query, params);
-      if (res.rows && res.rows.length > 0) {
-        return res.rows.map(this._mapRow);
-      }
+      return (res.rows || []).map(this._mapRow);
     } catch (err) {
       console.warn("PostgreSQL candidates getAll fallback:", err.message);
     }
@@ -53,11 +81,7 @@ class CandidatesDatabase {
     // 2. Fallback to local JSON mirror
     let list = readData(COLLECTION, []);
     if (filters.userEmail) {
-      const emailLower = filters.userEmail.toLowerCase().trim();
-      list = list.filter(c =>
-        (c.createdBy && c.createdBy.toLowerCase() === emailLower) ||
-        (c.userEmail && c.userEmail.toLowerCase() === emailLower)
-      );
+      list = list.filter(c => matchesUser(c, filters.userEmail));
     }
     if (filters.status && filters.status !== "All") {
       list = list.filter(c => (c.status || "").toLowerCase() === filters.status.toLowerCase());

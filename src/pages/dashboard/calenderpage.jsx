@@ -23,7 +23,7 @@ import {
     RefreshCw
 } from "lucide-react";
 import { getStoredInterviews, saveInterviews } from "@/utils/interviewStore";
-import { interviewsApi } from "@/services/api";
+import { interviewsApi, candidatesApi } from "@/services/api";
 
 const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -68,18 +68,22 @@ const getInterviewStatusConfig = (status) => {
         s === "done" ||
         s === "terminated" ||
         s === "expired" ||
-        s === "inactive"
+        s === "inactive" ||
+        s === "selected" ||
+        s === "rejected" ||
+        s === "shortlisted" ||
+        s === "under review"
     ) {
         return {
             category: "ended",
-            label: "Ended",
+            label: "Conducted",
             dotClass: "bg-blue-500",
             dotPing: false,
             pillClass: "bg-blue-100 text-blue-900 border-blue-300 hover:bg-blue-200",
             badgeClass: "bg-blue-50 text-blue-800 border-blue-200/90",
             badgeDot: "bg-blue-500",
             textColor: "text-blue-700",
-            description: "Ended",
+            description: "Conducted Interview",
         };
     }
 
@@ -100,7 +104,7 @@ const getInterviewStatusConfig = (status) => {
 // Robust date parser for any date string format in stored interviews
 const parseInterviewDate = (iv) => {
     if (!iv) return null;
-    const dateVal = iv.date || iv.scheduledDate || iv.expiryTime || iv.createdAt;
+    const dateVal = iv.date || iv.scheduledDate || iv.interviewDate || iv.interview_date || iv.timestamp || iv.expiryTime || iv.createdAt;
     if (!dateVal) return null;
 
     if (dateVal instanceof Date && !isNaN(dateVal)) {
@@ -116,7 +120,7 @@ const parseInterviewDate = (iv) => {
     }
 
     // Match "29 September 2026" or "29 Sep 2026"
-    const match = str.match(/(\d{1,2})[\s\-\/]+([a-zA-Z]+)[\s\-\/]+(\d{4})/);
+    const match = str.match(/(\d{1,2})[\s\-/]+([a-zA-Z]+)[\s\-/]+(\d{4})/);
     if (match) {
         const d = parseInt(match[1], 10);
         const mStr = match[2].toLowerCase();
@@ -128,13 +132,13 @@ const parseInterviewDate = (iv) => {
     }
 
     // Match DD-MM-YYYY or DD/MM/YYYY
-    const dmyMatch = str.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    const dmyMatch = str.match(/(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})/);
     if (dmyMatch) {
         return new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
     }
 
     // Match YYYY-MM-DD
-    const ymdMatch = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    const ymdMatch = str.match(/(\d{4})[/\-](\d{1,2})[/\-](\d{1,2})/);
     if (ymdMatch) {
         return new Date(parseInt(ymdMatch[1], 10), parseInt(ymdMatch[2], 10) - 1, parseInt(ymdMatch[1], 10));
     }
@@ -153,22 +157,94 @@ const CalendarPage = () => {
     const [selectedInterview, setSelectedInterview] = useState(null);
     const [copiedCode, setCopiedCode] = useState(null);
     const [searchTerm, setSearchTerm] = useState(querySearch);
+    const [timelineStatusFilter, setTimelineStatusFilter] = useState("All");
 
     const [interviews, setInterviews] = useState(() => {
         return getStoredInterviews();
     });
 
-    // Refresh & sync interviews from store and backend API
+    // Refresh & sync interviews and candidates from store and backend API
     const refreshInterviews = async () => {
         try {
-            const data = await interviewsApi.getAll();
-            if (Array.isArray(data) && data.length > 0) {
-                setInterviews(data);
-                saveInterviews(data);
-                return;
+            const currentUser = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+            const currentEmail = (currentUser.email || localStorage.getItem("avahire_registered_email") || "").toLowerCase().trim();
+
+            const [interviewsData, candidatesData] = await Promise.allSettled([
+                interviewsApi.getAll(),
+                candidatesApi.getAll()
+            ]);
+
+            let ivList = interviewsData.status === "fulfilled" && Array.isArray(interviewsData.value)
+                ? interviewsData.value
+                : getStoredInterviews();
+
+            // Helper to strictly isolate HR data to the current authenticated HR user
+            const isMatchAuthor = (author) => {
+                if (!currentEmail) return true;
+                const a = (author || "").toLowerCase().trim();
+                if (a === currentEmail) return true;
+                if ((currentEmail === "salonighode@gmail.com" || currentEmail === "salonighode3@gmail.com") &&
+                    (a === "salonighode@gmail.com" || a === "salonighode3@gmail.com")) return true;
+                if ((currentEmail === "snehal.harde2935@gmail.com" || currentEmail === "snehalharde09@gmail.com" || currentEmail === "sneha.harde2935@gmail.com") &&
+                    (a === "snehal.harde2935@gmail.com" || a === "snehalharde09@gmail.com" || a === "sneha.harde2935@gmail.com")) return true;
+                return false;
+            };
+
+            // Filter interviews by current user's email strictly to isolate HR data
+            if (currentEmail) {
+                ivList = ivList.filter(iv => isMatchAuthor(iv.createdBy || iv.userEmail));
             }
+
+            // Extract candidates who have an interview date or conducted interview
+            let candList = candidatesData.status === "fulfilled" && Array.isArray(candidatesData.value)
+                ? candidatesData.value
+                : [];
+
+            if (currentEmail) {
+                candList = candList.filter(c => isMatchAuthor(c.createdBy || c.userEmail));
+            }
+
+            // Convert candidate interview entries into calendar-compatible events
+            const candidateEvents = candList
+                .filter(c => c.interviewDate || c.interview_date || c.timestamp || c.createdAt)
+                .map(c => ({
+                    id: `cand_event_${c.id}`,
+                    candidateId: c.id,
+                    name: c.name || "Candidate",
+                    email: c.email || "",
+                    phone: c.phone || "",
+                    role: c.role || "Software Engineer",
+                    date: c.interviewDate || c.interview_date || c.timestamp || c.createdAt,
+                    time: c.timestamp?.includes(":") ? c.timestamp : "Conducted",
+                    duration: c.duration || "45 Mins",
+                    status: c.status === "Scheduled" ? "Scheduled" : (c.status === "Under Review" || c.status === "In Progress" ? "In Process" : "Completed"),
+                    score: c.score,
+                    notes: c.notes || "",
+                    recommendation: c.recommendation || "",
+                    summaryPoints: c.summary_points || c.summaryPoints || [],
+                    evaluationBreakdown: c.evaluation_breakdown || c.evaluationBreakdown || [],
+                    transcript: c.transcript || [],
+                    linkCode: c.linkCode || (c.id ? `cand-${c.id.slice(-6)}` : "room-1"),
+                    isCandidateRecord: true
+                }));
+
+            // Merge deduplicating by linkCode or email
+            const merged = [...ivList];
+            candidateEvents.forEach(ce => {
+                const alreadyExists = merged.some(m => 
+                    (m.linkCode && m.linkCode === ce.linkCode) ||
+                    (m.email && ce.email && m.email.toLowerCase() === ce.email.toLowerCase())
+                );
+                if (!alreadyExists) {
+                    merged.push(ce);
+                }
+            });
+
+            setInterviews(merged);
+            saveInterviews(merged);
+            return;
         } catch (e) {
-            // fallback to localStorage
+            console.warn("Calendar load error:", e);
         }
         setInterviews(getStoredInterviews());
     };
@@ -177,15 +253,17 @@ const CalendarPage = () => {
         refreshInterviews();
 
         const handleStorage = () => {
-            setInterviews(getStoredInterviews());
+            refreshInterviews();
         };
 
         window.addEventListener("storage", handleStorage);
         window.addEventListener("avahire_interviews_updated", handleStorage);
+        window.addEventListener("avahire_candidates_updated", handleStorage);
 
         return () => {
             window.removeEventListener("storage", handleStorage);
             window.removeEventListener("avahire_interviews_updated", handleStorage);
+            window.removeEventListener("avahire_candidates_updated", handleStorage);
         };
     }, []);
 
@@ -267,6 +345,31 @@ const CalendarPage = () => {
     };
 
     const selectedDayInterviews = getInterviewsForDay(selectedDate);
+
+    // Chronological candidate interview line dates
+    const candidateTimelineList = useMemo(() => {
+        let list = [...interviews];
+        if (searchTerm.trim()) {
+            const q = searchTerm.toLowerCase();
+            list = list.filter(iv => 
+                (iv.name && iv.name.toLowerCase().includes(q)) ||
+                (iv.role && iv.role.toLowerCase().includes(q)) ||
+                (iv.email && iv.email.toLowerCase().includes(q)) ||
+                (iv.linkCode && iv.linkCode.toLowerCase().includes(q))
+            );
+        }
+        if (timelineStatusFilter !== "All") {
+            list = list.filter(iv => {
+                const cfg = getInterviewStatusConfig(iv.status);
+                return cfg.label.toLowerCase() === timelineStatusFilter.toLowerCase();
+            });
+        }
+        return list.sort((a, b) => {
+            const dateA = new Date(a.date || a.createdAt || 0);
+            const dateB = new Date(b.date || b.createdAt || 0);
+            return dateB - dateA;
+        });
+    }, [interviews, searchTerm, timelineStatusFilter]);
 
     return (
         <div className="space-y-6" data-testid="calendar-page">
@@ -461,14 +564,14 @@ const CalendarPage = () => {
                             </span>
                         </div>
 
-                        {/* List of interviews on selected date */}
+                        {/* List of interviews & candidate line dates on selected date */}
                         {selectedDayInterviews.length === 0 ? (
                             <div className="py-10 text-center space-y-3">
                                 <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                                     <CalendarCheck className="w-6 h-6 text-slate-300" />
                                 </div>
                                 <p className="text-xs text-slate-500 font-medium">
-                                    No interviews scheduled on {selectedDate} {monthNames[month]} {year}.
+                                    No interviews scheduled or conducted on {selectedDate} {monthNames[month]} {year}.
                                 </p>
                                 <Link
                                     to="/app/interviews"
@@ -479,18 +582,21 @@ const CalendarPage = () => {
                                 </Link>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {selectedDayInterviews.map((iv) => {
+                            <div className="relative pl-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-violet-200/80 space-y-4">
+                                {selectedDayInterviews.map((iv, index) => {
                                     const statusCfg = getInterviewStatusConfig(iv.status);
 
                                     return (
                                         <div
-                                            key={iv.id || iv.linkCode}
+                                            key={iv.id || iv.linkCode || index}
                                             onClick={() => setSelectedInterview(iv)}
-                                            className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 hover:border-violet-300 transition cursor-pointer space-y-2 group"
+                                            className="relative p-3.5 rounded-2xl border border-slate-200/80 bg-white hover:bg-violet-50/30 hover:border-violet-300 transition cursor-pointer space-y-2.5 shadow-2xs group"
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
+                                            {/* Timeline Node on Left Line */}
+                                            <div className={`absolute -left-[23px] top-4 w-3.5 h-3.5 rounded-full border-2 border-white ${statusCfg.dotClass} shadow-xs ring-2 ring-violet-200`} />
+
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-center gap-2.5">
                                                     <div className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 ${statusCfg.pillClass}`}>
                                                         {iv.name?.charAt(0) || "C"}
                                                     </div>
@@ -505,19 +611,35 @@ const CalendarPage = () => {
                                                 </div>
 
                                                 {/* Color-coded Status Badge */}
-                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${statusCfg.badgeClass}`}>
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${statusCfg.badgeClass}`}>
                                                     <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.badgeDot}`} />
                                                     <span>{statusCfg.label}</span>
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/50">
+                                            {/* Score & Recommendation Line if Interviewed */}
+                                            {iv.score !== undefined && iv.score !== null && (
+                                                <div className="flex items-center gap-2 pt-1 text-[11px]">
+                                                    <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/60">
+                                                        Score: {iv.score}%
+                                                    </span>
+                                                    {iv.recommendation && (
+                                                        <span className="text-slate-500 truncate font-medium">
+                                                            • {iv.recommendation}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-100">
                                                 <div className="flex items-center gap-1">
                                                     <Clock className="w-3 h-3 text-slate-400" />
-                                                    <span>{iv.time || "Scheduled"}</span>
+                                                    <span className="font-semibold text-slate-700">{iv.time || "Scheduled"}</span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span>{iv.duration || "45m"}</span>
                                                 </div>
-                                                <div className="font-mono text-violet-700 font-semibold">
-                                                    /i/{iv.linkCode}
+                                                <div className="font-mono text-violet-700 font-bold text-[10px]">
+                                                    {iv.linkCode ? `/i/${iv.linkCode}` : "Conducted"}
                                                 </div>
                                             </div>
                                         </div>
@@ -530,10 +652,152 @@ const CalendarPage = () => {
 
             </div>
 
+            {/* Candidate Interview Line Dates & Chronological Timeline Section */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-7 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <div className="flex items-center gap-2.5">
+                            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+                                Candidate Interview Dates &amp; Line Timeline
+                            </h2>
+                            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200">
+                                {candidateTimelineList.length} Interviews
+                            </span>
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            Detailed line dates of all scheduled and conducted candidate interviews with AI assessment status, ATS scores, and room links.
+                        </p>
+                    </div>
+
+                    {/* Filter Badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {["All", "Scheduled", "In Process", "Completed"].map((filter) => (
+                            <button
+                                key={filter}
+                                onClick={() => setTimelineStatusFilter(filter)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    timelineStatusFilter === filter
+                                        ? "bg-violet-600 text-white shadow-xs"
+                                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                }`}
+                            >
+                                {filter}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {candidateTimelineList.length === 0 ? (
+                    <div className="py-12 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                            <CalendarCheck className="w-6 h-6 text-slate-300" />
+                        </div>
+                        <p className="text-sm font-semibold text-slate-700">No candidate interviews found</p>
+                        <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                            There are currently no interviews matching your search or filter. You can schedule new interviews from the Interviews tab.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
+                                    <th className="pb-3 pl-2">Line Date &amp; Time</th>
+                                    <th className="pb-3">Candidate</th>
+                                    <th className="pb-3">Job Role</th>
+                                    <th className="pb-3">Status</th>
+                                    <th className="pb-3">ATS Score</th>
+                                    <th className="pb-3">Duration</th>
+                                    <th className="pb-3 text-right pr-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {candidateTimelineList.map((iv) => {
+                                    const statusCfg = getInterviewStatusConfig(iv.status);
+                                    return (
+                                        <tr
+                                            key={iv.id || iv.linkCode}
+                                            onClick={() => setSelectedInterview(iv)}
+                                            className="hover:bg-violet-50/40 transition cursor-pointer group"
+                                        >
+                                            <td className="py-3.5 pl-2 font-bold text-slate-800 whitespace-nowrap">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`w-2 h-2 rounded-full ${statusCfg.dotClass}`} />
+                                                    <span>{iv.date || "Scheduled Date"}</span>
+                                                    {iv.time && (
+                                                        <span className="text-[11px] font-normal text-slate-400">
+                                                            • {iv.time}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="py-3.5 whitespace-nowrap">
+                                                <div className="font-bold text-slate-900 group-hover:text-violet-600 transition">
+                                                    {iv.name || "Candidate"}
+                                                </div>
+                                                {iv.email && (
+                                                    <div className="text-[11px] text-slate-400 font-normal">
+                                                        {iv.email}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="py-3.5 text-slate-600 font-medium whitespace-nowrap">
+                                                {iv.role || "Software Engineer"}
+                                            </td>
+                                            <td className="py-3.5 whitespace-nowrap">
+                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${statusCfg.badgeClass}`}>
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${statusCfg.badgeDot}`} />
+                                                    <span>{statusCfg.label}</span>
+                                                </span>
+                                            </td>
+                                            <td className="py-3.5 whitespace-nowrap">
+                                                {iv.score !== undefined && iv.score !== null ? (
+                                                    <span className="font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                                                        {iv.score}%
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 italic">Pending</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3.5 text-slate-500 whitespace-nowrap font-medium">
+                                                {iv.duration || "45 Mins"}
+                                            </td>
+                                            <td className="py-3.5 pr-2 text-right whitespace-nowrap">
+                                                <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => setSelectedInterview(iv)}
+                                                        className="px-2.5 py-1 text-xs font-bold text-violet-700 hover:bg-violet-100/60 rounded-lg transition"
+                                                    >
+                                                        Details
+                                                    </button>
+                                                    {iv.linkCode && (
+                                                        <button
+                                                            onClick={(e) => handleCopy(iv.linkCode, e)}
+                                                            className="p-1 text-slate-400 hover:text-violet-600 rounded-lg transition"
+                                                            title="Copy Interview Link"
+                                                        >
+                                                            {copiedCode === iv.linkCode ? (
+                                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
             {/* MODAL: Interview Event Details */}
             {selectedInterview && (
                 <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-                    <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95">
+                    <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-2xl p-6 sm:p-7 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
                         {/* Header */}
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <div className="flex items-center gap-2.5">
@@ -542,10 +806,10 @@ const CalendarPage = () => {
                                 </div>
                                 <div>
                                     <h3 className="text-base font-bold text-slate-900">
-                                        Scheduled Interview Details
+                                        Candidate Interview Details
                                     </h3>
                                     <p className="text-xs text-slate-400">
-                                        Room Code: <span className="font-mono font-bold text-violet-700">{selectedInterview.linkCode}</span>
+                                        Candidate: <span className="font-bold text-slate-700">{selectedInterview.name}</span>
                                     </p>
                                 </div>
                             </div>
@@ -568,16 +832,16 @@ const CalendarPage = () => {
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</span>
-                                        <span className="text-xs font-medium text-slate-700">{selectedInterview.email}</span>
+                                        <span className="text-xs font-medium text-slate-700">{selectedInterview.email || "N/A"}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Role</span>
                                         <span className="text-xs font-bold text-violet-700">{selectedInterview.role}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Schedule</span>
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Line Date / Time</span>
                                         <span className="text-xs font-bold text-slate-800">
-                                            {selectedInterview.date} at {selectedInterview.time}
+                                            {selectedInterview.date} {selectedInterview.time ? `• ${selectedInterview.time}` : ""}
                                         </span>
                                     </div>
                                     <div className="flex items-center justify-between">
@@ -587,39 +851,57 @@ const CalendarPage = () => {
                                             <span>{statusCfg.label} ({statusCfg.description})</span>
                                         </span>
                                     </div>
+                                    {selectedInterview.score !== undefined && selectedInterview.score !== null && (
+                                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Evaluation Score</span>
+                                            <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
+                                                {selectedInterview.score}%
+                                            </span>
+                                        </div>
+                                    )}
+                                    {selectedInterview.recommendation && (
+                                        <div className="pt-1 border-t border-slate-200/60">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Recommendation</span>
+                                            <p className="text-xs text-slate-700 italic bg-white p-2.5 rounded-xl border border-slate-200/70">
+                                                "{selectedInterview.recommendation}"
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })()}
 
                         {/* Candidate Portal Link Bar */}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-slate-700 block">Candidate Interview Portal Link</label>
-                            <div className="p-3 bg-violet-50/50 border border-violet-200/80 rounded-xl flex items-center justify-between gap-2">
-                                <span className="font-mono text-xs font-bold text-violet-800 break-all truncate">
-                                    {`${window.location.origin}/i/${selectedInterview.linkCode}`}
-                                </span>
-                                <button
-                                    onClick={(e) => handleCopy(selectedInterview.linkCode, e)}
-                                    className="p-1.5 text-violet-600 hover:text-violet-900 rounded-lg hover:bg-violet-100/50 transition shrink-0"
-                                    title="Copy link"
-                                >
-                                    {copiedCode === selectedInterview.linkCode ? (
-                                        <Check className="w-4 h-4 text-emerald-600" />
-                                    ) : (
-                                        <Copy className="w-4 h-4" />
-                                    )}
-                                </button>
+                        {selectedInterview.linkCode && (
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-700 block">Candidate Interview Portal Link</label>
+                                <div className="p-3 bg-violet-50/50 border border-violet-200/80 rounded-xl flex items-center justify-between gap-2">
+                                    <span className="font-mono text-xs font-bold text-violet-800 break-all truncate">
+                                        {`${window.location.origin}/i/${selectedInterview.linkCode}`}
+                                    </span>
+                                    <button
+                                        onClick={(e) => handleCopy(selectedInterview.linkCode, e)}
+                                        className="p-1.5 text-violet-600 hover:text-violet-900 rounded-lg hover:bg-violet-100/50 transition shrink-0 cursor-pointer"
+                                        title="Copy link"
+                                    >
+                                        {copiedCode === selectedInterview.linkCode ? (
+                                            <Check className="w-4 h-4 text-emerald-600" />
+                                        ) : (
+                                            <Copy className="w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* Action Buttons to all other HR pages */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                             <Link
-                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email || "")}&interviewCode=${selectedInterview.linkCode}&role=${encodeURIComponent(selectedInterview.role || "")}`}
+                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email || "")}&interviewCode=${selectedInterview.linkCode || ""}&role=${encodeURIComponent(selectedInterview.role || "")}`}
                                 className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                             >
                                 <Mail className="w-3.5 h-3.5" />
-                                <span>Send Email Invitation</span>
+                                <span>Send Invitation</span>
                             </Link>
 
                             <Link
@@ -627,23 +909,27 @@ const CalendarPage = () => {
                                 className="py-2.5 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                             >
                                 <Users className="w-3.5 h-3.5" />
-                                <span>View in Candidates</span>
+                                <span>View Candidate</span>
                             </Link>
                         </div>
 
                         <div className="flex items-center justify-end gap-2 pt-1">
                             <button
                                 onClick={() => setSelectedInterview(null)}
-                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold"
+                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
                             >
                                 Close
                             </button>
-                            <Link
-                                to="/app/interviews"
-                                className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/25 transition"
-                            >
-                                Manage in Interviews
-                            </Link>
+                            {selectedInterview.linkCode && (
+                                <Link
+                                    to={`/i/${selectedInterview.linkCode}`}
+                                    target="_blank"
+                                    className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/25 transition inline-flex items-center gap-1.5"
+                                >
+                                    <Video className="w-3.5 h-3.5" />
+                                    <span>Enter Interview Room</span>
+                                </Link>
+                            )}
                         </div>
                     </div>
                 </div>

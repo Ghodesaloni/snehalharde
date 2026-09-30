@@ -30,8 +30,21 @@ api.interceptors.request.use((config) => {
     }
     try {
       const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
-      if (user && user.email) {
-        config.headers["X-User-Email"] = user.email;
+      const userEmail = (user?.email || localStorage.getItem("avahire_registered_email") || "").trim();
+      if (userEmail) {
+        config.headers["X-User-Email"] = userEmail;
+        if (!config.params) {
+          config.params = {};
+        }
+        if (!config.params.userEmail) {
+          config.params.userEmail = userEmail;
+        }
+
+        // For POST/PUT payloads, auto-inject creator identity if not provided
+        if (config.data && typeof config.data === "object" && !(config.data instanceof FormData)) {
+          if (!config.data.createdBy) config.data.createdBy = userEmail;
+          if (!config.data.userEmail) config.data.userEmail = userEmail;
+        }
       }
     } catch {
       // ignore JSON parse error
@@ -357,6 +370,22 @@ export const settingsApi = {
   },
   testAwsConnection: async () => {
     const res = await api.post("/settings/aws/test");
+    return res.data;
+  },
+  changePassword: async ({ currentPassword, newPassword, email }) => {
+    const res = await api.post("/users/change-password", { currentPassword, newPassword, email });
+    return res.data;
+  },
+  updateUserProfile: async (data) => {
+    const res = await api.put("/users/profile", data);
+    return res.data;
+  },
+  manage2FA: async ({ enabled, email }) => {
+    const res = await api.post("/users/2fa", { enabled, email });
+    return res.data;
+  },
+  deleteAccount: async (email) => {
+    const res = await api.post("/users/delete-account", { email });
     return res.data;
   }
 };

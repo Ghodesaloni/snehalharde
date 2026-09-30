@@ -1,24 +1,54 @@
 // Storage helper for interviews and candidate links with backend database synchronization
 import { interviewsApi } from "@/services/api";
 
-const STORAGE_KEY = "avahire_interview_sessions";
+const BASE_STORAGE_KEY = "avahire_interview_sessions";
+
+const getCurrentUserEmail = () => {
+    try {
+        const u = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+        return (u?.email || localStorage.getItem("avahire_registered_email") || "").toLowerCase().trim();
+    } catch {
+        return "";
+    }
+};
+
+const getStorageKey = () => {
+    const email = getCurrentUserEmail();
+    return email ? `${BASE_STORAGE_KEY}_${email}` : BASE_STORAGE_KEY;
+};
 
 export const initialInterviews = [];
 
 export const getStoredInterviews = () => {
     try {
-        const data = localStorage.getItem(STORAGE_KEY);
+        const key = getStorageKey();
+        const currentEmail = getCurrentUserEmail();
+        const data = localStorage.getItem(key);
         if (data) {
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed)) {
-                // Filter out any leftover legacy demo records
-                const cleaned = parsed.filter(
-                    (iv) => !["Snehal Harde", "Rohan Verma", "Aisha Khan", "Rahul Mehta", "Neha Sharma"].includes(iv.name)
-                );
-                if (cleaned.length !== parsed.length) {
-                    saveInterviews(cleaned);
+                return parsed;
+            }
+        }
+
+        // Check fallback unpartitioned key only if partitioned was empty, and filter by user
+        if (currentEmail) {
+            const baseData = localStorage.getItem(BASE_STORAGE_KEY);
+            if (baseData) {
+                const baseParsed = JSON.parse(baseData);
+                if (Array.isArray(baseParsed)) {
+                    const filtered = baseParsed.filter(iv => {
+                        const author = (iv.createdBy || iv.userEmail || "").toLowerCase().trim();
+                        if (currentEmail === "salonighode@gmail.com" || currentEmail === "salonighode3@gmail.com") {
+                            return author === "salonighode@gmail.com" || author === "salonighode3@gmail.com";
+                        }
+                        return author === currentEmail;
+                    });
+                    if (filtered.length > 0) {
+                        saveInterviews(filtered);
+                        return filtered;
+                    }
                 }
-                return cleaned;
             }
         }
     } catch (e) {
@@ -32,7 +62,8 @@ export const getInterviews = getStoredInterviews;
 export const saveInterviews = (interviews) => {
     try {
         if (!Array.isArray(interviews)) return;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(interviews));
+        const key = getStorageKey();
+        localStorage.setItem(key, JSON.stringify(interviews));
         if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("avahire_interviews_updated"));
         }
@@ -54,34 +85,41 @@ export const getInterviewByCodeOrId = (codeOrId) => {
 };
 
 export const addOrUpdateInterview = (interviewData) => {
+    const currentEmail = getCurrentUserEmail();
+    const dataWithAuthor = {
+        ...interviewData,
+        createdBy: interviewData.createdBy || currentEmail,
+        userEmail: interviewData.userEmail || currentEmail
+    };
+
     const list = getStoredInterviews();
     const existingIndex = list.findIndex(
         (iv) =>
-            (interviewData.id && iv.id === interviewData.id) ||
-            (interviewData.linkCode && iv.linkCode === interviewData.linkCode) ||
-            (interviewData.candidateId && iv.candidateId === interviewData.candidateId)
+            (dataWithAuthor.id && iv.id === dataWithAuthor.id) ||
+            (dataWithAuthor.linkCode && iv.linkCode === dataWithAuthor.linkCode) ||
+            (dataWithAuthor.candidateId && iv.candidateId === dataWithAuthor.candidateId)
     );
 
     let updatedList;
     if (existingIndex >= 0) {
         updatedList = [...list];
-        updatedList[existingIndex] = { ...updatedList[existingIndex], ...interviewData };
+        updatedList[existingIndex] = { ...updatedList[existingIndex], ...dataWithAuthor };
     } else {
-        updatedList = [interviewData, ...list];
+        updatedList = [dataWithAuthor, ...list];
     }
 
     saveInterviews(updatedList);
 
     // Sync with backend API
     try {
-        interviewsApi.create(interviewData).catch(() => {
+        interviewsApi.create(dataWithAuthor).catch(() => {
             // Already created or network fallback
         });
     } catch (err) {
         console.warn("Could not sync interview to backend:", err);
     }
 
-    return interviewData;
+    return dataWithAuthor;
 };
 
 export const removeInterview = (idOrCode) => {

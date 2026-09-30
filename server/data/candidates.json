@@ -1,5 +1,120 @@
 [
   {
+    "id": "cand-saloni-01",
+    "name": "Aryan Sharma",
+    "role": "Software Engineer",
+    "email": "aryan.sharma@example.com",
+    "phone": "+91 98111 22334",
+    "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150",
+    "interviewDate": "25 September 2026, 10:30 AM",
+    "timestamp": "1790332200000",
+    "duration": "45m 12s",
+    "mode": "AI Interview",
+    "score": 94,
+    "status": "Selected",
+    "notes": "Outstanding algorithmic and full-stack system architecture depth. Demonstrates clear communication and hands-on React / Node.js proficiency.",
+    "summaryPoints": [
+      "Extensive experience architecting distributed REST and GraphQL services.",
+      "Flawless live coding of asynchronous state handling in React.",
+      "Articulate responses on database normalization and cache management."
+    ],
+    "recommendation": "Strong Hire",
+    "transcript": [
+      {
+        "speaker": "Ava (AI)",
+        "text": "Hello Aryan! Welcome to your technical assessment. Could you briefly introduce your recent backend project?"
+      },
+      {
+        "speaker": "Aryan Sharma",
+        "text": "Hi Ava! Recently I built a high-throughput webhook processing service using Node.js, Redis queues, and PostgreSQL."
+      },
+      {
+        "speaker": "Ava (AI)",
+        "text": "Excellent. How did you handle backpressure and dead-letter queues during peak loads?"
+      },
+      {
+        "speaker": "Aryan Sharma",
+        "text": "We configured exponential backoff retries with Redis BullMQ and isolated poison-pill payloads into an SQS dead-letter queue."
+      }
+    ],
+    "evaluationBreakdown": [
+      {
+        "category": "Technical Architecture",
+        "score": 96,
+        "weight": "40%",
+        "comment": "Demonstrated deep microservices and database acumen."
+      },
+      {
+        "category": "Problem Solving",
+        "score": 94,
+        "weight": "30%",
+        "comment": "Systematic decomposition of complex scenarios."
+      },
+      {
+        "category": "Communication",
+        "score": 92,
+        "weight": "30%",
+        "comment": "Clear, concise, and structured delivery."
+      }
+    ],
+    "audioUrl": "",
+    "createdBy": "salonighode@gmail.com",
+    "userEmail": "salonighode@gmail.com",
+    "createdAt": "2026-09-25T10:30:00.000Z"
+  },
+  {
+    "id": "cand-1790767766383",
+    "name": "Saloni Ghode",
+    "role": "Software Engineer",
+    "email": "salonighode@gmail.com",
+    "phone": "+919146980039",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    "interviewDate": "01 October 2026, 11:00 AM",
+    "timestamp": "1790767766383",
+    "duration": "45 Minutes",
+    "mode": "AI Interview",
+    "score": 91,
+    "status": "Scheduled",
+    "notes": "Interview scheduled for Software Engineering position.",
+    "summaryPoints": [
+      "Scheduled AI Technical Assessment session.",
+      "Profile shortlisted based on modern full-stack developer criteria."
+    ],
+    "recommendation": "Candidate In Screening",
+    "transcript": [],
+    "evaluationBreakdown": [],
+    "audioUrl": "",
+    "createdBy": "salonighode@gmail.com",
+    "userEmail": "salonighode@gmail.com",
+    "createdAt": "2026-09-30T11:29:28.240Z"
+  },
+  {
+    "id": "cand-1789298486629",
+    "name": "anaya rao",
+    "role": "Software Engineer",
+    "email": "anaya.rao@example.com",
+    "phone": "+91 98220 11223",
+    "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+    "interviewDate": "02 October 2026, 11:00 AM",
+    "timestamp": "1789298486629",
+    "duration": "45 Minutes",
+    "mode": "AI Interview",
+    "score": 88,
+    "status": "Under Review",
+    "notes": "Candidate completed initial screening stage. Evaluation pending review.",
+    "summaryPoints": [
+      "Strong background in JavaScript and React component architecture.",
+      "Good familiarity with relational schema modeling."
+    ],
+    "recommendation": "Recommended for Second Round",
+    "transcript": [],
+    "evaluationBreakdown": [],
+    "audioUrl": "",
+    "createdBy": "salonighode@gmail.com",
+    "userEmail": "salonighode@gmail.com",
+    "createdAt": "2026-09-13T11:21:26.629Z"
+  },
+  {
     "id": "cand-1790745280801",
     "mode": "AI Live Interview",
     "name": "aserfvAQ",

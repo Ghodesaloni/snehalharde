@@ -3,6 +3,35 @@ const { getPool } = require("./postgres");
 
 const COLLECTION = "jobs";
 
+function matchesUser(item, targetEmail) {
+  if (!targetEmail) return true;
+  const target = targetEmail.toLowerCase().trim();
+  const createdBy = (item.createdBy || "").toLowerCase().trim();
+  const userEmail = (item.userEmail || "").toLowerCase().trim();
+
+  if (createdBy === target || userEmail === target) return true;
+
+  // Handle Saloni Ghode email aliases
+  if (
+    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
+    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
+     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
+  ) {
+    return true;
+  }
+
+  // Handle Snehal Harde email aliases
+  if (
+    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
+    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
+     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 class JobsDatabase {
   _mapRow(row) {
     if (!row) return null;
@@ -32,11 +61,7 @@ class JobsDatabase {
   getAll(filters = {}) {
     let jobs = readData(COLLECTION, []);
     if (filters.userEmail) {
-      const emailLower = filters.userEmail.toLowerCase().trim();
-      jobs = jobs.filter(j =>
-        (j.createdBy && j.createdBy.toLowerCase() === emailLower) ||
-        (j.userEmail && j.userEmail.toLowerCase() === emailLower)
-      );
+      jobs = jobs.filter(j => matchesUser(j, filters.userEmail));
     }
     if (filters.status && filters.status !== "All") {
       jobs = jobs.filter(j => j.status.toLowerCase() === filters.status.toLowerCase());
@@ -67,8 +92,13 @@ class JobsDatabase {
       const conditions = [];
 
       if (filters.userEmail) {
-        params.push(filters.userEmail.toLowerCase().trim());
-        conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+        const emailLower = filters.userEmail.toLowerCase().trim();
+        params.push(emailLower);
+        if (emailLower === "salonighode@gmail.com" || emailLower === "salonighode3@gmail.com") {
+          conditions.push(`(LOWER(created_by) IN ('salonighode@gmail.com', 'salonighode3@gmail.com') OR LOWER(user_email) IN ('salonighode@gmail.com', 'salonighode3@gmail.com'))`);
+        } else {
+          conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+        }
       }
       if (filters.status && filters.status !== "All") {
         params.push(filters.status.toLowerCase());
@@ -94,9 +124,7 @@ class JobsDatabase {
       query += " ORDER BY created_at DESC";
 
       const res = await pool.query(query, params);
-      if (res.rows && res.rows.length > 0) {
-        return res.rows.map(this._mapRow);
-      }
+      return (res.rows || []).map(this._mapRow);
     } catch (err) {
       console.warn("PostgreSQL jobs getAllAsync notice:", err.message);
     }

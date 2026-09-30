@@ -248,11 +248,11 @@ router.post("/parse-document", upload.single("document"), async (req, res) => {
 });
 
 // GET /api/jobs - list all jobs with optional query filters
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const { status, dept, workMode, search, userEmail } = req.query;
     const authorEmail = userEmail || req.headers["x-user-email"];
-    const jobs = jobsDb.getAll({ status, dept, workMode, search, userEmail: authorEmail });
+    const jobs = await jobsDb.getAllAsync({ status, dept, workMode, search, userEmail: authorEmail });
     res.json({ success: true, count: jobs.length, data: jobs });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

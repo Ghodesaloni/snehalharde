@@ -104,8 +104,9 @@ function resolveJob(jobId, customJdBody) {
 // GET /api/resumes - list all candidates/resumes
 router.get("/", (req, res) => {
   try {
-    const { status, role, search, field, domain, jobId, sortBy } = req.query;
-    const list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy });
+    const { status, role, search, field, domain, jobId, sortBy, userEmail } = req.query;
+    const authorEmail = userEmail || req.headers["x-user-email"];
+    const list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy, userEmail: authorEmail });
     res.json({
       success: true,
       count: list.length,
@@ -169,6 +170,7 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
     }
 
     // 5. Persist candidate in database with no duplicate creation
+    const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
     const candidateRecord = resumesDb.create({
       name: parsed.candidate.name,
       email: parsed.candidate.email,
@@ -178,6 +180,8 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
       field: parsed.domains.primary,
       domain: parsed.domains.primary,
       secondaryDomains: parsed.domains.secondary,
+      createdBy: authorEmail,
+      userEmail: authorEmail,
       experience: parsed.experience_display,
       expYears: parsed.experience_years,
       skills: (parsed.all_normalized_skills || []).slice(0, 3).map(s => s.normalized),

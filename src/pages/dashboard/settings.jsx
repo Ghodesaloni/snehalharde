@@ -44,13 +44,37 @@ import {
     Cpu,
     HardDrive,
     RefreshCw,
-    Settings as SettingsIcon
+    Settings as SettingsIcon,
+    Check,
+    Plus,
+    Trash2,
+    Download
 } from "lucide-react";
 
 const Settings = () => {
-    const [activeTab, setActiveTab] = useState("interview"); // "general" or "interview"
+    // Tabs: "general", "interview", "cloud"
+    const [activeTab, setActiveTab] = useState("interview");
 
-    // Persistent General Settings
+    // Current HR user profile info
+    const [currentUser, setCurrentUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("avahire_user") || "{}");
+        } catch {
+            return {};
+        }
+    });
+
+    const [profileForm, setProfileForm] = useState({
+        name: currentUser.name || "HR Manager",
+        email: currentUser.email || "",
+        phone: currentUser.phone || "+91 98765 43210",
+        company: currentUser.company || "AvaHire Talent AI",
+        designation: currentUser.designation || currentUser.role || "Talent Acquisition Lead",
+        bio: currentUser.bio || "Empowering tech hiring through AI-assisted live candidate evaluations."
+    });
+    const [savingProfile, setSavingProfile] = useState(false);
+
+    // Persistent General Preferences
     const [preferences, setPreferences] = useState(() => {
         const saved = localStorage.getItem("avahire_settings_preferences");
         if (saved) {
@@ -132,11 +156,47 @@ const Settings = () => {
 
     // Modals
     const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [pwdForm, setPwdForm] = useState({ current: "", newPwd: "", confirmPwd: "" });
+    const [pwdLoading, setPwdLoading] = useState(false);
+
     const [show2FAModal, setShow2FAModal] = useState(false);
+    const [twoFactorActive, setTwoFactorActive] = useState(() => Boolean(currentUser.twoFactorEnabled));
+
     const [showSessionsModal, setShowSessionsModal] = useState(false);
+    const [sessions, setSessions] = useState([
+        {
+            id: "sess_current",
+            device: "Chrome on Windows 11",
+            location: "Bengaluru, India · IP: 103.21.24.89",
+            lastActive: "Active Now",
+            isCurrent: true,
+            icon: "monitor"
+        },
+        {
+            id: "sess_mobile",
+            device: "Safari on iPhone 15 Pro",
+            location: "Mumbai, India · IP: 152.58.12.44",
+            lastActive: "2 hours ago",
+            isCurrent: false,
+            icon: "smartphone"
+        },
+        {
+            id: "sess_mac",
+            device: "Edge on macOS Sonoma",
+            location: "Pune, India · IP: 49.36.18.91",
+            lastActive: "Yesterday",
+            isCurrent: false,
+            icon: "laptop"
+        }
+    ]);
+
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+
+    // Custom Guidelines Modal State
     const [showEditInstructionsModal, setShowEditInstructionsModal] = useState(false);
-    const [tempGuidelines, setTempGuidelines] = useState(interviewSettings.guidelines);
+    const [tempGuidelines, setTempGuidelines] = useState(interviewSettings.guidelines || []);
+    const [newGuidelineInput, setNewGuidelineInput] = useState("");
 
     // AWS Cloud Server Configuration State
     const [awsConfig, setAwsConfig] = useState({
@@ -162,14 +222,32 @@ const Settings = () => {
     const [awsTestResults, setAwsTestResults] = useState(null);
     const [savingAws, setSavingAws] = useState(false);
 
+    // Initial data load
     useEffect(() => {
         const fetchSettings = async () => {
             try {
+                const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+                if (user && user.email) {
+                    setCurrentUser(user);
+                    setProfileForm({
+                        name: user.name || "HR Manager",
+                        email: user.email,
+                        phone: user.phone || "+91 98765 43210",
+                        company: user.company || "AvaHire Talent AI",
+                        designation: user.designation || user.role || "Talent Acquisition Lead",
+                        bio: user.bio || "Empowering tech hiring through AI-assisted live candidate evaluations."
+                    });
+                    if (user.twoFactorEnabled !== undefined) {
+                        setTwoFactorActive(Boolean(user.twoFactorEnabled));
+                    }
+                }
+
                 const [generalData, interviewData, awsData] = await Promise.allSettled([
                     settingsApi.get(),
                     settingsApi.getInterviewSettings(),
                     settingsApi.getAwsSettings ? settingsApi.getAwsSettings() : Promise.reject("no-aws")
                 ]);
+
                 if (generalData.status === "fulfilled" && generalData.value) {
                     if (generalData.value.preferences) setPreferences(generalData.value.preferences);
                 }
@@ -184,41 +262,22 @@ const Settings = () => {
                     setAwsConfig(awsData.value);
                 }
             } catch (err) {
-                console.error("Failed to load settings from database:", err);
+                console.error("Failed to load settings:", err);
             }
         };
         fetchSettings();
     }, []);
 
-    const handleTestAws = async () => {
-        setAwsTesting(true);
-        try {
-            const res = await settingsApi.testAwsConnection();
-            setAwsTestResults(res.data);
-            toast.success("AWS Server Diagnostics: All AWS services operational!");
-        } catch (err) {
-            toast.error("Diagnostics notice: " + err.message);
-        } finally {
-            setAwsTesting(false);
+    // Dark Mode Sync
+    useEffect(() => {
+        if (preferences.darkMode) {
+            document.documentElement.classList.add("dark");
+        } else {
+            document.documentElement.classList.remove("dark");
         }
-    };
+    }, [preferences.darkMode]);
 
-    const handleSaveAws = async () => {
-        setSavingAws(true);
-        try {
-            const updated = await settingsApi.updateAwsSettings(awsConfig);
-            if (updated) setAwsConfig(updated);
-            toast.success("AWS Cloud Server configuration updated and saved!");
-        } catch (err) {
-            toast.error("Failed to save AWS settings: " + err.message);
-        } finally {
-            setSavingAws(false);
-        }
-    };
-
-    // Password form state
-    const [pwdForm, setPwdForm] = useState({ current: "", newPwd: "", confirmPwd: "" });
-
+    // Handle Toggles & Selects
     const handleGeneralToggle = (key) => {
         setPreferences((prev) => ({
             ...prev,
@@ -247,6 +306,7 @@ const Settings = () => {
         }));
     };
 
+    // Save Handlers
     const saveGeneralSettings = async () => {
         localStorage.setItem("avahire_settings_preferences", JSON.stringify(preferences));
         toast.success("General settings saved successfully!");
@@ -260,7 +320,7 @@ const Settings = () => {
     const saveInterviewSettings = async () => {
         localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewSettings));
         window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: interviewSettings }));
-        toast.success("Interview settings saved! Changes are now live on the Candidate Portal.");
+        toast.success("Interview settings saved! Changes are now live on Candidate Portal.");
         try {
             await settingsApi.updateInterviewSettings(interviewSettings);
         } catch (err) {
@@ -268,7 +328,31 @@ const Settings = () => {
         }
     };
 
-    const handlePasswordSubmit = (e) => {
+    const handleSaveProfile = async (e) => {
+        e.preventDefault();
+        setSavingProfile(true);
+        try {
+            const res = await settingsApi.updateUserProfile({
+                ...profileForm,
+                email: currentUser.email
+            });
+            if (res.success || res.data) {
+                const updated = { ...currentUser, ...profileForm };
+                setCurrentUser(updated);
+                localStorage.setItem("avahire_user", JSON.stringify(updated));
+                toast.success("HR profile details updated successfully!");
+            } else {
+                toast.error(res.error || "Failed to update profile");
+            }
+        } catch (err) {
+            toast.error(err.message || "Failed to update profile");
+        } finally {
+            setSavingProfile(false);
+        }
+    };
+
+    // Password Update
+    const handlePasswordSubmit = async (e) => {
         e.preventDefault();
         if (!pwdForm.current || !pwdForm.newPwd || !pwdForm.confirmPwd) {
             return toast.error("Please fill in all password fields");
@@ -276,9 +360,114 @@ const Settings = () => {
         if (pwdForm.newPwd !== pwdForm.confirmPwd) {
             return toast.error("New password and confirm password do not match");
         }
-        toast.success("Password updated successfully!");
-        setShowPasswordModal(false);
-        setPwdForm({ current: "", newPwd: "", confirmPwd: "" });
+        if (pwdForm.newPwd.length < 6) {
+            return toast.error("New password must be at least 6 characters");
+        }
+
+        setPwdLoading(true);
+        try {
+            const email = currentUser.email || localStorage.getItem("avahire_registered_email");
+            const res = await settingsApi.changePassword({
+                email,
+                currentPassword: pwdForm.current,
+                newPassword: pwdForm.newPwd
+            });
+
+            if (res.success) {
+                toast.success("Password updated successfully!");
+                setShowPasswordModal(false);
+                setPwdForm({ current: "", newPwd: "", confirmPwd: "" });
+            } else {
+                toast.error(res.error || "Failed to update password");
+            }
+        } catch (err) {
+            toast.error(err.response?.data?.error || err.message || "Failed to update password");
+        } finally {
+            setPwdLoading(false);
+        }
+    };
+
+    // 2FA Management
+    const handleToggle2FA = async (targetState) => {
+        try {
+            const email = currentUser.email || localStorage.getItem("avahire_registered_email");
+            const res = await settingsApi.manage2FA({
+                email,
+                enabled: targetState
+            });
+            if (res.success) {
+                setTwoFactorActive(targetState);
+                const updated = { ...currentUser, twoFactorEnabled: targetState };
+                setCurrentUser(updated);
+                localStorage.setItem("avahire_user", JSON.stringify(updated));
+                toast.success(targetState ? "Two-Factor Authentication is now enabled!" : "Two-Factor Authentication disabled.");
+            }
+        } catch (err) {
+            toast.error("Failed to update 2FA: " + err.message);
+        }
+    };
+
+    const handleDownloadBackupCodes = () => {
+        const codes = [
+            "4892-1983", "8472-9104", "1938-4820", "5920-3841",
+            "9048-1829", "2840-5938", "7483-1029", "3849-5920"
+        ];
+        const blob = new Blob(
+            [`AvaHire HR Portal - Two-Factor Authentication Backup Codes\nAccount: ${currentUser.email || "HR Recruiter"}\nGenerated: ${new Date().toLocaleString()}\n\nCodes:\n` + codes.join("\n")],
+            { type: "text/plain;charset=utf-8" }
+        );
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `avahire-backup-codes-${Date.now()}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Backup recovery codes downloaded to your device.");
+    };
+
+    // Sessions Management
+    const handleRevokeSession = (sessionId) => {
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
+        toast.success("Session revoked successfully.");
+    };
+
+    const handleLogoutAllOtherSessions = () => {
+        setSessions(prev => prev.filter(s => s.isCurrent));
+        toast.success("Logged out from all other active devices.");
+        setShowSessionsModal(false);
+    };
+
+    // Account Deletion
+    const handleDeleteAccount = async () => {
+        setDeleteLoading(true);
+        try {
+            const email = currentUser.email || localStorage.getItem("avahire_registered_email");
+            const res = await settingsApi.deleteAccount(email);
+            if (res.success) {
+                toast.success("HR Account deleted successfully.");
+                localStorage.clear();
+                sessionStorage.clear();
+                setShowDeleteModal(false);
+                window.location.href = "/login";
+            } else {
+                toast.error(res.error || "Failed to delete account");
+            }
+        } catch (err) {
+            toast.error(err.message || "Failed to delete account");
+        } finally {
+            setDeleteLoading(false);
+        }
+    };
+
+    // Custom Guidelines Management
+    const handleAddGuideline = () => {
+        if (!newGuidelineInput.trim()) return;
+        setTempGuidelines(prev => [...prev, newGuidelineInput.trim()]);
+        setNewGuidelineInput("");
+    };
+
+    const handleRemoveGuideline = (index) => {
+        setTempGuidelines(prev => prev.filter((_, i) => i !== index));
     };
 
     const handleSaveInstructions = async () => {
@@ -295,51 +484,92 @@ const Settings = () => {
         }
     };
 
+    // AWS Diagnostics & Save
+    const handleTestAws = async () => {
+        setAwsTesting(true);
+        try {
+            const res = await settingsApi.testAwsConnection();
+            setAwsTestResults(res.data);
+            toast.success("AWS Server Diagnostics: All AWS cloud services operational!");
+        } catch (err) {
+            toast.error("Diagnostics notice: " + err.message);
+        } finally {
+            setAwsTesting(false);
+        }
+    };
+
+    const handleSaveAws = async () => {
+        setSavingAws(true);
+        try {
+            const updated = await settingsApi.updateAwsSettings(awsConfig);
+            if (updated) setAwsConfig(updated);
+            toast.success("AWS Cloud Server configuration updated and saved!");
+        } catch (err) {
+            toast.error("Failed to save AWS settings: " + err.message);
+        } finally {
+            setSavingAws(false);
+        }
+    };
+
     return (
         <div className="space-y-6 max-w-7xl mx-auto -mt-2" data-testid="settings-page">
             {/* Header with Title, Breadcrumb & Sub Navigation Tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Settings
+                    <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2.5">
+                        <SettingsIcon className="w-7 h-7 text-violet-600" />
+                        <span>Settings &amp; Preferences</span>
                     </h1>
                     <div className="flex items-center gap-1.5 text-xs text-slate-400 mt-1 font-medium">
-                        <span>Home</span>
+                        <span>Dashboard</span>
                         <span>&gt;</span>
                         <span>Settings</span>
                         <span>&gt;</span>
-                        <span className="text-slate-600 font-semibold capitalize">{activeTab} Settings</span>
+                        <span className="text-violet-700 font-semibold capitalize">{activeTab} Settings</span>
                     </div>
                 </div>
 
-                {/* Settings Tab Selector Buttons */}
+                {/* Settings Tab Selector Buttons (3 Tabs) */}
                 <div className="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs">
                     <button
-                        onClick={() => setActiveTab("general")}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
-                            activeTab === "general"
-                                ? "bg-violet-600 text-white shadow-sm"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                        }`}
-                    >
-                        <SettingsIcon className="w-4 h-4" />
-                        <span>General</span>
-                    </button>
-                    <button
                         onClick={() => setActiveTab("interview")}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition ${
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
                             activeTab === "interview"
                                 ? "bg-violet-600 text-white shadow-sm"
                                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                         }`}
                     >
                         <Video className="w-4 h-4" />
-                        <span>Interview</span>
+                        <span>Interview &amp; AI</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("general")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                            activeTab === "general"
+                                ? "bg-violet-600 text-white shadow-sm"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                    >
+                        <SettingsIcon className="w-4 h-4" />
+                        <span>General &amp; Security</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("cloud")}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                            activeTab === "cloud"
+                                ? "bg-violet-600 text-white shadow-sm"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                        }`}
+                    >
+                        <Cloud className="w-4 h-4" />
+                        <span>AWS Cloud Server</span>
                     </button>
                 </div>
             </div>
 
-            {/* TAB 1: INTERVIEW SETTINGS (MATCHING UPLOADED IMAGE) */}
+            {/* ============================================================== */}
+            {/* TAB 1: INTERVIEW & AI SETTINGS                                 */}
+            {/* ============================================================== */}
             {activeTab === "interview" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
                     {/* Header Bar */}
@@ -347,7 +577,7 @@ const Settings = () => {
                         <div>
                             <div className="flex items-center gap-2.5">
                                 <h2 className="text-xl sm:text-2xl font-bold text-violet-700 tracking-tight">
-                                    Interview Settings
+                                    Interview &amp; AI Settings
                                 </h2>
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -355,7 +585,7 @@ const Settings = () => {
                                 </span>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                                Configure interview experience, timing, AI behavior and proctoring preferences. All modifications take immediate effect in candidate interview sessions.
+                                Configure interview durations, AI avatar interviewer behaviors, and proctoring controls.
                             </p>
                         </div>
                         <div className="flex items-center gap-2.5 self-start sm:self-auto">
@@ -373,8 +603,9 @@ const Settings = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* CARD 1: General Interview Settings */}
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                General Interview Settings
+                            <h3 className="text-sm font-bold text-violet-700 tracking-tight flex items-center gap-2">
+                                <Clock className="w-4 h-4" />
+                                <span>General Interview Settings</span>
                             </h3>
 
                             <div className="space-y-4">
@@ -389,7 +620,7 @@ const Settings = () => {
                                                 Default Interview Duration
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Set the default duration for scheduled interviews.
+                                                Duration allocated for each candidate interview session.
                                             </div>
                                         </div>
                                     </div>
@@ -408,18 +639,18 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Join Window (Before Interview) */}
+                                {/* Join Window */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Calendar className="w-4 h-4" />
+                                            <Hourglass className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Join Window (Before Interview)
+                                                Candidate Join Window
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Time before interview start when candidate can join.
+                                                Window before scheduled time candidate can join room.
                                             </div>
                                         </div>
                                     </div>
@@ -429,7 +660,6 @@ const Settings = () => {
                                             onChange={(e) => handleInterviewSelect("joinWindow", e.target.value)}
                                             className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-3 py-1.5 pr-8 text-xs font-semibold text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
                                         >
-                                            <option>2 Minutes</option>
                                             <option>5 Minutes</option>
                                             <option>10 Minutes</option>
                                             <option>15 Minutes</option>
@@ -438,18 +668,18 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Grace Time (After Start) */}
+                                {/* Late Grace Time */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Hourglass className="w-4 h-4" />
+                                            <Clock className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Grace Time (After Start)
+                                                Late Arrival Grace Time
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Extra time allowed after interview start to join.
+                                                Grace period allowed after scheduled interview time.
                                             </div>
                                         </div>
                                     </div>
@@ -467,18 +697,18 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Auto End Interview */}
+                                {/* Auto-End Interview */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Clock className="w-4 h-4" />
+                                            <LogOut className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Auto End Interview
+                                                Auto-End on Timeout
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Automatically end interview when time is over.
+                                                Automatically conclude session when allotted time expires.
                                             </div>
                                         </div>
                                     </div>
@@ -497,52 +727,22 @@ const Settings = () => {
                                     </button>
                                 </div>
 
-                                {/* Allow Reschedule by Candidate */}
-                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Calendar className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Allow Reschedule by Candidate
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Candidates can request to reschedule their interview.
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleInterviewToggle("allowReschedule")}
-                                        className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                            interviewSettings.allowReschedule ? "bg-violet-600" : "bg-slate-200"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-                                                interviewSettings.allowReschedule ? "translate-x-5.5" : "translate-x-0.5"
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-
-                                {/* Time Zone for Scheduling */}
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
+                                {/* Timezone */}
+                                <div className="flex items-center justify-between gap-3 pt-1">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                                             <Globe className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Time Zone for Scheduling
+                                                Interview Timezone
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Default time zone used for scheduling interviews.
+                                                Timezone used for candidate interview schedules.
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="relative min-w-[200px]">
+                                    <div className="relative min-w-[170px]">
                                         <select
                                             value={interviewSettings.timezone}
                                             onChange={(e) => handleInterviewSelect("timezone", e.target.value)}
@@ -550,9 +750,9 @@ const Settings = () => {
                                         >
                                             <option>(GMT+05:30) Asia/Kolkata</option>
                                             <option>(GMT+00:00) UTC</option>
-                                            <option>(GMT-05:00) America/New_York</option>
-                                            <option>(GMT+08:00) Asia/Singapore</option>
-                                            <option>(GMT+01:00) Europe/London</option>
+                                            <option>(GMT-05:00) Eastern Time (US)</option>
+                                            <option>(GMT-08:00) Pacific Time (US)</option>
+                                            <option>(GMT+01:00) Central European Time</option>
                                         </select>
                                         <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     </div>
@@ -562,12 +762,41 @@ const Settings = () => {
 
                         {/* CARD 2: AI Interview Settings */}
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                AI Interview Settings
+                            <h3 className="text-sm font-bold text-violet-700 tracking-tight flex items-center gap-2">
+                                <Bot className="w-4 h-4" />
+                                <span>AI Interviewer &amp; Avatar Configuration</span>
                             </h3>
 
                             <div className="space-y-4">
-
+                                {/* AI Avatar Selection */}
+                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
+                                            <Sparkles className="w-4 h-4" />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
+                                                AI Avatar Interviewer
+                                            </div>
+                                            <div className="text-[11px] text-slate-400 mt-0.5">
+                                                Interactive AI avatar persona speaking to candidates.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[140px]">
+                                        <select
+                                            value={interviewSettings.aiAvatar}
+                                            onChange={(e) => handleInterviewSelect("aiAvatar", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-3 py-1.5 pr-8 text-xs font-semibold text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>Ava (Female)</option>
+                                            <option>Ethan (Male)</option>
+                                            <option>Sophia (Professional)</option>
+                                            <option>Audio Only (No Avatar)</option>
+                                        </select>
+                                        <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
 
                                 {/* Question Difficulty */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
@@ -580,7 +809,7 @@ const Settings = () => {
                                                 Question Difficulty
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Set default difficulty level for questions.
+                                                Set default technical and situational difficulty level.
                                             </div>
                                         </div>
                                     </div>
@@ -607,10 +836,10 @@ const Settings = () => {
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Question Language
+                                                Interview Language
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Language used for interview questions.
+                                                Language spoken and transcribed during evaluation.
                                             </div>
                                         </div>
                                     </div>
@@ -638,10 +867,10 @@ const Settings = () => {
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Ask Follow-up Questions
+                                                Contextual Follow-up Questions
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Enable AI to ask contextual follow-up questions.
+                                                Allow AI avatar to probe deeper into candidate answers.
                                             </div>
                                         </div>
                                     </div>
@@ -668,10 +897,10 @@ const Settings = () => {
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Resume Based Questions
+                                                Resume-Based Questions
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Generate questions from candidate resume.
+                                                Synthesize tailored questions from candidate uploaded CV.
                                             </div>
                                         </div>
                                     </div>
@@ -698,10 +927,10 @@ const Settings = () => {
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Role Based Questions
+                                                Role &amp; JD-Based Questions
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Generate questions based on job role &amp; JD.
+                                                Target questions to exact technical competencies in the JD.
                                             </div>
                                         </div>
                                     </div>
@@ -727,20 +956,21 @@ const Settings = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* CARD 3: Proctoring Settings */}
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                Proctoring Settings
+                            <h3 className="text-sm font-bold text-violet-700 tracking-tight flex items-center gap-2">
+                                <Shield className="w-4 h-4" />
+                                <span>Live Anti-Cheating &amp; Proctoring Settings</span>
                             </h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                                 {/* Left Sub-column */}
                                 <div className="space-y-4">
-                                    {/* Enable Proctoring */}
+                                    {/* Enable Proctoring Master */}
                                     <div className="flex items-center justify-between gap-2 pb-2">
                                         <div className="flex items-center gap-2.5">
                                             <Shield className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Enable Proctoring</div>
-                                                <div className="text-[10px] text-slate-400">Enable AI proctoring for all interviews.</div>
+                                                <div className="text-xs font-bold text-slate-800">Master Proctoring</div>
+                                                <div className="text-[10px] text-slate-400">Enable AI vision checks</div>
                                             </div>
                                         </div>
                                         <button
@@ -761,8 +991,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <User className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Face Detection</div>
-                                                <div className="text-[10px] text-slate-400">Detect candidate face during interview.</div>
+                                                <div className="text-xs font-bold text-slate-800">Face Tracking</div>
+                                                <div className="text-[10px] text-slate-400">Detect face presence &amp; focus</div>
                                             </div>
                                         </div>
                                         <button
@@ -783,8 +1013,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Users className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Multiple Person Detection</div>
-                                                <div className="text-[10px] text-slate-400">Detect multiple persons in the camera.</div>
+                                                <div className="text-xs font-bold text-slate-800">Multiple Persons</div>
+                                                <div className="text-[10px] text-slate-400">Flag multiple faces in frame</div>
                                             </div>
                                         </div>
                                         <button
@@ -805,8 +1035,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Laptop className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Tab Switch Detection</div>
-                                                <div className="text-[10px] text-slate-400">Detect candidate tab switch events.</div>
+                                                <div className="text-xs font-bold text-slate-800">Tab Switch Guard</div>
+                                                <div className="text-[10px] text-slate-400">Flag window/tab switching</div>
                                             </div>
                                         </div>
                                         <button
@@ -827,8 +1057,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Maximize2 className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Full Screen Monitoring</div>
-                                                <div className="text-[10px] text-slate-400">Force candidate to stay in full screen.</div>
+                                                <div className="text-xs font-bold text-slate-800">Full Screen Mode</div>
+                                                <div className="text-[10px] text-slate-400">Require full screen locking</div>
                                             </div>
                                         </div>
                                         <button
@@ -850,8 +1080,8 @@ const Settings = () => {
                                     {/* Suspicious Activity Threshold */}
                                     <div className="flex items-center justify-between gap-2 pb-2">
                                         <div>
-                                            <div className="text-xs font-bold text-slate-800">Suspicious Activity Threshold</div>
-                                            <div className="text-[10px] text-slate-400">Actions count before marking as suspicious.</div>
+                                            <div className="text-xs font-bold text-slate-800">Suspicious Threshold</div>
+                                            <div className="text-[10px] text-slate-400">Actions count before flag</div>
                                             <div className="mt-1.5 relative min-w-[100px]">
                                                 <select
                                                     value={interviewSettings.suspiciousThreshold}
@@ -866,17 +1096,6 @@ const Settings = () => {
                                                 <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                                             </div>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleInterviewToggle("suspiciousToggle")}
-                                            className={`w-10 h-5 rounded-full transition-colors relative focus:outline-none shrink-0 cursor-pointer ${
-                                                interviewSettings.suspiciousToggle ? "bg-violet-600" : "bg-slate-200"
-                                            }`}
-                                        >
-                                            <span className={`block w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-                                                interviewSettings.suspiciousToggle ? "translate-x-5" : "translate-x-0.5"
-                                            }`} />
-                                        </button>
                                     </div>
 
                                     {/* Enable Screen Recording */}
@@ -884,8 +1103,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Laptop className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Enable Screen Recording</div>
-                                                <div className="text-[10px] text-slate-400">Record candidate screen during interview.</div>
+                                                <div className="text-xs font-bold text-slate-800">Screen Recording</div>
+                                                <div className="text-[10px] text-slate-400">Record candidate display</div>
                                             </div>
                                         </div>
                                         <button
@@ -906,8 +1125,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Camera className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Enable Video Recording</div>
-                                                <div className="text-[10px] text-slate-400">Record candidate video during interview.</div>
+                                                <div className="text-xs font-bold text-slate-800">Webcam Recording</div>
+                                                <div className="text-[10px] text-slate-400">Archive camera video stream</div>
                                             </div>
                                         </div>
                                         <button
@@ -928,8 +1147,8 @@ const Settings = () => {
                                         <div className="flex items-center gap-2.5">
                                             <Mic className="w-4 h-4 text-violet-600 shrink-0" />
                                             <div>
-                                                <div className="text-xs font-bold text-slate-800">Enable Audio Recording</div>
-                                                <div className="text-[10px] text-slate-400">Record candidate audio during interview.</div>
+                                                <div className="text-xs font-bold text-slate-800">Audio Recording</div>
+                                                <div className="text-[10px] text-slate-400">High-fidelity voice capture</div>
                                             </div>
                                         </div>
                                         <button
@@ -950,8 +1169,9 @@ const Settings = () => {
 
                         {/* CARD 4: Communication & Reminders */}
                         <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-7 space-y-5">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                Communication &amp; Reminders
+                            <h3 className="text-sm font-bold text-violet-700 tracking-tight flex items-center gap-2">
+                                <Mail className="w-4 h-4" />
+                                <span>Communication &amp; Candidate Instructions</span>
                             </h3>
 
                             <div className="space-y-4">
@@ -996,7 +1216,7 @@ const Settings = () => {
                                                 Reminder Before Interview
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Send reminder before interview start.
+                                                Send automated reminder alert prior to interview start.
                                             </div>
                                         </div>
                                     </div>
@@ -1023,10 +1243,10 @@ const Settings = () => {
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Reminder Time
+                                                Reminder Lead Time
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                How much time before interview to send reminder.
+                                                Advance time before interview to dispatch reminder.
                                             </div>
                                         </div>
                                     </div>
@@ -1045,38 +1265,8 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Interview Completion Email */}
-                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <CheckSquare className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Interview Completion Email
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Send email when interview is completed.
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleInterviewToggle("completionEmail")}
-                                        className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                            interviewSettings.completionEmail ? "bg-violet-600" : "bg-slate-200"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-                                                interviewSettings.completionEmail ? "translate-x-5.5" : "translate-x-0.5"
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-
-                                {/* Custom Instructions to Candidate */}
-                                <div className="flex items-center justify-between gap-3 pt-1">
+                                {/* Custom Instructions to Candidate Modal Trigger */}
+                                <div className="flex items-center justify-between gap-3 pt-2">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
                                             <Info className="w-4 h-4" />
@@ -1086,183 +1276,271 @@ const Settings = () => {
                                                 Custom Instructions to Candidate
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Show custom instructions before interview.
+                                                Configure guidelines displayed before candidate joins room.
                                             </div>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => setShowEditInstructionsModal(true)}
-                                        className="px-4 py-2 border border-violet-200 hover:border-violet-400 hover:bg-violet-50 text-violet-700 font-semibold text-xs rounded-xl transition whitespace-nowrap shadow-xs"
+                                        onClick={() => {
+                                            setTempGuidelines(interviewSettings.guidelines || []);
+                                            setShowEditInstructionsModal(true);
+                                        }}
+                                        className="px-4 py-2 border border-violet-200 hover:border-violet-400 hover:bg-violet-50 text-violet-700 font-semibold text-xs rounded-xl transition whitespace-nowrap shadow-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        Manage Instructions
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span>Manage Instructions</span>
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
                 </div>
             )}
 
-            {/* TAB 2: GENERAL SETTINGS */}
+            {/* ============================================================== */}
+            {/* TAB 2: GENERAL & SECURITY SETTINGS                             */}
+            {/* ============================================================== */}
             {activeTab === "general" && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-200">
-                    {/* LEFT MAIN CARD: General Settings */}
-                    <div className="lg:col-span-8 bg-white rounded-3xl border border-slate-100/90 shadow-sm p-6 sm:p-8 space-y-8">
-                        {/* General Settings Top Header */}
-                        <div className="flex items-center justify-between pb-6 border-b border-slate-100">
-                            <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                                General Settings
-                            </h2>
-                            <button
-                                onClick={saveGeneralSettings}
-                                data-testid="save-settings-btn"
-                                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
-                            >
-                                <Save className="w-4 h-4" />
-                                <span>Save Changes</span>
-                            </button>
-                        </div>
-
-                        {/* SECTION 1: Application Preferences */}
-                        <div className="space-y-6">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                Application Preferences
-                            </h3>
-
-                            {/* Dark Mode */}
-                            <div className="flex items-center justify-between gap-4 pb-5 border-b border-slate-50">
+                    {/* LEFT MAIN CARD: Profile & App Preferences (8 cols) */}
+                    <div className="lg:col-span-8 space-y-6">
+                        {/* Profile Edit Card */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
                                 <div>
-                                    <div className="text-sm font-bold text-slate-800">Dark Mode</div>
-                                    <div className="text-xs text-slate-400 mt-0.5 font-normal">
-                                        Enable dark theme for the application
+                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                        <User className="w-5 h-5 text-violet-600" />
+                                        <span>HR Recruiter Profile</span>
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                        Personalize your recruiter identification and organization details.
+                                    </p>
+                                </div>
+                                <span className="text-[11px] font-bold px-3 py-1 bg-violet-50 text-violet-700 rounded-full border border-violet-100">
+                                    {currentUser.role || "Lead HR"}
+                                </span>
+                            </div>
+
+                            <form onSubmit={handleSaveProfile} className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Full Name</label>
+                                        <input
+                                            type="text"
+                                            value={profileForm.name}
+                                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Work Email</label>
+                                        <input
+                                            type="email"
+                                            disabled
+                                            value={profileForm.email}
+                                            className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-500 cursor-not-allowed"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Company / Organization</label>
+                                        <input
+                                            type="text"
+                                            value={profileForm.company}
+                                            onChange={(e) => setProfileForm({ ...profileForm, company: e.target.value })}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="font-semibold text-slate-700 block mb-1">Phone Number</label>
+                                        <input
+                                            type="text"
+                                            value={profileForm.phone}
+                                            onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
+                                        />
                                     </div>
                                 </div>
+                                <div className="flex justify-end pt-2">
+                                    <button
+                                        type="submit"
+                                        disabled={savingProfile}
+                                        className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition cursor-pointer"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        <span>{savingProfile ? "Updating..." : "Update Profile"}</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Application Preferences Card */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                                        Application Preferences
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                        Customize your viewing mode and workspace appearance.
+                                    </p>
+                                </div>
                                 <button
-                                    type="button"
-                                    onClick={() => handleGeneralToggle("darkMode")}
-                                    className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                        preferences.darkMode ? "bg-violet-600" : "bg-slate-200"
-                                    }`}
+                                    onClick={saveGeneralSettings}
+                                    data-testid="save-settings-btn"
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98] cursor-pointer"
                                 >
-                                    <span
-                                        className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                                            preferences.darkMode ? "translate-x-6" : "translate-x-0.5"
-                                        }`}
-                                    />
+                                    <Save className="w-4 h-4" />
+                                    <span>Save Preferences</span>
                                 </button>
                             </div>
 
-                            {/* Compact View */}
-                            <div className="flex items-center justify-between gap-4 pb-5 border-b border-slate-50">
-                                <div>
-                                    <div className="text-sm font-bold text-slate-800">Compact View</div>
-                                    <div className="text-xs text-slate-400 mt-0.5 font-normal">
-                                        Reduce spacing for more content on screen
+                            <div className="space-y-4">
+                                {/* Dark Mode */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Dark Theme</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Enable dark mode theme across the recruiter portal.
+                                        </div>
                                     </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleGeneralToggle("compactView")}
-                                    className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                        preferences.compactView ? "bg-violet-600" : "bg-slate-200"
-                                    }`}
-                                >
-                                    <span
-                                        className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                                            preferences.compactView ? "translate-x-6" : "translate-x-0.5"
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("darkMode")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.darkMode ? "bg-violet-600" : "bg-slate-200"
                                         }`}
-                                    />
-                                </button>
-                            </div>
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.darkMode ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
 
+                                {/* Compact View */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Compact Density View</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Condense tables and cards to view more candidates at once.
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("compactView")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.compactView ? "bg-violet-600" : "bg-slate-200"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.compactView ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
 
+                                {/* Show Candidate Avatars */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Show Candidate Avatars</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Display photo avatars in candidate listings.
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("showAvatars")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.showAvatars ? "bg-violet-600" : "bg-slate-200"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.showAvatars ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
 
-                            {/* Auto Refresh Dashboard */}
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2">
-                                <div>
-                                    <div className="text-sm font-bold text-slate-800">Auto Refresh Dashboard</div>
-                                    <div className="text-xs text-slate-400 mt-0.5 font-normal">
-                                        Automatically refresh dashboard data
+                                {/* Auto Refresh Interval */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Auto Refresh Interval</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Periodically sync live interview status and evaluations.
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.autoRefresh}
+                                            onChange={(e) => handleGeneralSelect("autoRefresh", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>Every 1 minute</option>
+                                            <option>Every 5 minutes</option>
+                                            <option>Every 15 minutes</option>
+                                            <option>Manual only</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     </div>
                                 </div>
-                                <div className="relative min-w-[170px]">
-                                    <select
-                                        value={preferences.autoRefresh}
-                                        onChange={(e) => handleGeneralSelect("autoRefresh", e.target.value)}
-                                        className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition cursor-pointer"
-                                    >
-                                        <option>Never</option>
-                                        <option>Every 1 minute</option>
-                                        <option>Every 5 minutes</option>
-                                        <option>Every 15 minutes</option>
-                                        <option>Every 30 minutes</option>
-                                    </select>
-                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
-                            </div>
-                        </div>
 
-                        {/* SECTION 2: Default Preferences */}
-                        <div className="space-y-6 pt-4 border-t border-slate-100">
-                            <h3 className="text-sm font-bold text-violet-700 tracking-tight">
-                                Default Preferences
-                            </h3>
-
-                            {/* Default Jobs Per Page */}
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-5 border-b border-slate-50">
-                                <div>
-                                    <div className="text-sm font-bold text-slate-800">Default Jobs Per Page</div>
-                                    <div className="text-xs text-slate-400 mt-0.5 font-normal">
-                                        Number of jobs to display per page
+                                {/* Default Jobs Per Page */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Default Jobs Per Page</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Number of jobs displayed per table page.
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.jobsPerPage}
+                                            onChange={(e) => handleGeneralSelect("jobsPerPage", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>5</option>
+                                            <option>10</option>
+                                            <option>20</option>
+                                            <option>50</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     </div>
                                 </div>
-                                <div className="relative min-w-[170px]">
-                                    <select
-                                        value={preferences.jobsPerPage}
-                                        onChange={(e) => handleGeneralSelect("jobsPerPage", e.target.value)}
-                                        className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition cursor-pointer"
-                                    >
-                                        <option>5</option>
-                                        <option>10</option>
-                                        <option>20</option>
-                                        <option>50</option>
-                                    </select>
-                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                </div>
-                            </div>
 
-                            {/* Default Candidates Per Page */}
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                <div>
-                                    <div className="text-sm font-bold text-slate-800">Default Candidates Per Page</div>
-                                    <div className="text-xs text-slate-400 mt-0.5 font-normal">
-                                        Number of candidates to display per page
+                                {/* Default Candidates Per Page */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Default Candidates Per Page</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Number of candidates displayed per table page.
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="relative min-w-[170px]">
-                                    <select
-                                        value={preferences.candidatesPerPage}
-                                        onChange={(e) => handleGeneralSelect("candidatesPerPage", e.target.value)}
-                                        className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 transition cursor-pointer"
-                                    >
-                                        <option>10</option>
-                                        <option>25</option>
-                                        <option>50</option>
-                                        <option>100</option>
-                                    </select>
-                                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.candidatesPerPage}
+                                            onChange={(e) => handleGeneralSelect("candidatesPerPage", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>10</option>
+                                            <option>25</option>
+                                            <option>50</option>
+                                            <option>100</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* RIGHT COLUMN: 4 Stacked Cards */}
+                    {/* RIGHT COLUMN: 4 Security Cards (4 cols) */}
                     <div className="lg:col-span-4 space-y-4">
                         {/* Card 1: Change Password */}
-                        <div className="bg-white rounded-3xl border border-slate-100/90 shadow-sm p-6 space-y-4">
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
                                     <Lock className="w-5 h-5" />
@@ -1270,18 +1548,18 @@ const Settings = () => {
                                 <h4 className="text-sm font-bold text-slate-900">Change Password</h4>
                             </div>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Update your account password to keep your account secure.
+                                Update your account security password with live hash verification.
                             </p>
                             <button
                                 onClick={() => setShowPasswordModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block"
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
                             >
                                 Change Password
                             </button>
                         </div>
 
                         {/* Card 2: Two-Factor Authentication */}
-                        <div className="bg-white rounded-3xl border border-slate-100/90 shadow-sm p-6 space-y-4">
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                                     <ShieldCheck className="w-5 h-5" />
@@ -1289,22 +1567,22 @@ const Settings = () => {
                                 <h4 className="text-sm font-bold text-slate-900">Two-Factor Authentication</h4>
                             </div>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Add an extra layer of security to your account.
+                                Require two-factor authentication on every recruiter sign in.
                             </p>
-                            <div className="text-xs font-bold text-emerald-600 flex items-center gap-1.5">
+                            <div className={`text-xs font-bold flex items-center gap-1.5 ${twoFactorActive ? "text-emerald-600" : "text-slate-400"}`}>
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Enabled</span>
+                                <span>{twoFactorActive ? "2FA Protection is Active" : "2FA is Disabled"}</span>
                             </div>
                             <button
                                 onClick={() => setShow2FAModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block"
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
                             >
-                                Manage 2FA
+                                Manage 2FA &amp; Codes
                             </button>
                         </div>
 
                         {/* Card 3: Active Sessions */}
-                        <div className="bg-white rounded-3xl border border-slate-100/90 shadow-sm p-6 space-y-4">
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
                                     <Monitor className="w-5 h-5" />
@@ -1312,13 +1590,13 @@ const Settings = () => {
                                 <h4 className="text-sm font-bold text-slate-900">Active Sessions</h4>
                             </div>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Manage your active sessions across devices.
+                                Review logged in devices and revoke unauthorized access.
                             </p>
                             <button
                                 onClick={() => setShowSessionsModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block"
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
                             >
-                                View Sessions
+                                View Sessions ({sessions.length})
                             </button>
                         </div>
 
@@ -1331,11 +1609,11 @@ const Settings = () => {
                                 <h4 className="text-sm font-bold text-slate-900">Danger Zone</h4>
                             </div>
                             <p className="text-xs text-slate-500 leading-relaxed">
-                                Permanently delete your account and all associated data.
+                                Permanently erase your recruiter workspace, pool, and interview history.
                             </p>
                             <button
                                 onClick={() => setShowDeleteModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-rose-200 hover:border-rose-400 hover:bg-rose-50 text-rose-600 font-semibold text-xs rounded-xl transition text-center block"
+                                className="w-full py-2.5 px-4 bg-white border border-rose-200 hover:border-rose-400 hover:bg-rose-50 text-rose-600 font-semibold text-xs rounded-xl transition text-center block cursor-pointer"
                             >
                                 Delete Account
                             </button>
@@ -1344,9 +1622,189 @@ const Settings = () => {
                 </div>
             )}
 
+            {/* ============================================================== */}
+            {/* TAB 3: AWS CLOUD SERVER SETTINGS                               */}
+            {/* ============================================================== */}
+            {activeTab === "cloud" && (
+                <div className="space-y-6 animate-in fade-in duration-200">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2.5">
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                                    AWS Cloud Server &amp; Storage Configuration
+                                </h2>
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active &amp; Connected
+                                </span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                                Enterprise cloud server parameters powering candidate resume S3 storage, RDS PostgreSQL cluster, and SES email dispatch.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                            <button
+                                onClick={handleTestAws}
+                                disabled={awsTesting}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 hover:bg-violet-50 text-violet-700 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
+                            >
+                                <RefreshCw className={`w-4 h-4 ${awsTesting ? "animate-spin" : ""}`} />
+                                <span>{awsTesting ? "Testing Diagnostics..." : "Run Diagnostics Test"}</span>
+                            </button>
+                            <button
+                                onClick={handleSaveAws}
+                                disabled={savingAws}
+                                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition cursor-pointer"
+                            >
+                                <Save className="w-4 h-4" />
+                                <span>{savingAws ? "Saving..." : "Save AWS Config"}</span>
+                            </button>
+                        </div>
+                    </div>
 
+                    {/* Diagnostics Result Banner if executed */}
+                    {awsTestResults && (
+                        <div className="p-4 sm:p-5 bg-emerald-50/80 border border-emerald-200 rounded-3xl space-y-3 animate-in fade-in">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                    <span className="text-sm font-bold text-emerald-900">
+                                        Live AWS Server Diagnostics Passed
+                                    </span>
+                                </div>
+                                <span className="text-xs font-bold text-emerald-700">
+                                    Latency: {awsTestResults.latencyMs || 42}ms · Status: Healthy
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
+                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">Compute / EC2</div>
+                                    <div className="font-bold text-slate-800 mt-0.5">Online &amp; Serving</div>
+                                </div>
+                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
+                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">S3 Storage</div>
+                                    <div className="font-bold text-slate-800 mt-0.5">Connected (S3 Bucket)</div>
+                                </div>
+                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
+                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">PostgreSQL RDS</div>
+                                    <div className="font-bold text-slate-800 mt-0.5">Cluster Active</div>
+                                </div>
+                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
+                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">SES Mailer</div>
+                                    <div className="font-bold text-slate-800 mt-0.5">Verified &amp; Delivering</div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            {/* MODAL: Change Password */}
+                    {/* 3 AWS Detail Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* CARD 1: EC2 & Container */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
+                                    <Cpu className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-sm">AWS App Runner / EC2</h3>
+                                    <p className="text-xs text-slate-400">Node.js Production Container</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 text-xs pt-2">
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
+                                    <span className="text-slate-400">AWS Region</span>
+                                    <span className="font-mono font-bold text-slate-800">{awsConfig.region}</span>
+                                </div>
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
+                                    <span className="text-slate-400">Instance ID</span>
+                                    <span className="font-mono font-bold text-slate-800">{awsConfig.serverInstance?.containerId || "i-09f42c7ae381a4d"}</span>
+                                </div>
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
+                                    <span className="text-slate-400">Environment</span>
+                                    <span className="font-bold text-slate-800">Production (AWS VPC)</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400">Server Port</span>
+                                    <span className="font-bold text-slate-800">3000 (HTTP/LiveKit)</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CARD 2: S3 Resume Storage */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                                    <HardDrive className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-sm">AWS S3 Resume Bucket</h3>
+                                    <p className="text-xs text-slate-400">Candidate CV &amp; Audio Vault</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 text-xs pt-2">
+                                <div>
+                                    <label className="text-slate-400 block mb-1">Bucket Name</label>
+                                    <input
+                                        type="text"
+                                        value={awsConfig.s3Bucket}
+                                        onChange={(e) => setAwsConfig({ ...awsConfig, s3Bucket: e.target.value })}
+                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between pt-1">
+                                    <span className="text-slate-400">Encryption</span>
+                                    <span className="font-bold text-emerald-600">AES-256 Server-Side</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400">Storage Class</span>
+                                    <span className="font-bold text-slate-800">S3 Standard</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* CARD 3: RDS PostgreSQL Cluster */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
+                                    <Database className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-sm">AWS RDS PostgreSQL</h3>
+                                    <p className="text-xs text-slate-400">Relational Database Engine</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3 text-xs pt-2">
+                                <div>
+                                    <label className="text-slate-400 block mb-1">Cluster Endpoint</label>
+                                    <input
+                                        type="text"
+                                        value={awsConfig.rdsHost}
+                                        onChange={(e) => setAwsConfig({ ...awsConfig, rdsHost: e.target.value })}
+                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold truncate"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400">Database Name</span>
+                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsDatabase}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400">Database Port</span>
+                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsPort}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ============================================================== */}
+            {/* MODALS                                                         */}
+            {/* ============================================================== */}
+
+            {/* MODAL 1: Change Password */}
             {showPasswordModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
@@ -1357,12 +1815,12 @@ const Settings = () => {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-900">Change Password</h3>
-                                    <p className="text-xs text-slate-500">Ensure strong security standards</p>
+                                    <p className="text-xs text-slate-500">Live SHA-256 verification</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setShowPasswordModal(false)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
@@ -1376,18 +1834,18 @@ const Settings = () => {
                                     required
                                     value={pwdForm.current}
                                     onChange={(e) => setPwdForm({ ...pwdForm, current: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500"
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
                                 />
                             </div>
 
                             <div>
-                                <label className="font-semibold text-slate-700 block mb-1">New Password</label>
+                                <label className="font-semibold text-slate-700 block mb-1">New Password (min 6 chars)</label>
                                 <input
                                     type="password"
                                     required
                                     value={pwdForm.newPwd}
                                     onChange={(e) => setPwdForm({ ...pwdForm, newPwd: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500"
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
                                 />
                             </div>
 
@@ -1398,7 +1856,7 @@ const Settings = () => {
                                     required
                                     value={pwdForm.confirmPwd}
                                     onChange={(e) => setPwdForm({ ...pwdForm, confirmPwd: e.target.value })}
-                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500"
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
                                 />
                             </div>
 
@@ -1406,15 +1864,16 @@ const Settings = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowPasswordModal(false)}
-                                    className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50"
+                                    className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold shadow-sm"
+                                    disabled={pwdLoading}
+                                    className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-semibold shadow-sm cursor-pointer"
                                 >
-                                    Update Password
+                                    {pwdLoading ? "Updating..." : "Update Password"}
                                 </button>
                             </div>
                         </form>
@@ -1422,7 +1881,7 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* MODAL: Manage 2FA */}
+            {/* MODAL 2: Manage 2FA */}
             {show2FAModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
@@ -1433,37 +1892,52 @@ const Settings = () => {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-900">Two-Factor Authentication</h3>
-                                    <p className="text-xs text-slate-500">Authenticator App configured</p>
+                                    <p className="text-xs text-slate-500">Security &amp; Backup Verification</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setShow2FAModal(false)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <div className="p-4 bg-emerald-50/70 border border-emerald-100 rounded-2xl space-y-2">
-                            <div className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                <span>2FA Protection is Active</span>
+                        <div className={`p-4 rounded-2xl border flex items-center justify-between ${twoFactorActive ? "bg-emerald-50/70 border-emerald-100" : "bg-slate-50 border-slate-200"}`}>
+                            <div>
+                                <div className={`text-xs font-bold flex items-center gap-1.5 ${twoFactorActive ? "text-emerald-800" : "text-slate-700"}`}>
+                                    <CheckCircle2 className={`w-4 h-4 ${twoFactorActive ? "text-emerald-600" : "text-slate-400"}`} />
+                                    <span>{twoFactorActive ? "2FA Protection Active" : "2FA Protection Disabled"}</span>
+                                </div>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                    {twoFactorActive ? "Authenticators and backup codes are enabled." : "Toggle on to mandate OTP verification."}
+                                </p>
                             </div>
-                            <p className="text-xs text-slate-600">
-                                Your account is currently protected using Google Authenticator / TOTP.
-                            </p>
+                            <button
+                                type="button"
+                                onClick={() => handleToggle2FA(!twoFactorActive)}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                                    twoFactorActive
+                                        ? "bg-rose-100 hover:bg-rose-200 text-rose-700"
+                                        : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                                }`}
+                            >
+                                {twoFactorActive ? "Disable" : "Enable 2FA"}
+                            </button>
                         </div>
 
                         <div className="space-y-2 text-xs">
-                            <div className="text-slate-700 font-semibold">Backup Codes</div>
+                            <div className="text-slate-700 font-semibold">Backup Recovery Codes</div>
                             <p className="text-slate-500">
-                                Generate new backup recovery codes in case you lose access to your primary device.
+                                Download eight one-time backup codes in case you lose access to your primary device.
                             </p>
                             <button
-                                onClick={() => toast.info("New backup codes generated and downloaded.")}
-                                className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                                type="button"
+                                onClick={handleDownloadBackupCodes}
+                                className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                             >
-                                Download Backup Codes
+                                <Download className="w-4 h-4 text-slate-500" />
+                                <span>Download Backup Codes (.txt)</span>
                             </button>
                         </div>
 
@@ -1471,7 +1945,7 @@ const Settings = () => {
                             <button
                                 type="button"
                                 onClick={() => setShow2FAModal(false)}
-                                className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800"
+                                className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-semibold hover:bg-slate-800 cursor-pointer"
                             >
                                 Done
                             </button>
@@ -1480,7 +1954,7 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* MODAL: Active Sessions */}
+            {/* MODAL 3: Active Sessions */}
             {showSessionsModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
@@ -1491,72 +1965,59 @@ const Settings = () => {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-900">Active Sessions</h3>
-                                    <p className="text-xs text-slate-500">Devices logged into your account</p>
+                                    <p className="text-xs text-slate-500">Authorized devices logged in as {currentUser.email || "HR Recruiter"}</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setShowSessionsModal(false)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         <div className="space-y-3">
-                            {/* Current Session */}
-                            <div className="p-4 border border-slate-100 rounded-2xl bg-slate-50/60 flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-3">
-                                    <Monitor className="w-5 h-5 text-violet-600 mt-0.5" />
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
-                                            <span>Chrome on Windows 11</span>
-                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-bold">
-                                                Active Now
-                                            </span>
-                                        </div>
-                                        <div className="text-[11px] text-slate-500 mt-0.5">
-                                            Bengaluru, India · IP: 103.21.24.89
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Mobile Session */}
-                            <div className="p-4 border border-slate-100 rounded-2xl bg-slate-50/60 flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-3">
-                                    <Smartphone className="w-5 h-5 text-slate-500 mt-0.5" />
-                                    <div>
-                                        <div className="text-xs font-bold text-slate-900">
-                                            Safari on iPhone 15 Pro
-                                        </div>
-                                        <div className="text-[11px] text-slate-500 mt-0.5">
-                                            Mumbai, India · 2 hours ago
+                            {sessions.map((sess) => (
+                                <div key={sess.id} className="p-4 border border-slate-100 rounded-2xl bg-slate-50/60 flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-3">
+                                        <Monitor className="w-5 h-5 text-violet-600 mt-0.5" />
+                                        <div>
+                                            <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                                                <span>{sess.device}</span>
+                                                {sess.isCurrent && (
+                                                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] rounded-full font-bold">
+                                                        Active Now
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-[11px] text-slate-500 mt-0.5">
+                                                {sess.location}
+                                            </div>
                                         </div>
                                     </div>
+                                    {!sess.isCurrent && (
+                                        <button
+                                            onClick={() => handleRevokeSession(sess.id)}
+                                            className="text-xs text-rose-600 font-semibold hover:underline cursor-pointer"
+                                        >
+                                            Revoke
+                                        </button>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={() => toast.success("Session terminated")}
-                                    className="text-xs text-rose-600 font-semibold hover:underline"
-                                >
-                                    Revoke
-                                </button>
-                            </div>
+                            ))}
                         </div>
 
                         <div className="flex justify-between items-center pt-3 border-t border-slate-100 text-xs">
                             <button
-                                onClick={() => {
-                                    toast.success("Logged out from all other devices.");
-                                    setShowSessionsModal(false);
-                                }}
-                                className="text-rose-600 font-semibold hover:underline flex items-center gap-1.5"
+                                onClick={handleLogoutAllOtherSessions}
+                                className="text-rose-600 font-semibold hover:underline flex items-center gap-1.5 cursor-pointer"
                             >
                                 <LogOut className="w-3.5 h-3.5" />
                                 <span>Log out all other sessions</span>
                             </button>
                             <button
                                 onClick={() => setShowSessionsModal(false)}
-                                className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50"
+                                className="px-4 py-2 border border-slate-200 rounded-xl font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
                             >
                                 Close
                             </button>
@@ -1565,7 +2026,7 @@ const Settings = () => {
                 </div>
             )}
 
-            {/* MODAL: Delete Account */}
+            {/* MODAL 4: Delete Account */}
             {showDeleteModal && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
                     <div className="bg-white w-full max-w-md rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
@@ -1581,34 +2042,143 @@ const Settings = () => {
                             </div>
                             <button
                                 onClick={() => setShowDeleteModal(false)}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
                             >
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
                         <div className="p-4 bg-rose-50/70 border border-rose-100 rounded-2xl text-xs text-rose-800 leading-relaxed">
-                            <span className="font-bold">Warning:</span> This will permanently erase your company workspace, candidate pool, interview records, and configurations.
+                            <span className="font-bold">Warning:</span> This will permanently erase your company workspace, candidate pool, interview records, and configurations for <span className="font-mono font-bold">{currentUser.email || "your account"}</span>.
                         </div>
 
                         <div className="flex justify-end gap-2.5 pt-3">
                             <button
                                 type="button"
                                 onClick={() => setShowDeleteModal(false)}
-                                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    toast.error("Account deletion requested. Please contact administrator.");
-                                    setShowDeleteModal(false);
-                                }}
-                                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm"
+                                disabled={deleteLoading}
+                                onClick={handleDeleteAccount}
+                                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-sm cursor-pointer"
                             >
-                                Yes, Delete My Account
+                                {deleteLoading ? "Deleting..." : "Yes, Delete My Account"}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 5: Custom Candidate Instructions Management */}
+            {showEditInstructionsModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-xl rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 max-h-[85vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-violet-100 text-violet-700 flex items-center justify-center">
+                                    <Info className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900">Manage Candidate Instructions</h3>
+                                    <p className="text-xs text-slate-500">Live guidelines shown to candidates before interview starts</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowEditInstructionsModal(false)}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* List of current guidelines */}
+                        <div className="space-y-2.5">
+                            <label className="text-xs font-bold text-slate-700 block">Candidate Instructions Bullets</label>
+                            {tempGuidelines.map((item, idx) => (
+                                <div key={idx} className="flex items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-xs">
+                                    <div className="flex items-start gap-2.5 min-w-0">
+                                        <span className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                            {idx + 1}
+                                        </span>
+                                        <span className="text-slate-800 font-medium leading-relaxed">{item}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveGuideline(idx)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition shrink-0 cursor-pointer"
+                                        title="Remove instruction"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Add new guideline */}
+                        <div className="space-y-1.5 pt-2">
+                            <label className="text-xs font-bold text-slate-700 block">Add New Guideline</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Ensure your microphone is positioned close to your face..."
+                                    value={newGuidelineInput}
+                                    onChange={(e) => setNewGuidelineInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            handleAddGuideline();
+                                        }
+                                    }}
+                                    className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-violet-500"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleAddGuideline}
+                                    className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Add</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTempGuidelines([
+                                        "Ensure you are in a quiet place with good internet connection.",
+                                        "Keep your face clearly visible in the camera.",
+                                        "Do not switch tabs or open other applications.",
+                                        "Do not take help from others during the interview.",
+                                        "Be honest and answer confidently.",
+                                        "Interview will be recorded for evaluation purposes."
+                                    ]);
+                                }}
+                                className="text-slate-500 hover:text-slate-800 font-semibold cursor-pointer underline"
+                            >
+                                Reset to Default Guidelines
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditInstructionsModal(false)}
+                                    className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveInstructions}
+                                    className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-sm cursor-pointer"
+                                >
+                                    Save Guidelines
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
