@@ -90,6 +90,7 @@ const Resumes = () => {
     const [selectedRowIds, setSelectedRowIds] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
     const [batchUploadSummary, setBatchUploadSummary] = useState(null);
+    const [fileTypeError, setFileTypeError] = useState(null);
     const [showFullProfileModal, setShowFullProfileModal] = useState(false);
     const [profileModalTab, setProfileModalTab] = useState("overview");
     const [showInterviewModal, setShowInterviewModal] = useState(false);
@@ -472,41 +473,44 @@ const Resumes = () => {
         }
     };
 
-    // Handle Bulk Upload with Immediate Screening against current JD (Supports PDF, DOC, DOCX, TXT, JPG, JPEG, PNG)
+    // Handle Bulk Upload with Immediate Screening against current JD (Only PDF, DOC, and DOCX allowed)
     const handleFileUpload = async (files) => {
-        const fileList = Array.from(files);
+        const fileList = Array.from(files || []);
         if (!fileList.length) return;
 
-        // Supported document formats including OCR-supported image resumes
-        const ALLOWED_RESUME_EXTS = [".pdf", ".docx", ".doc", ".txt", ".rtf", ".jpg", ".jpeg", ".png"];
+        // Supported document formats: strictly PDF, DOC, DOCX
+        const ALLOWED_RESUME_EXTS = [".pdf", ".doc", ".docx"];
         const validFiles = [];
-        const invalidFormatFiles = [];
+        let hasUnsupported = false;
 
         for (const file of fileList) {
-            const extMatch = file.name.match(/\.[^.]+$/);
+            const fileName = file.name || "";
+            const extMatch = fileName.match(/\.[^.]+$/);
             const ext = extMatch ? extMatch[0].toLowerCase() : "";
             if (ALLOWED_RESUME_EXTS.includes(ext)) {
                 validFiles.push(file);
             } else {
-                invalidFormatFiles.push(file.name);
+                // Completely reject JPG, JPEG, PNG, WEBP, and all other image/unsupported file types immediately
+                hasUnsupported = true;
             }
         }
 
-        if (invalidFormatFiles.length > 0) {
-            toast.error(
-                `Unsupported format${invalidFormatFiles.length > 1 ? "s" : ""}: ${invalidFormatFiles.join(", ")}. Accepted formats: .pdf, .docx, .doc, .txt, .jpg, .jpeg, .png.`,
-                { duration: 5000 }
-            );
+        if (hasUnsupported) {
+            const errorMsg = "File type not supported. Please upload PDF, DOC, or DOCX files only.";
+            setFileTypeError(errorMsg);
+            toast.error(errorMsg);
+        } else {
+            setFileTypeError(null);
         }
 
+        // If no valid files remain, do not add to upload list or show as uploaded/unsupported files
         if (validFiles.length === 0) {
-            toast.warning("No supported resume files detected. Please upload PDF, DOCX, DOC, TXT, JPG, JPEG, or PNG files.");
             return;
         }
 
         setIsUploading(true);
         toast.info(
-            `Processing bulk upload of ${validFiles.length} file${validFiles.length > 1 ? "s" : ""} (PDFs & Image OCR) against "${currentJd.title}"...`
+            `Processing bulk upload of ${validFiles.length} file${validFiles.length > 1 ? "s" : ""} against "${currentJd.title}"...`
         );
 
         try {
@@ -874,12 +878,12 @@ const Resumes = () => {
                         <span>Filter Options</span>
                     </button>
 
-                    {/* Hidden input accepting mixed resume formats */}
+                    {/* Hidden input accepting only PDF, DOC, DOCX files */}
                     <input
                         ref={fileInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,image/jpeg,image/png"
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                         className="hidden"
                         onChange={(e) => {
                             if (e.target.files && e.target.files.length > 0) {
@@ -1005,11 +1009,11 @@ const Resumes = () => {
                         <div className="flex items-center gap-3">
                             <div className="w-5 h-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin shrink-0" />
                             <span className="text-sm font-bold text-violet-900">
-                                Processing &amp; screening resumes with OCR &amp; ATS engine...
+                                Processing &amp; screening resumes with ATS engine...
                             </span>
                         </div>
                         <p className="text-xs text-slate-500">
-                            Parsing mixed files (PDF, DOCX, JPG, PNG), verifying valid resumes, running OCR, and calculating ATS scores.
+                            Parsing resume documents (PDF, DOC, DOCX) and calculating ATS scores.
                         </p>
                     </div>
                 ) : (
@@ -1023,7 +1027,7 @@ const Resumes = () => {
                                     Bulk Upload or Drag &amp; Drop candidate resumes here
                                 </h3>
                                 <p className="text-xs text-slate-500 mt-0.5">
-                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOC, DOCX, TXT, JPG, JPEG, PNG</span> (Image OCR supported). Non-resume images (selfies, logos, WhatsApp UI) are automatically filtered out.
+                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOC, DOCX</span> only.
                                 </p>
                             </div>
                         </div>
@@ -1039,6 +1043,24 @@ const Resumes = () => {
                                 <span>Browse Resumes to Screen</span>
                             </button>
                         </div>
+                    </div>
+                )}
+
+                {/* Short red error message for unsupported file types */}
+                {fileTypeError && (
+                    <div className="mt-3.5 flex items-center justify-between gap-3 p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs font-semibold text-rose-600 animate-in fade-in">
+                        <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <span>{fileTypeError}</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setFileTypeError(null)}
+                            className="p-1 rounded-lg hover:bg-rose-100 text-rose-500 hover:text-rose-700 transition cursor-pointer"
+                            title="Dismiss error"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
                     </div>
                 )}
             </div>
