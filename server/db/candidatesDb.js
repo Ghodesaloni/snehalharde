@@ -1,5 +1,6 @@
 const { readData, writeData } = require("./dbEngine");
 const { getPool } = require("./postgres");
+const { evaluateTranscriptAlgorithmically } = require("../services/interviewEvaluatorService");
 
 const COLLECTION = "candidates";
 
@@ -28,6 +29,28 @@ function matchesUser(item, targetEmail) {
   }
 
   return false;
+}
+
+function applyTranscriptEvaluation(cand) {
+  if (!cand) return cand;
+  const transcript = cand.transcript || cand.transcripts || [];
+  if (Array.isArray(transcript) && transcript.some(t => !t.isAI && t.speaker !== "Ava" && t.speaker !== "AI Interviewer")) {
+    const evalRes = evaluateTranscriptAlgorithmically(transcript, cand.role);
+    return {
+      ...cand,
+      score: evalRes.overallScore,
+      accuracyScore: evalRes.accuracyScore,
+      confidenceScore: evalRes.confidenceScore,
+      totalQuestions: evalRes.totalQuestions,
+      correctAnswersCount: evalRes.correctAnswersCount,
+      incorrectOrSkippedCount: evalRes.incorrectOrSkippedCount,
+      status: evalRes.status,
+      recommendation: evalRes.recommendation,
+      evaluationBreakdown: evalRes.evaluationBreakdown,
+      summaryPoints: evalRes.summaryPoints
+    };
+  }
+  return cand;
 }
 
 class CandidatesDatabase {
@@ -71,13 +94,15 @@ class CandidatesDatabase {
       query += " ORDER BY created_at DESC";
 
       const res = await p.query(query, params);
-      return (res.rows || []).map(this._mapRow);
+      return (res.rows || []).map(r => this._mapRow(r));
     } catch (err) {
       console.warn("PostgreSQL candidates getAll fallback:", err.message);
     }
 
     // 2. Fallback to local JSON mirror
     let list = readData(COLLECTION, []);
+    list = list.map(c => applyTranscriptEvaluation(c));
+
     if (filters.userEmail) {
       list = list.filter(c => matchesUser(c, filters.userEmail));
     }
@@ -113,12 +138,31 @@ class CandidatesDatabase {
 
     // 2. Fallback to local mirror
     const list = readData(COLLECTION, []);
-    return list.find(c => c.id === id) || null;
+    const found = list.find(c => c.id === id) || null;
+    return applyTranscriptEvaluation(found);
   }
 
   async create(data) {
     const list = readData(COLLECTION, []);
     const id = data.id || `cand-${Date.now()}`;
+
+    // Compute dynamic evaluation based on correct answers and confidence if transcript is present
+    let evaluatedScore = data.score !== undefined ? data.score : 90;
+    let evaluatedStatus = data.status || "Under Review";
+    let evaluatedRecommendation = data.recommendation || "";
+    let evaluatedBreakdown = data.evaluationBreakdown || [];
+    let evaluatedSummaryPoints = data.summaryPoints || [];
+
+    const transcript = data.transcript || data.transcripts || [];
+    if (Array.isArray(transcript) && transcript.some(t => !t.isAI && t.speaker !== "Ava" && t.speaker !== "AI Interviewer")) {
+      const evalRes = evaluateTranscriptAlgorithmically(transcript, data.role);
+      evaluatedScore = evalRes.overallScore;
+      evaluatedStatus = evalRes.status;
+      evaluatedRecommendation = evalRes.recommendation;
+      evaluatedBreakdown = evalRes.evaluationBreakdown;
+      evaluatedSummaryPoints = evalRes.summaryPoints;
+    }
+
     const newCand = {
       id,
       name: data.name || "Candidate",
@@ -129,14 +173,14 @@ class CandidatesDatabase {
       interviewDate: data.interviewDate || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
       timestamp: String(data.timestamp || Date.now()),
       duration: data.duration || "0m 00s",
-      mode: data.mode || "AI Interview",
-      score: data.score !== undefined ? data.score : 90,
-      status: data.status || "Under Review",
-      notes: data.notes || "",
-      summaryPoints: data.summaryPoints || [],
-      recommendation: data.recommendation || "",
-      transcript: data.transcript || [],
-      evaluationBreakdown: data.evaluationBreakdown || [],
+      mode: data.mode || "AI Live Interview",
+      score: evaluatedScore,
+      status: evaluatedStatus,
+      notes: data.notes || `Live interview evaluated based on technical correctness of answers and level of confidence. Overall score: ${evaluatedScore}/100 (${evaluatedStatus}).`,
+      summaryPoints: evaluatedSummaryPoints,
+      recommendation: evaluatedRecommendation,
+      transcript: transcript,
+      evaluationBreakdown: evaluatedBreakdown,
       audioUrl: data.audioUrl || data.audio_url || "",
       createdBy: data.createdBy || data.userEmail || "",
       userEmail: data.userEmail || data.createdBy || "",
@@ -280,7 +324,7 @@ class CandidatesDatabase {
 
   _mapRow(row) {
     if (!row) return null;
-    return {
+    const mapped = {
       id: row.id,
       name: row.name,
       email: row.email,
@@ -303,6 +347,7 @@ class CandidatesDatabase {
       userEmail: row.user_email,
       createdAt: row.created_at
     };
+    return applyTranscriptEvaluation(mapped);
   }
 }
 

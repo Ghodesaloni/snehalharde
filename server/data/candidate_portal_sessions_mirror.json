@@ -1,5 +1,95 @@
 [
   {
+    "id": "sess-iv-1790677001643",
+    "linkCode": "ava772",
+    "candidateName": "Snehal Harde",
+    "candidateEmail": "snehal.harde2935@gmail.com",
+    "candidatePhone": "+91-8999646955",
+    "role": "software engineer",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "status": "System Check Completed",
+    "systemCheckStatus": {
+      "camera": true,
+      "microphone": true,
+      "audio": false,
+      "network": "Optimal",
+      "latency": "32ms",
+      "agreedProctoring": true,
+      "checkedAt": "2026-09-30T15:31:04.085Z"
+    },
+    "overallScore": 94,
+    "techDepthScore": "9.2 / 10",
+    "clarityScore": "9.5 / 10",
+    "recommendation": "Recommended for Senior Technical Review",
+    "elapsedSeconds": 0,
+    "transcripts": [],
+    "evaluationBreakdown": [
+      {
+        "category": "System Architecture & Scalability",
+        "score": 95,
+        "weight": "35%"
+      },
+      {
+        "category": "Data Structures & Performance",
+        "score": 92,
+        "weight": "30%"
+      },
+      {
+        "category": "Engineering Collaboration & Communication",
+        "score": 96,
+        "weight": "20%"
+      },
+      {
+        "category": "Code Quality & Resiliency",
+        "score": 94,
+        "weight": "15%"
+      }
+    ],
+    "completedAt": null,
+    "updatedAt": "2026-09-30T15:31:04.085Z"
+  },
+  {
+    "id": "sess-iv-saloni-conducted-01",
+    "linkCode": "ava912",
+    "candidateName": "Aryan Sharma",
+    "candidateEmail": "aryan.sharma@example.com",
+    "candidatePhone": "+91 98111 22334",
+    "role": "Software Engineer",
+    "company": "AvaHire Technologies Pvt. Ltd.",
+    "status": "Completed",
+    "systemCheckStatus": null,
+    "overallScore": 94,
+    "techDepthScore": "9.2 / 10",
+    "clarityScore": "9.5 / 10",
+    "recommendation": "Recommended for Senior Technical Review",
+    "elapsedSeconds": 0,
+    "transcripts": [],
+    "evaluationBreakdown": [
+      {
+        "category": "System Architecture & Scalability",
+        "score": 95,
+        "weight": "35%"
+      },
+      {
+        "category": "Data Structures & Performance",
+        "score": 92,
+        "weight": "30%"
+      },
+      {
+        "category": "Engineering Collaboration & Communication",
+        "score": 96,
+        "weight": "20%"
+      },
+      {
+        "category": "Code Quality & Resiliency",
+        "score": 94,
+        "weight": "15%"
+      }
+    ],
+    "completedAt": "2026-09-30T15:29:19.651Z",
+    "updatedAt": "2026-09-30T15:29:19.651Z"
+  },
+  {
     "id": "sess-iv-1790761890189",
     "linkCode": "ava652",
     "candidateName": "srtyse",
@@ -151,18 +241,18 @@
     "linkCode": "ava-c-1790062026728",
     "candidateName": "Snehal Harde",
     "candidateEmail": "snehal.harde2935@gmail.com",
-    "candidatePhone": "+91 98765 43210",
-    "role": "software engineer",
+    "candidatePhone": "+91-8999646955",
+    "role": "AI/ML Engineer Intern",
     "company": "AvaHire Technologies Pvt. Ltd.",
-    "status": "System Check Completed",
+    "status": "In Live Interview",
     "systemCheckStatus": {
-      "camera": false,
-      "microphone": true,
       "audio": false,
+      "camera": true,
+      "latency": "32ms",
       "network": "Optimal",
-      "latency": "24ms",
-      "agreedProctoring": true,
-      "checkedAt": "2026-09-29T13:47:10.233Z"
+      "checkedAt": "2026-10-02T10:56:54.201Z",
+      "microphone": true,
+      "agreedProctoring": true
     },
     "overallScore": "94",
     "techDepthScore": "9.2 / 10",
@@ -193,7 +283,7 @@
       }
     ],
     "completedAt": null,
-    "updatedAt": "2026-09-29T13:47:10.234Z"
+    "updatedAt": "2026-10-02T11:00:19.635Z"
   },
   {
     "id": "sess-akc123",

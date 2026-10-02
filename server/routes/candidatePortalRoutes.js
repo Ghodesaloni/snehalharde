@@ -251,6 +251,8 @@ function getQuestionsForRole(roleName = "") {
   return ROLE_QUESTIONS["software engineer"];
 }
 
+const { analyzeCandidateResumeForAgent } = require("../services/resumeQuestionService");
+
 // 1. GET /api/candidate-portal/session/:linkCode - Retrieve session by link code
 router.get("/session/:linkCode", async (req, res) => {
   try {
@@ -260,22 +262,68 @@ router.get("/session/:linkCode", async (req, res) => {
 
     // If not found in sessions table, attempt to hydrate from scheduled interview and resume in HR Portal
     const allResumes = resumesDb.getAll() || [];
-    const matchedResume = scheduledInterview 
-      ? allResumes.find(r => (r.email && normalizeEmail(r.email) === normalizeEmail(scheduledInterview.email)) || r.id === scheduledInterview.candidateId)
-      : null;
+    let allCandidates = [];
+    try {
+      allCandidates = (await candidatesDb.getAll()) || [];
+    } catch (e) {
+      allCandidates = [];
+    }
+
+    const targetEmail = (session?.candidateEmail || scheduledInterview?.email || "").toLowerCase().trim();
+    const targetName = (session?.candidateName || scheduledInterview?.name || "").toLowerCase().trim();
+    const targetId = session?.resumeId || scheduledInterview?.candidateId || scheduledInterview?.resumeId || null;
+
+    let matchedResume = null;
+    if (targetEmail) {
+      matchedResume = allResumes.find(r => r.email && normalizeEmail(r.email) === targetEmail) ||
+                      allCandidates.find(c => c.email && normalizeEmail(c.email) === targetEmail);
+    }
+    if (!matchedResume && targetId) {
+      matchedResume = allResumes.find(r => r.id === targetId) || allCandidates.find(c => c.id === targetId);
+    }
+    if (!matchedResume && targetName && targetName !== "candidate") {
+      matchedResume = allResumes.find(r => r.name && r.name.toLowerCase().trim() === targetName) ||
+                      allCandidates.find(c => c.name && c.name.toLowerCase().trim() === targetName);
+    }
+    if (!matchedResume) {
+      matchedResume = allResumes.find(r => r.projects?.length > 0 || r.rawText) || allResumes[0] || allCandidates[0] || null;
+    }
+
+    const combinedCandidateData = {
+      name: scheduledInterview?.name || session?.candidateName || matchedResume?.name || "Candidate",
+      email: targetEmail || matchedResume?.email || "candidate@avahire.ai",
+      phone: (matchedResume && matchedResume.phone) || session?.candidatePhone || scheduledInterview?.phone || "+91 98765 43210",
+      role: scheduledInterview?.role || session?.role || (matchedResume && (matchedResume.targetJobTitle || matchedResume.role)) || "Software Engineer",
+      company: scheduledInterview?.company || session?.company || "AvaHire Technologies Pvt. Ltd.",
+      resumeId: matchedResume ? matchedResume.id : null,
+      resumeFileName: matchedResume ? (matchedResume.resumeFileName || (matchedResume.s3Key ? matchedResume.s3Key.split("/").pop() : null)) : null,
+      skills: (matchedResume && (matchedResume.allSkills || matchedResume.skills)) || session?.skills || ["Full Stack", "JavaScript", "React", "Node.js"],
+      allSkills: (matchedResume && (matchedResume.allSkills || matchedResume.skills)) || session?.skills || [],
+      experience: (matchedResume && (matchedResume.experience || (matchedResume.expYears ? `${matchedResume.expYears} Years` : null))) || session?.experience || "3+ Years",
+      education: matchedResume?.education || "Bachelor of Technology",
+      certifications: matchedResume?.certifications || [],
+      projects: matchedResume?.projects || session?.projects || [],
+      rawText: matchedResume?.rawText || matchedResume?.raw_text || session?.rawText || "",
+      summary: matchedResume?.summary || session?.summary || ""
+    };
+
+    const resumeAnalysis = analyzeCandidateResumeForAgent(combinedCandidateData, scheduledInterview);
 
     if (!session && scheduledInterview) {
       session = await candidateSessionsDb.createOrUpdate({
         id: `sess-${scheduledInterview.id}`,
         linkCode: scheduledInterview.linkCode,
-        candidateName: scheduledInterview.name || (matchedResume && matchedResume.name) || "Candidate",
-        candidateEmail: scheduledInterview.email,
-        candidatePhone: (matchedResume && matchedResume.phone) || scheduledInterview.phone || "+91 98765 43210",
-        role: scheduledInterview.role || (matchedResume && matchedResume.role) || "Software Engineer",
-        company: scheduledInterview.company || "AvaHire Technologies Pvt. Ltd.",
+        candidateName: resumeAnalysis.candidateName,
+        candidateEmail: resumeAnalysis.candidateEmail,
+        candidatePhone: resumeAnalysis.candidatePhone,
+        role: resumeAnalysis.candidateRole,
+        company: resumeAnalysis.candidateCompany,
         resumeId: matchedResume ? matchedResume.id : null,
-        resumeFileName: matchedResume ? matchedResume.resumeFileName : null,
-        skills: matchedResume ? (matchedResume.allSkills || matchedResume.skills) : [],
+        resumeFileName: resumeAnalysis.resumeFileName,
+        skills: resumeAnalysis.skills,
+        experience: resumeAnalysis.experience,
+        projects: resumeAnalysis.projects,
+        questions: resumeAnalysis.generatedQuestions,
         status: scheduledInterview.status === "Completed" ? "Completed" : "Invited",
         overallScore: scheduledInterview.score || 94,
         techDepthScore: "9.2 / 10",
@@ -285,18 +333,20 @@ router.get("/session/:linkCode", async (req, res) => {
     }
 
     if (!session && !scheduledInterview) {
-      const defaultResume = allResumes[0];
       session = {
         id: `sess-${linkCode}`,
         linkCode,
-        candidateName: defaultResume ? defaultResume.name : "Candidate",
-        candidateEmail: defaultResume ? defaultResume.email : "candidate@avahire.ai",
-        candidatePhone: defaultResume ? defaultResume.phone : "+91 98765 43210",
-        role: defaultResume ? (defaultResume.targetJobTitle || defaultResume.role) : "Senior Full Stack Engineer",
-        company: "AvaHire Technologies Pvt. Ltd.",
-        resumeId: defaultResume ? defaultResume.id : null,
-        resumeFileName: defaultResume ? defaultResume.resumeFileName : null,
-        skills: defaultResume ? (defaultResume.allSkills || defaultResume.skills) : [],
+        candidateName: resumeAnalysis.candidateName,
+        candidateEmail: resumeAnalysis.candidateEmail,
+        candidatePhone: resumeAnalysis.candidatePhone,
+        role: resumeAnalysis.candidateRole,
+        company: resumeAnalysis.candidateCompany,
+        resumeId: matchedResume ? matchedResume.id : null,
+        resumeFileName: resumeAnalysis.resumeFileName,
+        skills: resumeAnalysis.skills,
+        experience: resumeAnalysis.experience,
+        projects: resumeAnalysis.projects,
+        questions: resumeAnalysis.generatedQuestions,
         status: "Invited",
         overallScore: 94,
         techDepthScore: "9.2 / 10",
@@ -305,15 +355,16 @@ router.get("/session/:linkCode", async (req, res) => {
       };
     }
 
-    // Attach role-tailored questions and live HR interview settings
-    const questions = getQuestionsForRole(session.role);
     const interviewSettings = settingsDb.getInterviewSettings();
 
     res.json({
       success: true,
       data: {
         ...session,
-        questions,
+        projects: resumeAnalysis.projects,
+        projectHighlights: resumeAnalysis.projectHighlights,
+        questions: resumeAnalysis.generatedQuestions,
+        resumeAnalysis,
         interviewSettings,
         interviewSchedule: scheduledInterview ? {
           id: scheduledInterview.id,
@@ -741,6 +792,8 @@ router.post("/session", async (req, res) => {
   }
 });
 
+const { evaluateTranscriptAlgorithmically } = require("../services/interviewEvaluatorService");
+
 // 7. POST /api/candidate-portal/complete - Explicit completion endpoint connecting to HR Portal
 router.post("/complete", async (req, res) => {
   try {
@@ -753,16 +806,16 @@ router.post("/complete", async (req, res) => {
       role,
       company,
       elapsedSeconds,
-      transcripts,
-      overallScore,
-      evaluationBreakdown,
-      techDepthScore,
-      clarityScore,
-      recommendation
+      transcripts
     } = req.body;
 
     const code = linkCode || "akc123";
     const existing = await candidateSessionsDb.getByLinkCode(code);
+    const targetRole = role || (existing ? existing.role : "Senior Full Stack Engineer");
+    const activeTranscripts = transcripts || (existing ? existing.transcripts : []);
+
+    // Calculate dynamic score based on correct answers and level of confidence
+    const evaluation = evaluateTranscriptAlgorithmically(activeTranscripts, targetRole);
 
     const completedSession = await candidateSessionsDb.createOrUpdate({
       ...(existing || {}),
@@ -771,32 +824,31 @@ router.post("/complete", async (req, res) => {
       candidateName: candidateName || (existing ? existing.candidateName : "Candidate"),
       candidateEmail: candidateEmail || (existing ? existing.candidateEmail : "candidate@avahire.ai"),
       candidatePhone: candidatePhone || (existing ? existing.candidatePhone : "+91 98765 43210"),
-      role: role || (existing ? existing.role : "Senior Full Stack Engineer"),
+      role: targetRole,
       company: company || (existing ? existing.company : "AvaHire Technologies Pvt. Ltd."),
       status: "Completed",
-      overallScore: overallScore !== undefined ? overallScore : 94,
-      techDepthScore: techDepthScore || "9.2 / 10",
-      clarityScore: clarityScore || "9.5 / 10",
-      recommendation: recommendation || "Recommended for Senior Technical Review",
+      overallScore: evaluation.overallScore,
+      accuracyScore: evaluation.accuracyScore,
+      confidenceScore: evaluation.confidenceScore,
+      techDepthScore: `${(evaluation.accuracyScore / 10).toFixed(1)} / 10`,
+      clarityScore: `${(evaluation.confidenceScore / 10).toFixed(1)} / 10`,
+      recommendation: evaluation.recommendation,
       elapsedSeconds: elapsedSeconds || (existing ? existing.elapsedSeconds : 504),
-      transcripts: transcripts || (existing ? existing.transcripts : []),
-      evaluationBreakdown: evaluationBreakdown || [
-        { category: "System Architecture & Scalability", score: 95, weight: "35%" },
-        { category: "Data Structures & Performance", score: 92, weight: "30%" },
-        { category: "Engineering Collaboration & Communication", score: 96, weight: "20%" },
-        { category: "Code Quality & Resiliency", score: 94, weight: "15%" }
-      ],
+      transcripts: activeTranscripts,
+      evaluationBreakdown: evaluation.evaluationBreakdown,
+      summaryPoints: evaluation.summaryPoints,
       completedAt: new Date().toISOString()
     });
 
     // Deep sync to HR Portal backend
-    const hrCandidate = await syncSessionToHRPorizontal(completedSession, req.headers["x-user-email"]);
+    const hrCandidate = await syncSessionToHRPorizontal(completedSession, req.headers["x-user-email"], evaluation);
 
     res.json({
       success: true,
       message: "Interview finalized and synchronized with HR Evaluation Portal",
       data: {
         session: completedSession,
+        evaluation,
         hrCandidateEvaluationId: hrCandidate ? hrCandidate.id : null,
         referenceId: `REF-${code.toUpperCase()}-${Date.now().toString().slice(-4)}`
       }
@@ -808,12 +860,15 @@ router.post("/complete", async (req, res) => {
 });
 
 // Helper function to synchronize candidate portal session into HR candidates & interviews database
-async function syncSessionToHRPorizontal(session, authorEmail) {
+async function syncSessionToHRPorizontal(session, authorEmail, evalOverride = null) {
   try {
     const defaultAuthor = authorEmail || "hr@avahire.ai";
     const durationMins = Math.floor((session.elapsedSeconds || 504) / 60);
     const durationSecs = (session.elapsedSeconds || 504) % 60;
     const formattedDuration = `${durationMins}m ${durationSecs}s`;
+
+    const transcripts = session.transcripts || [];
+    const evaluation = evalOverride || evaluateTranscriptAlgorithmically(transcripts, session.role);
 
     // 1. Create or update Candidate in HR Candidates Evaluation database
     const hrCandidate = await candidatesDb.create({
@@ -823,19 +878,15 @@ async function syncSessionToHRPorizontal(session, authorEmail) {
       phone: session.candidatePhone,
       role: session.role,
       company: session.company,
-      score: session.overallScore || 94,
-      status: (session.overallScore || 94) >= 90 ? "Selected" : "Under Review",
+      score: evaluation.overallScore,
+      status: evaluation.status,
       duration: formattedDuration,
       mode: "AI Live Interview",
-      recommendation: session.recommendation || "Recommended for Senior Technical Review",
-      notes: `Automated assessment conducted by AvaHire AI. Tech Depth: ${session.techDepthScore || "9.2/10"}, Communication Clarity: ${session.clarityScore || "9.5/10"}.`,
-      summaryPoints: [
-        { text: `High domain expertise verified for ${session.role} requirements.`, type: "strength" },
-        { text: `Demonstrated technical communication clarity (${session.clarityScore || "9.5/10"}).`, type: "strength" },
-        { text: `Analytical problem solving methodology (${session.techDepthScore || "9.2/10"}).`, type: "strength" }
-      ],
-      transcript: session.transcripts || [],
-      evaluationBreakdown: session.evaluationBreakdown || [],
+      recommendation: evaluation.recommendation,
+      notes: `Live interview evaluated based on technical correctness of answers (${evaluation.correctAnswersCount}/${evaluation.totalQuestions} correct) and level of confidence (${evaluation.confidenceScore}/100). Overall score: ${evaluation.overallScore}/100 (${evaluation.status}).`,
+      summaryPoints: evaluation.summaryPoints,
+      transcript: transcripts,
+      evaluationBreakdown: evaluation.evaluationBreakdown,
       createdBy: defaultAuthor,
       userEmail: defaultAuthor
     });
@@ -844,14 +895,13 @@ async function syncSessionToHRPorizontal(session, authorEmail) {
     if (session.linkCode) {
       await interviewsDb.update(session.linkCode, {
         status: "Completed",
-        score: session.overallScore || 94
-      });
+        score: evaluation.overallScore
+      }).catch(() => {});
     }
 
-    console.log(`[HR Sync] Successfully synchronized candidate "${session.candidateName}" into HR Portal evaluation database.`);
     return hrCandidate;
   } catch (err) {
-    console.warn("[HR Sync Warning] Failed to synchronize candidate session to HR Portal:", err.message);
+    console.error("Error synchronizing session to HR Portal:", err);
     return null;
   }
 }

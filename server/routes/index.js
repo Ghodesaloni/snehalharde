@@ -21,6 +21,7 @@ router.use("/interviews", interviewsRoutes);
 router.use("/candidates", candidatesRoutes);
 router.use("/candidate-portal", candidatePortalRoutes);
 router.use("/livekit", livekitRoutes);
+router.use("/token", livekitRoutes);
 router.use("/emails", emailCenterRoutes);
 router.use("/email-center", emailCenterRoutes);
 router.use("/dashboard", dashboardRoutes);
