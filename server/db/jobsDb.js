@@ -129,9 +129,46 @@ class JobsDatabase {
     return this.getAll(filters);
   }
 
+  async getByIdAsync(id) {
+    try {
+      const pool = getPool();
+      const res = await pool.query("SELECT * FROM public.jobs WHERE id = $1 LIMIT 1", [id]);
+      if (res.rows && res.rows.length > 0) {
+        return this._mapRow(res.rows[0]);
+      }
+    } catch (e) {}
+    return this.getById(id);
+  }
+
   getById(id) {
     const jobs = readData(COLLECTION, []);
     return jobs.find(j => j.id === id) || null;
+  }
+
+  async createAsync(jobData) {
+    const newJob = this.create(jobData);
+    try {
+      const pool = getPool();
+      await pool.query(`
+        INSERT INTO public.jobs (
+          id, title, dept, job_level, reports_to, loc, is_remote_position,
+          work_mode, type, exp_level, description, key_skills, candidates,
+          status, created_by, user_email, posted, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          title = EXCLUDED.title,
+          dept = EXCLUDED.dept,
+          status = EXCLUDED.status,
+          updated_at = NOW();
+      `, [
+        newJob.id, newJob.title, newJob.dept, newJob.jobLevel, newJob.reportsTo,
+        newJob.loc, newJob.isRemotePosition, newJob.workMode, newJob.type,
+        newJob.expLevel, newJob.description, JSON.stringify(newJob.keySkills),
+        newJob.candidates, newJob.status, newJob.createdBy, newJob.userEmail,
+        newJob.posted
+      ]);
+    } catch (e) {}
+    return newJob;
   }
 
   create(jobData) {
@@ -218,6 +255,26 @@ class JobsDatabase {
     return jobs[index];
   }
 
+  async updateAsync(id, updates) {
+    const updated = this.update(id, updates);
+    try {
+      const pool = getPool();
+      await pool.query(`
+        UPDATE public.jobs SET
+          title = COALESCE($2, title),
+          dept = COALESCE($3, dept),
+          status = COALESCE($4, status),
+          description = COALESCE($5, description),
+          candidates = COALESCE($6, candidates),
+          updated_at = NOW()
+        WHERE id = $1
+      `, [id, updates.title || null, updates.dept || null, updates.status || null, updates.description || null, updates.candidates !== undefined ? updates.candidates : null]);
+    } catch (err) {
+      console.warn("PostgreSQL job updateAsync warning:", err.message);
+    }
+    return updated;
+  }
+
   delete(id) {
     const jobs = readData(COLLECTION, []);
     const filtered = jobs.filter(j => j.id !== id);
@@ -231,6 +288,17 @@ class JobsDatabase {
         .catch(err => console.warn("PostgreSQL job delete warning:", err.message));
     } catch (e) {}
 
+    return true;
+  }
+
+  async deleteAsync(id) {
+    this.delete(id);
+    try {
+      const pool = getPool();
+      await pool.query("DELETE FROM public.jobs WHERE id = $1", [id]);
+    } catch (err) {
+      console.warn("PostgreSQL job deleteAsync warning:", err.message);
+    }
     return true;
   }
 

@@ -32,6 +32,48 @@ function matchesUser(item, targetEmail) {
 }
 
 class ResumesDatabase {
+  _mapRow(row) {
+    if (!row) return null;
+    const skills = typeof row.skills === "string" ? JSON.parse(row.skills) : (row.skills || []);
+    const matchedSkills = typeof row.matched_skills === "string" ? JSON.parse(row.matched_skills) : (row.matched_skills || []);
+    const missingSkills = typeof row.missing_skills === "string" ? JSON.parse(row.missing_skills) : (row.missing_skills || []);
+    const keyPoints = typeof row.key_points === "string" ? JSON.parse(row.key_points) : (row.key_points || {});
+
+    return {
+      id: row.id,
+      candidateId: row.candidate_id || row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      role: row.role,
+      jobId: row.target_job_id,
+      targetJobId: row.target_job_id,
+      targetJobTitle: row.target_job_title,
+      field: row.field || row.domain || "Engineering",
+      domain: row.domain || row.field || "Engineering",
+      score: Number(row.score || 85),
+      atsScore: Number(row.score || 85),
+      matchScore: Number(row.score || 85),
+      status: row.status || "Review",
+      skills,
+      allSkills: skills,
+      matchedSkills,
+      missingSkills,
+      experience: row.experience,
+      expYears: Number(row.exp_years || 0),
+      education: row.education,
+      summary: row.summary,
+      keyPoints,
+      rawText: row.raw_text,
+      resumeFileName: row.resume_file_name,
+      fileUrl: row.file_url,
+      createdBy: row.created_by,
+      userEmail: row.user_email || row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
   classifyDomain(candidate) {
     if (candidate.domain && ALL_DOMAINS.includes(candidate.domain)) {
       return candidate.domain;
@@ -89,6 +131,73 @@ class ResumesDatabase {
           : "Application processed."
       }
     };
+  }
+
+  async getAllAsync(filters = {}) {
+    // 1. Try PostgreSQL first
+    try {
+      const p = getPool();
+      let query = "SELECT * FROM public.resumes";
+      const params = [];
+      const conditions = [];
+
+      if (filters.userEmail) {
+        const emailLower = filters.userEmail.toLowerCase().trim();
+        params.push(emailLower);
+        if (emailLower === "salonighode@gmail.com" || emailLower === "salonighode3@gmail.com") {
+          conditions.push(`(LOWER(created_by) IN ('salonighode@gmail.com', 'salonighode3@gmail.com') OR LOWER(user_email) IN ('salonighode@gmail.com', 'salonighode3@gmail.com'))`);
+        } else {
+          conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+        }
+      }
+
+      if (filters.status && filters.status !== "All") {
+        params.push(filters.status.toLowerCase());
+        conditions.push(`LOWER(status) = $${params.length}`);
+      }
+
+      if (filters.jobId && filters.jobId !== "All") {
+        params.push(filters.jobId);
+        conditions.push(`target_job_id = $${params.length}`);
+      }
+
+      if (filters.field && filters.field !== "All" && filters.field !== "All Fields") {
+        params.push(filters.field.toLowerCase());
+        conditions.push(`LOWER(field) = $${params.length}`);
+      }
+
+      if (filters.search) {
+        params.push(`%${filters.search.toLowerCase()}%`);
+        const idx = params.length;
+        conditions.push(`(LOWER(name) LIKE $${idx} OR LOWER(email) LIKE $${idx} OR LOWER(role) LIKE $${idx} OR LOWER(domain) LIKE $${idx})`);
+      }
+
+      if (conditions.length > 0) {
+        query += " WHERE " + conditions.join(" AND ");
+      }
+      query += " ORDER BY created_at DESC";
+
+      const res = await p.query(query, params);
+      if (res.rows && res.rows.length > 0) {
+        return res.rows.map(r => this.ensureFields(this._mapRow(r)));
+      }
+    } catch (err) {
+      console.warn("PostgreSQL resumes getAllAsync fallback:", err.message);
+    }
+
+    return this.getAll(filters);
+  }
+
+  async getByIdAsync(id) {
+    if (!id) return null;
+    try {
+      const p = getPool();
+      const res = await p.query("SELECT * FROM public.resumes WHERE id = $1 LIMIT 1", [id]);
+      if (res.rows && res.rows.length > 0) {
+        return this.ensureFields(this._mapRow(res.rows[0]));
+      }
+    } catch (e) {}
+    return this.getById(id);
   }
 
   getAll(filters = {}) {

@@ -155,7 +155,6 @@ const CalendarPage = () => {
     const [currentDate, setCurrentDate] = useState(() => new Date(todayDate.getFullYear(), todayDate.getMonth(), 1));
     const [selectedDate, setSelectedDate] = useState(() => todayDate.getDate());
     const [selectedInterview, setSelectedInterview] = useState(null);
-    const [copiedCode, setCopiedCode] = useState(null);
     const [searchTerm, setSearchTerm] = useState(querySearch);
     const [timelineStatusFilter, setTimelineStatusFilter] = useState("All");
 
@@ -333,15 +332,6 @@ const CalendarPage = () => {
             }
             return false;
         });
-    };
-
-    const handleCopy = (code, e) => {
-        if (e) e.stopPropagation();
-        const url = `${window.location.origin}/i/${code}`;
-        navigator.clipboard.writeText(url);
-        setCopiedCode(code);
-        toast.success(`Copied interview link: ${url}`);
-        setTimeout(() => setCopiedCode(null), 2000);
     };
 
     const selectedDayInterviews = getInterviewsForDay(selectedDate);
@@ -638,8 +628,8 @@ const CalendarPage = () => {
                                                     <span className="text-slate-300">|</span>
                                                     <span>{iv.duration || "45m"}</span>
                                                 </div>
-                                                <div className="font-mono text-violet-700 font-bold text-[10px]">
-                                                    {iv.linkCode ? `/i/${iv.linkCode}` : "Conducted"}
+                                                <div className="text-violet-700 font-semibold text-[10px]">
+                                                    {statusCfg.label}
                                                 </div>
                                             </div>
                                         </div>
@@ -665,7 +655,7 @@ const CalendarPage = () => {
                             </span>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                            Detailed line dates of all scheduled and conducted candidate interviews with AI assessment status, ATS scores, and room links.
+                            Detailed line dates of all scheduled and conducted candidate interviews with AI assessment status, ATS scores, and interview schedule.
                         </p>
                     </div>
 
@@ -766,23 +756,10 @@ const CalendarPage = () => {
                                                 <div className="inline-flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => setSelectedInterview(iv)}
-                                                        className="px-2.5 py-1 text-xs font-bold text-violet-700 hover:bg-violet-100/60 rounded-lg transition"
+                                                        className="px-2.5 py-1 text-xs font-bold text-violet-700 hover:bg-violet-100/60 rounded-lg transition cursor-pointer"
                                                     >
                                                         Details
                                                     </button>
-                                                    {iv.linkCode && (
-                                                        <button
-                                                            onClick={(e) => handleCopy(iv.linkCode, e)}
-                                                            className="p-1 text-slate-400 hover:text-violet-600 rounded-lg transition"
-                                                            title="Copy Interview Link"
-                                                        >
-                                                            {copiedCode === iv.linkCode ? (
-                                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                                            ) : (
-                                                                <Copy className="w-3.5 h-3.5" />
-                                                            )}
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -871,33 +848,10 @@ const CalendarPage = () => {
                             );
                         })()}
 
-                        {/* Candidate Portal Link Bar */}
-                        {selectedInterview.linkCode && (
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-700 block">Candidate Interview Portal Link</label>
-                                <div className="p-3 bg-violet-50/50 border border-violet-200/80 rounded-xl flex items-center justify-between gap-2">
-                                    <span className="font-mono text-xs font-bold text-violet-800 break-all truncate">
-                                        {`${window.location.origin}/i/${selectedInterview.linkCode}`}
-                                    </span>
-                                    <button
-                                        onClick={(e) => handleCopy(selectedInterview.linkCode, e)}
-                                        className="p-1.5 text-violet-600 hover:text-violet-900 rounded-lg hover:bg-violet-100/50 transition shrink-0 cursor-pointer"
-                                        title="Copy link"
-                                    >
-                                        {copiedCode === selectedInterview.linkCode ? (
-                                            <Check className="w-4 h-4 text-emerald-600" />
-                                        ) : (
-                                            <Copy className="w-4 h-4" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {/* Action Buttons to all other HR pages */}
                         <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                             <Link
-                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email || "")}&interviewCode=${selectedInterview.linkCode || ""}&role=${encodeURIComponent(selectedInterview.role || "")}`}
+                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterview.email || "")}&role=${encodeURIComponent(selectedInterview.role || "")}`}
                                 className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                             >
                                 <Mail className="w-3.5 h-3.5" />
@@ -916,20 +870,10 @@ const CalendarPage = () => {
                         <div className="flex items-center justify-end gap-2 pt-1">
                             <button
                                 onClick={() => setSelectedInterview(null)}
-                                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer"
+                                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold cursor-pointer transition shadow-xs"
                             >
                                 Close
                             </button>
-                            {selectedInterview.linkCode && (
-                                <Link
-                                    to={`/i/${selectedInterview.linkCode}`}
-                                    target="_blank"
-                                    className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/25 transition inline-flex items-center gap-1.5"
-                                >
-                                    <Video className="w-3.5 h-3.5" />
-                                    <span>Enter Interview Room</span>
-                                </Link>
-                            )}
                         </div>
                     </div>
                 </div>

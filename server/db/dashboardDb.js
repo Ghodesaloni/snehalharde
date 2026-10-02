@@ -33,10 +33,10 @@ function matchesUser(item, targetEmail) {
 
 class DashboardDatabase {
   async getStats(userEmail) {
-    let jobs = await Promise.resolve(jobsDb.getAll());
-    let resumes = await Promise.resolve(resumesDb.getAll());
-    let interviews = await Promise.resolve(interviewsDb.getAll());
-    let candidates = await Promise.resolve(candidatesDb.getAll());
+    let jobs = await (jobsDb.getAllAsync ? jobsDb.getAllAsync() : jobsDb.getAll());
+    let resumes = await (resumesDb.getAllAsync ? resumesDb.getAllAsync() : resumesDb.getAll());
+    let interviews = await interviewsDb.getAll();
+    let candidates = await candidatesDb.getAll();
 
     if (userEmail) {
       jobs = jobs.filter(j => matchesUser(j, userEmail));

@@ -1,4 +1,5 @@
 const { readData, writeData } = require("./dbEngine");
+const { getPool } = require("./postgres");
 
 const SETTINGS_COLLECTION = "settings";
 const PROFILE_COLLECTION = "profile";
@@ -80,6 +81,26 @@ const defaultProfile = {
 };
 
 class SettingsDatabase {
+  async getSettingsAsync() {
+    try {
+      const pool = getPool();
+      const res = await pool.query("SELECT setting_key, setting_data FROM public.app_settings WHERE setting_key IN ('general', 'interview')");
+      if (res.rows && res.rows.length > 0) {
+        let general = null;
+        let interview = null;
+        for (const row of res.rows) {
+          if (row.setting_key === "general") general = row.setting_data;
+          if (row.setting_key === "interview") interview = row.setting_data;
+        }
+        return {
+          ...(general || defaultSettings),
+          interviewSettings: interview || defaultInterviewSettings
+        };
+      }
+    } catch (e) {}
+    return this.getSettings();
+  }
+
   getSettings() {
     const orgSettings = readData(SETTINGS_COLLECTION, defaultSettings);
     const interviewSettings = this.getInterviewSettings();
@@ -100,7 +121,28 @@ class SettingsDatabase {
       updatedAt: new Date().toISOString()
     };
     writeData(SETTINGS_COLLECTION, updated);
+
+    try {
+      const pool = getPool();
+      pool.query(`
+        INSERT INTO public.app_settings (setting_key, setting_data, updated_at)
+        VALUES ('general', $1, NOW())
+        ON CONFLICT (setting_key) DO UPDATE SET setting_data = EXCLUDED.setting_data, updated_at = NOW();
+      `, [JSON.stringify(updated)]).catch(() => {});
+    } catch (e) {}
+
     return this.getSettings();
+  }
+
+  async getInterviewSettingsAsync() {
+    try {
+      const pool = getPool();
+      const res = await pool.query("SELECT setting_data FROM public.app_settings WHERE setting_key = 'interview' LIMIT 1");
+      if (res.rows && res.rows.length > 0) {
+        return res.rows[0].setting_data;
+      }
+    } catch (e) {}
+    return this.getInterviewSettings();
   }
 
   getInterviewSettings() {
@@ -115,6 +157,16 @@ class SettingsDatabase {
       updatedAt: new Date().toISOString()
     };
     writeData(INTERVIEW_SETTINGS_COLLECTION, updated);
+
+    try {
+      const pool = getPool();
+      pool.query(`
+        INSERT INTO public.app_settings (setting_key, setting_data, updated_at)
+        VALUES ('interview', $1, NOW())
+        ON CONFLICT (setting_key) DO UPDATE SET setting_data = EXCLUDED.setting_data, updated_at = NOW();
+      `, [JSON.stringify(updated)]).catch(() => {});
+    } catch (e) {}
+
     return updated;
   }
 

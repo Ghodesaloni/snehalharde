@@ -53,7 +53,6 @@ const Dashboard = () => {
     const [allResumes, setAllResumes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
-    const [copiedCode, setCopiedCode] = useState(null);
 
     useEffect(() => {
         setIsMounted(true);
@@ -111,15 +110,6 @@ const Dashboard = () => {
     const activity = stats?.activity || [];
 
     const totalInFunnel = stageData.reduce((acc, s) => acc + (s.value || 0), 0);
-
-    const handleCopyCandidateLink = (linkCode, e) => {
-        e?.stopPropagation();
-        const fullUrl = `${window.location.origin}/i/${linkCode || "ava123"}`;
-        navigator.clipboard.writeText(fullUrl);
-        setCopiedCode(linkCode);
-        toast.success(`Copied candidate interview link: ${fullUrl}`);
-        setTimeout(() => setCopiedCode(null), 2000);
-    };
 
     return (
         <div className="space-y-6" data-testid="dashboard-page">
@@ -410,26 +400,9 @@ const Dashboard = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            onClick={(e) => handleCopyCandidateLink(u.linkCode, e)}
-                                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-violet-50 hover:text-violet-600 text-slate-500 transition"
-                                            title="Copy Candidate Portal Link"
-                                        >
-                                            {copiedCode === u.linkCode ? (
-                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                            ) : (
-                                                <Copy className="w-3.5 h-3.5" />
-                                            )}
-                                        </button>
-                                        <a
-                                            href={`/i/${u.linkCode || "ava123"}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-violet-50 hover:text-violet-600 text-slate-500 transition"
-                                            title="Preview Candidate Portal"
-                                        >
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                        </a>
+                                        <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-violet-50 text-violet-700 border border-violet-100">
+                                            {u.time || "Scheduled"}
+                                        </span>
                                     </div>
                                 </div>
                             ))

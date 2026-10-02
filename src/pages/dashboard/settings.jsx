@@ -39,10 +39,6 @@ import {
     Sparkles,
     ExternalLink,
     Server,
-    Cloud,
-    Database,
-    Cpu,
-    HardDrive,
     RefreshCw,
     Settings as SettingsIcon,
     Check,
@@ -52,7 +48,7 @@ import {
 } from "lucide-react";
 
 const Settings = () => {
-    // Tabs: "general", "interview", "cloud"
+    // Tabs: "general", "interview"
     const [activeTab, setActiveTab] = useState("interview");
 
     // Current HR user profile info
@@ -198,30 +194,6 @@ const Settings = () => {
     const [tempGuidelines, setTempGuidelines] = useState(interviewSettings.guidelines || []);
     const [newGuidelineInput, setNewGuidelineInput] = useState("");
 
-    // AWS Cloud Server Configuration State
-    const [awsConfig, setAwsConfig] = useState({
-        region: "us-east-1",
-        s3Bucket: "avahire-resumes-storage",
-        rdsHost: "avahire-postgres-cluster.c9awsrds.us-east-1.rds.amazonaws.com",
-        rdsPort: 5432,
-        rdsDatabase: "avahire_db",
-        rdsUser: "postgres",
-        sesSender: "recruiter@avahire.ai",
-        sesRegion: "us-east-1",
-        serverInstance: {
-            provider: "Amazon Web Services (AWS)",
-            service: "AWS App Runner / EC2",
-            containerId: "i-09f42c7ae381a4d",
-            environment: "Production (AWS VPC)",
-            status: "Active & Serving",
-            region: "us-east-1",
-            port: 3000
-        }
-    });
-    const [awsTesting, setAwsTesting] = useState(false);
-    const [awsTestResults, setAwsTestResults] = useState(null);
-    const [savingAws, setSavingAws] = useState(false);
-
     // Initial data load
     useEffect(() => {
         const fetchSettings = async () => {
@@ -242,10 +214,9 @@ const Settings = () => {
                     }
                 }
 
-                const [generalData, interviewData, awsData] = await Promise.allSettled([
+                const [generalData, interviewData] = await Promise.allSettled([
                     settingsApi.get(),
-                    settingsApi.getInterviewSettings(),
-                    settingsApi.getAwsSettings ? settingsApi.getAwsSettings() : Promise.reject("no-aws")
+                    settingsApi.getInterviewSettings()
                 ]);
 
                 if (generalData.status === "fulfilled" && generalData.value) {
@@ -257,9 +228,6 @@ const Settings = () => {
                         setTempGuidelines(interviewData.value.guidelines);
                     }
                     localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewData.value));
-                }
-                if (awsData.status === "fulfilled" && awsData.value) {
-                    setAwsConfig(awsData.value);
                 }
             } catch (err) {
                 console.error("Failed to load settings:", err);
@@ -320,7 +288,7 @@ const Settings = () => {
     const saveInterviewSettings = async () => {
         localStorage.setItem("avahire_interview_settings", JSON.stringify(interviewSettings));
         window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: interviewSettings }));
-        toast.success("Interview settings saved! Changes are now live on Candidate Portal.");
+        toast.success("Interview settings saved successfully.");
         try {
             await settingsApi.updateInterviewSettings(interviewSettings);
         } catch (err) {
@@ -476,38 +444,11 @@ const Settings = () => {
         localStorage.setItem("avahire_interview_settings", JSON.stringify(updated));
         window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: updated }));
         setShowEditInstructionsModal(false);
-        toast.success("Interview guidelines updated! New instructions are now live on Candidate Portal.");
+        toast.success("Interview guidelines updated successfully.");
         try {
             await settingsApi.updateInterviewSettings(updated);
         } catch (err) {
             console.error("Failed to sync guidelines to database:", err);
-        }
-    };
-
-    // AWS Diagnostics & Save
-    const handleTestAws = async () => {
-        setAwsTesting(true);
-        try {
-            const res = await settingsApi.testAwsConnection();
-            setAwsTestResults(res.data);
-            toast.success("AWS Server Diagnostics: All AWS cloud services operational!");
-        } catch (err) {
-            toast.error("Diagnostics notice: " + err.message);
-        } finally {
-            setAwsTesting(false);
-        }
-    };
-
-    const handleSaveAws = async () => {
-        setSavingAws(true);
-        try {
-            const updated = await settingsApi.updateAwsSettings(awsConfig);
-            if (updated) setAwsConfig(updated);
-            toast.success("AWS Cloud Server configuration updated and saved!");
-        } catch (err) {
-            toast.error("Failed to save AWS settings: " + err.message);
-        } finally {
-            setSavingAws(false);
         }
     };
 
@@ -529,7 +470,7 @@ const Settings = () => {
                     </div>
                 </div>
 
-                {/* Settings Tab Selector Buttons (3 Tabs) */}
+                {/* Settings Tab Selector Buttons (2 Tabs) */}
                 <div className="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs">
                     <button
                         onClick={() => setActiveTab("interview")}
@@ -553,17 +494,6 @@ const Settings = () => {
                         <SettingsIcon className="w-4 h-4" />
                         <span>General &amp; Security</span>
                     </button>
-                    <button
-                        onClick={() => setActiveTab("cloud")}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
-                            activeTab === "cloud"
-                                ? "bg-violet-600 text-white shadow-sm"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                        }`}
-                    >
-                        <Cloud className="w-4 h-4" />
-                        <span>AWS Cloud Server</span>
-                    </button>
                 </div>
             </div>
 
@@ -581,7 +511,7 @@ const Settings = () => {
                                 </h2>
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Live Synced to Candidate Portal
+                                    Active &amp; Synced
                                 </span>
                             </div>
                             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
@@ -1617,184 +1547,6 @@ const Settings = () => {
                             >
                                 Delete Account
                             </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ============================================================== */}
-            {/* TAB 3: AWS CLOUD SERVER SETTINGS                               */}
-            {/* ============================================================== */}
-            {activeTab === "cloud" && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2.5">
-                                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                                    AWS Cloud Server &amp; Storage Configuration
-                                </h2>
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Active &amp; Connected
-                                </span>
-                            </div>
-                            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                                Enterprise cloud server parameters powering candidate resume S3 storage, RDS PostgreSQL cluster, and SES email dispatch.
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                            <button
-                                onClick={handleTestAws}
-                                disabled={awsTesting}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 hover:bg-violet-50 text-violet-700 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${awsTesting ? "animate-spin" : ""}`} />
-                                <span>{awsTesting ? "Testing Diagnostics..." : "Run Diagnostics Test"}</span>
-                            </button>
-                            <button
-                                onClick={handleSaveAws}
-                                disabled={savingAws}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition cursor-pointer"
-                            >
-                                <Save className="w-4 h-4" />
-                                <span>{savingAws ? "Saving..." : "Save AWS Config"}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Diagnostics Result Banner if executed */}
-                    {awsTestResults && (
-                        <div className="p-4 sm:p-5 bg-emerald-50/80 border border-emerald-200 rounded-3xl space-y-3 animate-in fade-in">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                                    <span className="text-sm font-bold text-emerald-900">
-                                        Live AWS Server Diagnostics Passed
-                                    </span>
-                                </div>
-                                <span className="text-xs font-bold text-emerald-700">
-                                    Latency: {awsTestResults.latencyMs || 42}ms · Status: Healthy
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">Compute / EC2</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Online &amp; Serving</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">S3 Storage</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Connected (S3 Bucket)</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">PostgreSQL RDS</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Cluster Active</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">SES Mailer</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Verified &amp; Delivering</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 3 AWS Detail Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* CARD 1: EC2 & Container */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
-                                    <Cpu className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS App Runner / EC2</h3>
-                                    <p className="text-xs text-slate-400">Node.js Production Container</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">AWS Region</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.region}</span>
-                                </div>
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">Instance ID</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.serverInstance?.containerId || "i-09f42c7ae381a4d"}</span>
-                                </div>
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">Environment</span>
-                                    <span className="font-bold text-slate-800">Production (AWS VPC)</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Server Port</span>
-                                    <span className="font-bold text-slate-800">3000 (HTTP/LiveKit)</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARD 2: S3 Resume Storage */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                                    <HardDrive className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS S3 Resume Bucket</h3>
-                                    <p className="text-xs text-slate-400">Candidate CV &amp; Audio Vault</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div>
-                                    <label className="text-slate-400 block mb-1">Bucket Name</label>
-                                    <input
-                                        type="text"
-                                        value={awsConfig.s3Bucket}
-                                        onChange={(e) => setAwsConfig({ ...awsConfig, s3Bucket: e.target.value })}
-                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold"
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between pt-1">
-                                    <span className="text-slate-400">Encryption</span>
-                                    <span className="font-bold text-emerald-600">AES-256 Server-Side</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Storage Class</span>
-                                    <span className="font-bold text-slate-800">S3 Standard</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARD 3: RDS PostgreSQL Cluster */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
-                                    <Database className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS RDS PostgreSQL</h3>
-                                    <p className="text-xs text-slate-400">Relational Database Engine</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div>
-                                    <label className="text-slate-400 block mb-1">Cluster Endpoint</label>
-                                    <input
-                                        type="text"
-                                        value={awsConfig.rdsHost}
-                                        onChange={(e) => setAwsConfig({ ...awsConfig, rdsHost: e.target.value })}
-                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold truncate"
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Database Name</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsDatabase}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Database Port</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsPort}</span>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

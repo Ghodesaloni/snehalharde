@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const crypto = require("crypto");
-const { query, getUserByEmail } = require("../db/postgres");
+const { query, getUserByEmail, saveUser } = require("../db/postgres");
 const { readData, writeData } = require("../db/dbEngine");
 const { signToken, verifyToken, authenticateToken } = require("../utils/jwt");
 
@@ -345,26 +345,19 @@ router.post("/register", async (req, res) => {
     localUsers.push(newUser);
     writeData(USERS_COLLECTION, localUsers);
 
-    // Optional PostgreSQL sync if database is available
+    // Persist directly to AWS RDS PostgreSQL public.users
     try {
-      const sql = `
-        INSERT INTO users (uid, email, name, role, company, designation, phone, password_hash, last_login)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
-        ON CONFLICT (email) DO NOTHING
-        RETURNING id, uid, email, name, role, company, designation, phone, created_at;
-      `;
-      await query(sql, [
-        uid,
-        cleanEmail,
-        displayName,
-        userRole,
-        userCompany,
-        userDesignation,
-        userPhone,
-        hashedPassword,
-      ]);
+      await saveUser({
+        email: cleanEmail,
+        fullName: displayName,
+        passwordHash: hashedPassword,
+        company: userCompany,
+        designation: userDesignation,
+        phone: userPhone,
+        isVerified: true
+      });
     } catch (e) {
-      // PostgreSQL not active; local storage handled it perfectly
+      console.warn("PostgreSQL user save notice:", e.message);
     }
 
     res.status(201).json({

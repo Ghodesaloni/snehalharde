@@ -126,11 +126,226 @@ function getPool() {
   return pool;
 }
 
+// Sync all collections from data files to PostgreSQL
+async function syncAllCollectionsToPostgres(client) {
+  try {
+    const dataDir = path.resolve(__dirname, "../data");
+
+    // 1. Sync Jobs
+    const jobsFile = path.join(dataDir, "jobs.json");
+    if (fs.existsSync(jobsFile)) {
+      const jobs = JSON.parse(fs.readFileSync(jobsFile, "utf8"));
+      for (const j of jobs) {
+        await client.query(`
+          INSERT INTO public.jobs (
+            id, title, dept, job_level, reports_to, loc, is_remote_position,
+            work_mode, type, exp_level, description, key_skills, candidates,
+            status, created_by, user_email, posted, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW(), NOW())
+          ON CONFLICT (id) DO UPDATE SET
+            title = EXCLUDED.title,
+            dept = EXCLUDED.dept,
+            loc = EXCLUDED.loc,
+            status = EXCLUDED.status,
+            candidates = EXCLUDED.candidates,
+            updated_at = NOW();
+        `, [
+          j.id, j.title, j.dept || "Engineering", j.jobLevel || "Mid Level",
+          j.reportsTo || "Engineering Manager", j.loc || "Remote",
+          Boolean(j.isRemotePosition), j.workMode || "On-site", j.type || "Full-time",
+          j.expLevel || "2-4 Years", j.description || "",
+          JSON.stringify(j.keySkills || []), Number(j.candidates || 0),
+          j.status || "Active", j.createdBy || "", j.userEmail || j.createdBy || "",
+          j.posted || "Recently"
+        ]);
+      }
+    }
+
+    // 2. Sync Resumes
+    const resumesFile = path.join(dataDir, "resumes.json");
+    if (fs.existsSync(resumesFile)) {
+      const resumes = JSON.parse(fs.readFileSync(resumesFile, "utf8"));
+      for (const r of resumes) {
+        await client.query(`
+          INSERT INTO public.resumes (
+            id, candidate_id, name, email, phone, role, target_job_id,
+            target_job_title, field, domain, score, status, skills,
+            matched_skills, missing_skills, experience, exp_years,
+            education, summary, key_points, raw_text, resume_file_name,
+            file_url, created_by, user_email, created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+            $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, NOW(), NOW()
+          ) ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            role = EXCLUDED.role,
+            score = EXCLUDED.score,
+            status = EXCLUDED.status,
+            skills = EXCLUDED.skills,
+            created_by = EXCLUDED.created_by,
+            user_email = EXCLUDED.user_email,
+            updated_at = NOW();
+        `, [
+          r.id, r.candidateId || r.id, r.name, r.email, r.phone, r.role,
+          r.targetJobId || null, r.targetJobTitle || null, r.field || null,
+          r.domain || null, r.score || r.matchScore || 85, r.status || "Review",
+          JSON.stringify(r.skills || []), JSON.stringify(r.matchedSkills || []),
+          JSON.stringify(r.missingSkills || []), r.experience || null,
+          Number(r.expYears || 2), typeof r.education === "string" ? r.education : JSON.stringify(r.education || []),
+          r.summary || "", JSON.stringify(r.keyPoints || {}), r.rawText || "",
+          r.resumeFileName || null, r.fileUrl || null, r.createdBy || "",
+          r.userEmail || r.createdBy || ""
+        ]);
+      }
+    }
+
+    // 3. Sync Candidates
+    const candFile = path.join(dataDir, "candidates.json");
+    if (fs.existsSync(candFile)) {
+      const cands = JSON.parse(fs.readFileSync(candFile, "utf8"));
+      for (const c of cands) {
+        await client.query(`
+          INSERT INTO public.candidates (
+            id, name, email, phone, role, avatar, interview_date, timestamp,
+            duration, mode, score, status, notes, summary_points, recommendation,
+            transcript, evaluation_breakdown, created_by, user_email, created_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+            $15, $16, $17, $18, $19, NOW()
+          ) ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            score = EXCLUDED.score,
+            status = EXCLUDED.status,
+            created_by = EXCLUDED.created_by,
+            user_email = EXCLUDED.user_email,
+            updated_at = NOW();
+        `, [
+          c.id, c.name, c.email, c.phone, c.role, c.avatar, c.interviewDate,
+          String(c.timestamp || Date.now()), c.duration || "0m", c.mode || "AI Interview",
+          Number(c.score || 90), c.status || "Under Review", c.notes || "",
+          JSON.stringify(c.summaryPoints || []), c.recommendation || "",
+          JSON.stringify(c.transcript || []), JSON.stringify(c.evaluationBreakdown || []),
+          c.createdBy || "", c.userEmail || c.createdBy || ""
+        ]);
+      }
+    }
+
+    // 4. Sync Interviews
+    const ivFile = path.join(dataDir, "interviews.json");
+    if (fs.existsSync(ivFile)) {
+      const ivs = JSON.parse(fs.readFileSync(ivFile, "utf8"));
+      for (const iv of ivs) {
+        await client.query(`
+          INSERT INTO public.interviews (
+            id, candidate_id, name, email, avatar, role, company, date,
+            day_of_week, time, time_zone, duration, duration_mins, link_code,
+            status, expiry, expiry_time, is_expired, score, created_by, user_email,
+            created_at, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+            $15, $16, $17, $18, $19, $20, $21, NOW(), NOW()
+          ) ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            email = EXCLUDED.email,
+            role = EXCLUDED.role,
+            date = EXCLUDED.date,
+            time = EXCLUDED.time,
+            status = EXCLUDED.status,
+            link_code = EXCLUDED.link_code,
+            created_by = EXCLUDED.created_by,
+            user_email = EXCLUDED.user_email,
+            updated_at = NOW();
+        `, [
+          iv.id, iv.candidateId || null, iv.name, iv.email, iv.avatar, iv.role,
+          iv.company || "AvaHire", iv.date, iv.dayOfWeek || "", iv.time,
+          iv.timeZone || "IST", iv.duration || "45 Mins", Number(iv.durationMins || 45),
+          iv.linkCode || "ava123", iv.status || "Scheduled", iv.expiry || "48 Hours",
+          iv.expiryTime || null, Boolean(iv.isExpired), Number(iv.score || 0),
+          iv.createdBy || "", iv.userEmail || iv.createdBy || ""
+        ]);
+      }
+    }
+
+    // 5. Sync App Collections
+    for (const name of ["jobs", "candidates", "interviews", "resumes", "candidate_portal_sessions", "email_templates", "settings", "interview_settings"]) {
+      const f = path.join(dataDir, `${name}.json`);
+      const fAlt = name === "candidate_portal_sessions" ? path.join(dataDir, "candidate_portal_sessions_mirror.json") : f;
+      const fileToUse = fs.existsSync(fAlt) ? fAlt : (fs.existsSync(f) ? f : null);
+      if (fileToUse) {
+        const parsed = JSON.parse(fs.readFileSync(fileToUse, "utf8"));
+        await client.query(`
+          INSERT INTO public.app_collections (collection_name, data, updated_at)
+          VALUES ($1, $2, NOW())
+          ON CONFLICT (collection_name) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW();
+        `, [name, JSON.stringify(parsed)]);
+      }
+    }
+
+    // 6. Sync Email Templates to public.email_templates
+    const emailTemplatesFile = path.join(dataDir, "email_templates.json");
+    let templatesToSeed = [];
+    if (fs.existsSync(emailTemplatesFile)) {
+      try {
+        templatesToSeed = JSON.parse(fs.readFileSync(emailTemplatesFile, "utf8"));
+      } catch (e) {}
+    }
+    if (!templatesToSeed || templatesToSeed.length === 0) {
+      templatesToSeed = [
+        { id: 1, name: "Interview Invitation", subject: "You're invited to interview for {{role}} at {{company}}", body: "Hi {{candidateName}},\n\nWe were very impressed by your background and would like to invite you for an AI-powered technical interview for the {{role}} position.\n\nPlease join using your personalized link:\n{{interviewLink}}\n\nBest regards,\nTalent Acquisition Team\n{{company}}", category: "Interview" },
+        { id: 2, name: "Shortlist Confirmation", subject: "Great news! You've been shortlisted for {{role}}", body: "Dear {{candidateName}},\n\nCongratulations! Your profile has been shortlisted for the next stage of our recruitment process for {{role}}.\n\nOur team will be in touch shortly with next steps.\n\nWarm regards,\n{{company}}", category: "Status" },
+        { id: 3, name: "Rejection Email", subject: "Update on your application for {{role}}", body: "Dear {{candidateName}},\n\nThank you for taking the time to speak with us. While your qualifications are impressive, we have decided to move forward with other candidates whose skills more closely align with our current needs.\n\nWe wish you the very best in your job search.\n\nSincerely,\n{{company}}", category: "Status" },
+        { id: 4, name: "Offer Letter", subject: "Official Offer Letter - {{role}} at {{company}}", body: "Dear {{candidateName}},\n\nOn behalf of {{company}}, we are thrilled to offer you the position of {{role}}! We were deeply impressed by your interviews and believe you will make a tremendous impact.\n\nPlease find attached the official offer details.\n\nWelcome aboard,\n{{company}}", category: "Offer" }
+      ];
+    }
+    for (const t of templatesToSeed) {
+      await client.query(`
+        INSERT INTO public.email_templates (id, name, subject, body, category, uses, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          subject = EXCLUDED.subject,
+          body = EXCLUDED.body,
+          updated_at = NOW();
+      `, [t.id, t.name, t.subject, t.body, t.category || "General", t.uses || 0]);
+    }
+
+    // 7. Sync App Settings to public.app_settings
+    const settingsFile = path.join(dataDir, "settings.json");
+    if (fs.existsSync(settingsFile)) {
+      try {
+        const sData = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
+        await client.query(`
+          INSERT INTO public.app_settings (setting_key, setting_data, updated_at)
+          VALUES ('general', $1, NOW())
+          ON CONFLICT (setting_key) DO UPDATE SET setting_data = EXCLUDED.setting_data, updated_at = NOW();
+        `, [JSON.stringify(sData)]);
+      } catch (e) {}
+    }
+
+    const ivSettingsFile = path.join(dataDir, "interview_settings.json");
+    if (fs.existsSync(ivSettingsFile)) {
+      try {
+        const ivData = JSON.parse(fs.readFileSync(ivSettingsFile, "utf8"));
+        await client.query(`
+          INSERT INTO public.app_settings (setting_key, setting_data, updated_at)
+          VALUES ('interview', $1, NOW())
+          ON CONFLICT (setting_key) DO UPDATE SET setting_data = EXCLUDED.setting_data, updated_at = NOW();
+        `, [JSON.stringify(ivData)]);
+      } catch (e) {}
+    }
+  } catch (err) {
+    console.warn("PostgreSQL collection sync notice:", err.message);
+  }
+}
+
 // Initialize tables in PostgreSQL
 async function initTables() {
   const p = getPool();
   try {
     const client = await p.connect();
+    pgConnected = true;
     try {
       // 1. Users table
       await client.query(`
@@ -495,6 +710,9 @@ async function initTables() {
       } catch (syncErr) {
         console.warn("PostgreSQL user sync notice:", syncErr.message);
       }
+
+      // Synchronize all application collections into AWS PostgreSQL
+      await syncAllCollectionsToPostgres(client);
 
       pgConnected = true;
       console.log("✓ PostgreSQL connected: all databases initialized in PostgreSQL (users, verification_tokens, jobs, candidates, interviews, resumes, email_templates, email_sent, app_settings, candidate_portal_sessions, app_collections).");
