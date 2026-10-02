@@ -449,6 +449,15 @@ class ResumesDatabase {
       }).catch(() => {});
     } catch (_) {}
 
+    // Sync to interviewsDb if status is Selected or Shortlisted
+    try {
+      const sLower = String(newCandidate.status || "").trim().toLowerCase();
+      if (sLower === "selected" || sLower === "shortlisted") {
+        const interviewsDb = require("./interviewsDb");
+        interviewsDb.syncFromResume(newCandidate);
+      }
+    } catch (_) {}
+
     return newCandidate;
   }
 
@@ -463,6 +472,25 @@ class ResumesDatabase {
       updatedAt: new Date().toISOString()
     };
     writeData(COLLECTION, list);
+
+    const updatedItem = list[idx];
+
+    // Two-way backend connection to interviews page:
+    // When candidate status is updated to Selected or Shortlisted, sync to interviews
+    // When candidate status is updated to Rejected, remove candidate from interviews
+    if (updates.status) {
+      try {
+        const interviewsDb = require("./interviewsDb");
+        const sLower = String(updates.status).trim().toLowerCase();
+        if (sLower === "selected" || sLower === "shortlisted") {
+          interviewsDb.syncFromResume(updatedItem);
+        } else if (sLower === "rejected") {
+          interviewsDb.removeForCandidate(updatedItem.id, updatedItem.email);
+        }
+      } catch (err) {
+        console.warn("Interview sync from resume notice:", err.message);
+      }
+    }
 
     // Update in PostgreSQL public.resumes
     try {
@@ -512,6 +540,12 @@ class ResumesDatabase {
     const filtered = list.filter(r => r.id !== id);
     if (filtered.length === list.length) return false;
     writeData(COLLECTION, filtered);
+
+    // Sync removal in interviewsDb
+    try {
+      const interviewsDb = require("./interviewsDb");
+      interviewsDb.removeForCandidate(id);
+    } catch (_) {}
 
     // Delete in PostgreSQL public.resumes
     try {

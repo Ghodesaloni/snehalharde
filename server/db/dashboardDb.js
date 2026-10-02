@@ -166,9 +166,21 @@ class DashboardDatabase {
 
     // Recent activity stream strictly for the authenticated user
     const activity = [];
-    candidates.slice(0, 3).forEach(c => {
-      activity.push({
-        id: `act-${c.id}`,
+    const seenActivityKeys = new Set();
+
+    const addActivity = (item) => {
+      let key = item.id;
+      let counter = 1;
+      while (seenActivityKeys.has(key)) {
+        key = `${item.id}-${counter++}`;
+      }
+      seenActivityKeys.add(key);
+      activity.push({ ...item, id: key });
+    };
+
+    candidates.slice(0, 3).forEach((c, idx) => {
+      addActivity({
+        id: `act-interview-${c.id || idx}`,
         user: "You",
         action: `AI Interview completed: ${c.name} (${c.role}) - Score: ${c.score || 0}%`,
         time: c.interviewDate || "Recently",
@@ -176,9 +188,9 @@ class DashboardDatabase {
         color: "text-violet-500 bg-violet-50"
       });
     });
-    interviews.slice(0, 3).forEach(i => {
-      activity.push({
-        id: `act-${i.id}`,
+    interviews.slice(0, 3).forEach((i, idx) => {
+      addActivity({
+        id: `act-scheduled-${i.id || idx}`,
         user: "You",
         action: `Scheduled interview: ${i.name} for ${i.role}`,
         time: i.date || "Scheduled",
@@ -186,9 +198,9 @@ class DashboardDatabase {
         color: "text-blue-500 bg-blue-50"
       });
     });
-    resumes.slice(0, 3).forEach(r => {
-      activity.push({
-        id: `act-${r.id}`,
+    resumes.slice(0, 3).forEach((r, idx) => {
+      addActivity({
+        id: `act-resume-${r.id || idx}`,
         user: "You",
         action: `Screened resume: ${r.name} (${r.role}) - ATS: ${r.atsScore || 0}%`,
         time: r.uploadedDate || "Recently",

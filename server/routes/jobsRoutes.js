@@ -303,9 +303,9 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/jobs/:id - update existing job
-router.put("/:id", async (req, res) => {
+router.put("/:id", (req, res) => {
   try {
-    const updated = await jobsDb.updateAsync(req.params.id, req.body);
+    const updated = jobsDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Job not found" });
     }
@@ -316,9 +316,9 @@ router.put("/:id", async (req, res) => {
 });
 
 // DELETE /api/jobs/:id - delete job
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", (req, res) => {
   try {
-    const deleted = await jobsDb.deleteAsync(req.params.id);
+    const deleted = jobsDb.delete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ success: false, error: "Job not found" });
     }

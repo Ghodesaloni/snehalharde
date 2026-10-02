@@ -44,9 +44,10 @@ const CandidateInterviewInvite = () => {
                 try {
                     const res = await fetch(`/api/interviews/${code}`);
                     if (res.ok) {
-                        const data = await res.json();
-                        if (data) {
-                            setInterviewData(data);
+                        const json = await res.json();
+                        const interview = json?.data || json;
+                        if (interview && (interview.name || interview.linkCode)) {
+                            setInterviewData(interview);
                         }
                     }
                 } catch (err) {

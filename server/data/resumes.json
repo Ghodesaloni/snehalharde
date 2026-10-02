@@ -1,5 +1,443 @@
 [
   {
+    "id": "c-1790940139647",
+    "name": "RIYA BONDRE",
+    "email": "riyabondre2@gmail.com",
+    "phone": "+91-9420689837",
+    "location": "Remote / Not Specified",
+    "avatar": "",
+    "role": "Professional",
+    "field": "Data Science",
+    "domain": "Data Science",
+    "secondaryDomains": [
+      "Machine Learning",
+      "Software Development",
+      "Artificial Intelligence"
+    ],
+    "createdBy": "riyabondre435@gmail.com",
+    "userEmail": "riyabondre435@gmail.com",
+    "experience": "0 Years",
+    "expYears": 0,
+    "skills": [
+      "Python",
+      "SQL",
+      "HTML/CSS"
+    ],
+    "extraSkillsCount": 3,
+    "allSkills": [
+      "Python",
+      "SQL",
+      "HTML/CSS",
+      "Machine Learning",
+      "Deep Learning",
+      "Natural Language Processing"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "python",
+        "normalized": "Python",
+        "category": "Programming Languages",
+        "domains": {
+          "Data Science": 8,
+          "Machine Learning": 8,
+          "Software Development": 7,
+          "Web Development": 6,
+          "Data Analytics": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "sql",
+        "normalized": "SQL",
+        "category": "Databases",
+        "domains": {
+          "Data Analytics": 9,
+          "Data Science": 8,
+          "Software Development": 8,
+          "Finance": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "html",
+        "normalized": "HTML/CSS",
+        "category": "Frontend",
+        "domains": {
+          "Web Development": 10,
+          "Software Development": 7,
+          "UI/UX Design": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "machine learning",
+        "normalized": "Machine Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Data Science": 10,
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "neural networks",
+        "normalized": "Deep Learning",
+        "category": "Data Science & AI",
+        "domains": {
+          "Machine Learning": 10,
+          "Artificial Intelligence": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "nlp",
+        "normalized": "Natural Language Processing",
+        "category": "Data Science & AI",
+        "domains": {
+          "Artificial Intelligence": 10,
+          "Machine Learning": 10,
+          "Data Science": 9
+        },
+        "confidence": 0.96
+      }
+    ],
+    "education": "Bachelor of Technology in Computer Science Expected Graduation:2027",
+    "educationEntries": [],
+    "experienceEntries": [],
+    "atsScore": 39,
+    "matchScore": 39,
+    "skillsMatchPct": 20,
+    "status": "Rejected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 0,
+        "max": 30,
+        "percentage": 0
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 6,
+        "max": 20,
+        "candidateYears": 0,
+        "requiredYears": 3,
+        "status": "SHORTFALL"
+      },
+      "education": {
+        "score": 9.5,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 5,
+        "max": 10,
+        "candidateDomain": "Data Science",
+        "jdDomain": "DevOps"
+      },
+      "resumeQuality": {
+        "score": 4,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 4,
+      "issues": [
+        "Work experience section could not be clearly identified or is empty."
+      ],
+      "warnings": [],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 6 classified technical competencies.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [],
+    "missingSkills": [
+      "Docker",
+      "AWS",
+      "System Design"
+    ],
+    "missingRequiredSkills": [
+      "Docker",
+      "AWS",
+      "System Design"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Academic background in Data Science",
+        "Foundational technical literacy in software concepts"
+      ],
+      "missingSkills": [
+        "Docker",
+        "AWS",
+        "System Design",
+        "Professional DevOps infrastructure experience"
+      ],
+      "experienceMatch": "The candidate has zero years of relevant experience, failing to meet the professional requirements for a DevOps role.",
+      "verdict": "Candidate rejected due to a total lack of alignment with required DevOps technical stack and industry experience."
+    },
+    "summary": "Riya Bondre is currently misaligned with the DevOps role as her profile focuses on Data Science with no professional experience in containerization, cloud infrastructure, or system design. The candidate lacks the prerequisite technical skills required to perform the duties of this position, resulting in a low ATS compatibility score.",
+    "uploadedDate": "02 Oct 2026",
+    "jobId": "job-1790932825628",
+    "targetJobTitle": "devops",
+    "resumeFileName": "resume riya.docx",
+    "rawText": "RIYA BONDRE\n\n +91-9420689837 riyabondre2@gmail.com\n\nSUMMARY\n\nComputer Science Engineering student currently pursuing B.Tech, with foundational knowledge of Python, SQL, and data analysis. Seeking entry-level or internship opportunities to apply analytical skills and gain practical industry experience.\n\nSKILLS\n\nProgramming Language: Python, SQL., HTML\n\nTools And Technologies: Google colab, Jupyter Notebook, VS Code\n\nMachine Learning: Supervised and Unsupervised Learning, Model Evaluation, NLP\n\nEDUCATION\n\nBachelor of Technology in Computer Science Expected Graduation:2027\n\nG.H Raisoni University CGPA: 7.65 / 10 \n\nPROJECT\n\nAI Resume Analyzer With Job Description Matching\n\n Developed an AI-powered web application using Python and Streamlit for resume analysis.\n\n Implemented NLP-based matching to compare resumes with job descriptions and generate compatibility scores.\n\n Identified skill gaps and provided personalized recommendations to improve job\n\nsuitability.\n\nCOURSEWOEK\n\nDatabase Management System, Data Structures and Algorithmt, Object-Oriented \n\nMethodology, Operating Systems, Computer Networks, Artificial Neural Networks,\n\nNLP",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": null,
+    "s3Bucket": null,
+    "createdAt": "2026-10-02T11:22:19.647Z"
+  },
+  {
+    "id": "c-1790940073811",
+    "name": "DEVOPS ENGINEER",
+    "email": "jaredrich@email.com",
+    "phone": "(123) 456-7890",
+    "location": "Atlanta, GA",
+    "avatar": "",
+    "role": "Software Engineer",
+    "field": "Software Development",
+    "domain": "Software Development",
+    "secondaryDomains": [
+      "DevOps",
+      "Cloud Computing"
+    ],
+    "createdBy": "riyabondre435@gmail.com",
+    "userEmail": "riyabondre435@gmail.com",
+    "experience": "9.3 Years",
+    "expYears": 9.3,
+    "skills": [
+      "Python",
+      "SQL",
+      "MongoDB"
+    ],
+    "extraSkillsCount": 4,
+    "allSkills": [
+      "Python",
+      "SQL",
+      "MongoDB",
+      "AWS",
+      "Docker",
+      "CI/CD",
+      "Terraform"
+    ],
+    "all_normalized_skills": [
+      {
+        "original": "python",
+        "normalized": "Python",
+        "category": "Programming Languages",
+        "domains": {
+          "Data Science": 8,
+          "Machine Learning": 8,
+          "Software Development": 7,
+          "Web Development": 6,
+          "Data Analytics": 6
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "sql",
+        "normalized": "SQL",
+        "category": "Databases",
+        "domains": {
+          "Data Analytics": 9,
+          "Data Science": 8,
+          "Software Development": 8,
+          "Finance": 5
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "nosql",
+        "normalized": "MongoDB",
+        "category": "Databases",
+        "domains": {
+          "Software Development": 9,
+          "Web Development": 8
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "aws",
+        "normalized": "AWS",
+        "category": "Cloud & DevOps",
+        "domains": {
+          "Cloud Computing": 10,
+          "DevOps": 9,
+          "Software Development": 7
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "docker",
+        "normalized": "Docker",
+        "category": "Cloud & DevOps",
+        "domains": {
+          "DevOps": 10,
+          "Cloud Computing": 9,
+          "Software Development": 8
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "jenkins",
+        "normalized": "CI/CD",
+        "category": "Cloud & DevOps",
+        "domains": {
+          "DevOps": 10,
+          "Software Development": 8
+        },
+        "confidence": 0.96
+      },
+      {
+        "original": "terraform",
+        "normalized": "Terraform",
+        "category": "Cloud & DevOps",
+        "domains": {
+          "DevOps": 10,
+          "Cloud Computing": 9
+        },
+        "confidence": 0.96
+      }
+    ],
+    "education": "B.S.",
+    "educationEntries": [],
+    "experienceEntries": [
+      {
+        "title": "Software Engineer",
+        "company": "Organization",
+        "startDate": "January 2019",
+        "endDate": "current",
+        "duration": "January 2019 - current",
+        "responsibilities": [
+          "Established continuous build environments to speed up",
+          "software development by 51%",
+          "Delivered comprehensive best practices by managing and",
+          "reviewing all of technical operations",
+          "Worked with 3 development, server, and network teams"
+        ]
+      },
+      {
+        "title": "Software Engineer",
+        "company": "Organization",
+        "startDate": "June 2017",
+        "endDate": "January 2019",
+        "duration": "June 2017 - January 2019",
+        "responsibilities": [
+          "Spearheaded hands-on development, testing, and fielding",
+          "of questions from 6+ stakeholders",
+          "Worked under the guidance of 9 lead software engineers,",
+          "tech leads, and architects",
+          "Helped 15+ other Junior developers on the team with"
+        ]
+      }
+    ],
+    "atsScore": 77,
+    "matchScore": 77,
+    "skillsMatchPct": 67,
+    "status": "Selected",
+    "breakdown": {
+      "requiredSkills": {
+        "score": 20,
+        "max": 30,
+        "percentage": 67
+      },
+      "preferredSkills": {
+        "score": 8,
+        "max": 10,
+        "percentage": 80
+      },
+      "experience": {
+        "score": 20,
+        "max": 20,
+        "candidateYears": 9.3,
+        "requiredYears": 3,
+        "status": "EXCEEDS"
+      },
+      "education": {
+        "score": 9,
+        "max": 10
+      },
+      "keywords": {
+        "score": 4,
+        "max": 10
+      },
+      "domainRelevance": {
+        "score": 8.5,
+        "max": 10,
+        "candidateDomain": "Software Development",
+        "jdDomain": "DevOps"
+      },
+      "resumeQuality": {
+        "score": 5,
+        "max": 5
+      },
+      "certifications": {
+        "score": 2,
+        "max": 5
+      }
+    },
+    "resumeQuality": {
+      "score": 5,
+      "issues": [],
+      "warnings": [],
+      "strengths": [
+        "Valid email address detected.",
+        "Rich skill profile with 3 classified technical competencies.",
+        "Clear work experience section with structured employment history.",
+        "Academic background and degree credentials clearly stated."
+      ]
+    },
+    "matchedSkills": [
+      "Docker",
+      "AWS"
+    ],
+    "missingSkills": [
+      "System Design"
+    ],
+    "missingRequiredSkills": [
+      "System Design"
+    ],
+    "missingPreferredSkills": [],
+    "keyPoints": {
+      "strengths": [
+        "Extensive 9.3 years of experience in the DevOps domain",
+        "Proven technical proficiency with core infrastructure tools like Docker and AWS"
+      ],
+      "missingSkills": [
+        "System Design",
+        "Evidence of high-level architectural decision-making"
+      ],
+      "experienceMatch": "The candidate's 9.3-year tenure exceeds standard senior requirements, though the profile lacks explicit evidence of complex system design capabilities.",
+      "verdict": "Shortlisted; candidate possesses strong technical foundations but requires validation of architectural skills during the interview process."
+    },
+    "summary": "The candidate is a highly experienced DevOps professional with a strong alignment to core operational requirements like Docker and AWS. While they meet the seniority threshold, the absence of documented System Design expertise is a notable gap that should be addressed via a technical deep-dive or whiteboard assessment during the interview stage.",
+    "uploadedDate": "02 Oct 2026",
+    "jobId": "job-1790932825628",
+    "targetJobTitle": "devops",
+    "resumeFileName": "devops-engineer-resume-example.pdf",
+    "rawText": "JA R E D R I C H A R D S\nDEVOPS ENGINEER\nCONTACT\njaredrich@email.com\n(123) 456-7890\nAtlanta, GA\nLinkedIn\nGithub\nEDUCATION\nB.S.\nComputer Science\nUniversity of Georgia\nSeptember 2013 - June 2017\nAthens, GA\nSKILLS\nJenkins\nGroovy\nGit\nDocker\nTerraform\nChef\nAnsible\nPython\nSQL\nNoSQL\nWORK EXPERIENCE\nDevOps Engineer\nTek Systems\nJanuary 2019 - current / Atlanta, GA\nEstablished continuous build environments to speed up\nsoftware development by 51%\nDelivered comprehensive best practices by managing and\nreviewing all of technical operations\nWorked with 3 development, server, and network teams\nAnalyzed and problem-solved major setbacks and\nshortcomings and presented findings to 6 stakeholders and\n3 senior managers\nCreated suitable DevOps channels across the organization,\nleading to 99% of deadlines being met\nCommunicated in person, via telephone, email, and other\nelectronic means to over 100 employees and customers\nCoached a 6-person team in Terraform fundamentals,\nimplementing 3 training handbooks\nDevOps Engineer Level 1\nGlobal Payments Inc.\nJune 2017 - January 2019 / Atlanta, GA\nSpearheaded hands-on development, testing, and fielding\nof questions from 6+ stakeholders\nWorked under the guidance of 9 lead software engineers,\ntech leads, and architects\nHelped 15+ other Junior developers on the team with\ntechnical issue resolution\nAuthored innovation in the team and led 14 learning\nsessions in relevant technology domains\nResearched trends in current technology domains,\ndiscovered new tools, and garnered majority consensus for\ninternal adoption\nExercised judgment within defined procedures and\npractices to determine appropriate actions\nCreated 3 unique solutions to manage and monitor\ncontainerized workloads and AWS services\n\n-- 1 of 1 --",
+    "storageProvider": "Local",
+    "s3Url": null,
+    "s3Key": null,
+    "s3Bucket": null,
+    "createdAt": "2026-10-02T11:21:13.858Z",
+    "updatedAt": "2026-10-02T12:10:49.904Z"
+  },
+  {
     "id": "c-1790932897630",
     "name": "MANAGEMENT TOOLS",
     "role": "Professional",

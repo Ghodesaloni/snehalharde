@@ -355,7 +355,6 @@ async function initTables() {
   const p = getPool();
   try {
     const client = await p.connect();
-    pgConnected = true;
     try {
       // 1. Users table
       await client.query(`
@@ -722,9 +721,6 @@ async function initTables() {
       } catch (syncErr) {
         console.warn("PostgreSQL user sync notice:", syncErr.message);
       }
-
-      // Synchronize all application collections into AWS PostgreSQL
-      await syncAllCollectionsToPostgres(client);
 
       pgConnected = true;
       console.log("✓ PostgreSQL connected: all databases initialized in PostgreSQL (users, verification_tokens, jobs, candidates, interviews, resumes, email_templates, email_sent, app_settings, candidate_portal_sessions, app_collections).");

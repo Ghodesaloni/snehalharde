@@ -41,14 +41,9 @@ api.interceptors.request.use((config) => {
         }
 
         // For POST/PUT payloads, auto-inject creator identity if not provided
-        if (config.data && typeof config.data === "object") {
-          if (config.data instanceof FormData) {
-            if (!config.data.has("userEmail")) config.data.append("userEmail", userEmail);
-            if (!config.data.has("createdBy")) config.data.append("createdBy", userEmail);
-          } else {
-            if (!config.data.createdBy) config.data.createdBy = userEmail;
-            if (!config.data.userEmail) config.data.userEmail = userEmail;
-          }
+        if (config.data && typeof config.data === "object" && !(config.data instanceof FormData)) {
+          if (!config.data.createdBy) config.data.createdBy = userEmail;
+          if (!config.data.userEmail) config.data.userEmail = userEmail;
         }
       }
     } catch {
@@ -234,12 +229,6 @@ export const resumesApi = {
   },
   uploadAndScreen: async (formData) => {
     const res = await api.post("/resumes/upload-and-screen", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-    return res.data;
-  },
-  uploadBatch: async (formData) => {
-    const res = await api.post("/resumes/upload-batch", formData, {
       headers: { "Content-Type": "multipart/form-data" }
     });
     return res.data;

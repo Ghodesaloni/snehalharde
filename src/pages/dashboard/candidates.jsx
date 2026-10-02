@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { candidatesApi, jobsApi, resumesApi } from "@/services/api";
+import { candidatesApi, jobsApi, resumesApi, interviewsApi } from "@/services/api";
 import { getMatchingResumesForJob, enrichCandidateForJob } from "@/utils/jdMatcher";
 import {
     Mail,
@@ -35,7 +35,11 @@ import {
     Database,
     Trash2,
     Briefcase,
-    FileText
+    FileText,
+    ExternalLink,
+    Copy,
+    RotateCw,
+    ShieldCheck
 } from "lucide-react";
 
 const initialCandidates = [];
@@ -51,6 +55,9 @@ const Candidates = () => {
     const [candidates, setCandidates] = useState(initialCandidates);
     const [jobs, setJobs] = useState([]);
     const [resumes, setResumes] = useState([]);
+    const [interviews, setInterviews] = useState([]);
+    const [selectedPortalCandidate, setSelectedPortalCandidate] = useState(null);
+    const [copiedPortalId, setCopiedPortalId] = useState(null);
     const [sortBy, setSortBy] = useState("Latest Interview");
     const [statusFilter, setStatusFilter] = useState(statusQueryParam || "All");
     const [jobFilter, setJobFilter] = useState(jobQueryParam);
@@ -145,10 +152,11 @@ const Candidates = () => {
     useEffect(() => {
         const fetchCandidates = async () => {
             try {
-                const [candData, jobsData, resumesData] = await Promise.all([
+                const [candData, jobsData, resumesData, ivData] = await Promise.all([
                     candidatesApi.getAll().catch(() => []),
                     jobsApi.getAll().catch(() => []),
-                    resumesApi.getAll().catch(() => [])
+                    resumesApi.getAll().catch(() => []),
+                    interviewsApi.getAll().catch(() => [])
                 ]);
                 if (Array.isArray(candData)) {
                     setCandidates(candData);
@@ -159,8 +167,11 @@ const Candidates = () => {
                 if (Array.isArray(resumesData)) {
                     setResumes(resumesData);
                 }
+                if (Array.isArray(ivData)) {
+                    setInterviews(ivData);
+                }
             } catch (err) {
-                console.error("Failed to load candidates from backend:", err);
+                console.error("Failed to load candidates/interviews from backend:", err);
             }
         };
         fetchCandidates();
@@ -171,6 +182,90 @@ const Candidates = () => {
         window.addEventListener("avahire_candidates_updated", handleSync);
         return () => window.removeEventListener("avahire_candidates_updated", handleSync);
     }, []);
+
+    const getCandidateInterview = (candidate) => {
+        if (!candidate) return null;
+        return interviews.find(
+            (iv) =>
+                (iv.email && candidate.email && iv.email.toLowerCase() === candidate.email.toLowerCase()) ||
+                iv.candidateId === candidate.id ||
+                iv.id === candidate.interviewId ||
+                iv.resumeId === candidate.id
+        );
+    };
+
+    const handleCopyPortalLink = (linkCode) => {
+        const portalUrl = `${window.location.origin}/i/${linkCode}`;
+        navigator.clipboard?.writeText(portalUrl);
+        setCopiedPortalId(linkCode);
+        toast.success(`Candidate Portal link copied: ${portalUrl}`);
+        setTimeout(() => setCopiedPortalId(null), 2500);
+    };
+
+    const handleOpenCandidatePortalModal = (candidate) => {
+        const existingIv = getCandidateInterview(candidate);
+        const linkCode = existingIv?.linkCode || candidate.linkCode || "ava" + Math.floor(100 + Math.random() * 900);
+        setSelectedPortalCandidate({
+            candidate,
+            linkCode,
+            isExisting: !!existingIv,
+            interview: existingIv
+        });
+    };
+
+    const handleGenerateLinkForCandidate = async (candidate) => {
+        const existingIv = getCandidateInterview(candidate);
+        if (existingIv) {
+            handleOpenCandidatePortalModal(candidate);
+            return;
+        }
+        const newCode = "ava" + Math.floor(100 + Math.random() * 900);
+        const dateObj = new Date();
+        const formattedDate = dateObj.toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric"
+        });
+        const newIv = {
+            id: `iv-${Date.now()}`,
+            candidateId: candidate.id,
+            resumeId: candidate.id,
+            name: candidate.name,
+            email: candidate.email,
+            phone: candidate.phone || "",
+            avatar: candidate.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+            role: candidate.role || "Software Engineer",
+            company: "AvaHire Technologies Pvt. Ltd.",
+            date: formattedDate,
+            dayOfWeek: "Today",
+            time: "11:00 AM",
+            timeZone: "IST",
+            duration: "45 Minutes",
+            linkCode: newCode,
+            status: "Scheduled",
+            expiry: "Not started",
+            isExpired: false
+        };
+        try {
+            const created = await interviewsApi.create(newIv);
+            setInterviews((prev) => [created || newIv, ...prev]);
+            toast.success(`Candidate Portal link generated for ${candidate.name}! (Code: ${newCode})`);
+            setSelectedPortalCandidate({
+                candidate,
+                linkCode: newCode,
+                isExisting: true,
+                interview: created || newIv
+            });
+        } catch (err) {
+            setInterviews((prev) => [newIv, ...prev]);
+            setSelectedPortalCandidate({
+                candidate,
+                linkCode: newCode,
+                isExisting: true,
+                interview: newIv
+            });
+        }
+    };
 
     const parseSafeArray = (val, defaultVal = []) => {
         if (Array.isArray(val)) return val;
@@ -392,10 +487,20 @@ const Candidates = () => {
                     {/* Filter Button */}
                     <button
                         onClick={() => setShowFilterModal(true)}
-                        className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition shadow-xs"
+                        className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition shadow-xs cursor-pointer"
                         title="Filters"
                     >
                         <Filter className="w-4 h-4" />
+                    </button>
+
+                    {/* Generate Interview Link / Candidate Portal Quick Button */}
+                    <button
+                        onClick={() => navigate("/app/interviews?generate=true")}
+                        className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
+                        title="Generate Interview Link & Candidate Portal"
+                    >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Generate Link</span>
                     </button>
                 </div>
             </div>
@@ -443,12 +548,13 @@ const Candidates = () => {
                         </div>
                     </div>
                 ) : (
-                    filteredCandidates.map((candidate) => {
+                    filteredCandidates.map((candidate, idx) => {
                         const isExpanded = expandedCandidateId === candidate.id;
+                        const candidateInterview = getCandidateInterview(candidate);
 
                         return (
                             <div
-                                key={candidate.id}
+                                key={candidate.id ? `${candidate.id}-${idx}` : `cand-${idx}`}
                                 data-testid={`candidate-card-${candidate.id}`}
                                 className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-xs ${isExpanded
                                         ? "border-violet-300 shadow-md ring-1 ring-violet-200"
@@ -516,27 +622,67 @@ const Candidates = () => {
                                         </div>
                                     </div>
 
-                                    {/* Column 4: Select & Reject Action Buttons (Shown ONLY when collapsed) or Chevron (When expanded) */}
+                                    {/* Column 4: Candidate Portal + Select & Reject Action Buttons */}
                                     {!isExpanded ? (
-                                        <div className="flex flex-row lg:flex-col gap-2.5 min-w-[180px] shrink-0">
-                                            <button
-                                                onClick={(e) => handleSelectCandidate(candidate.id, candidate.name, e)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-emerald-50 border border-emerald-500 text-emerald-600 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-[0.98] shadow-xs"
-                                            >
-                                                <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
-                                                <span>Select Candidate</span>
-                                            </button>
+                                        <div className="flex flex-col gap-2 min-w-[190px] shrink-0">
+                                            {/* Candidate Portal / Generate Link */}
+                                            {candidateInterview ? (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleOpenCandidatePortalModal(candidate);
+                                                    }}
+                                                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-violet-50 hover:bg-violet-100 border border-violet-200/90 text-violet-700 rounded-xl text-xs font-bold transition active:scale-[0.98] shadow-2xs group cursor-pointer"
+                                                    title="Candidate Portal Access & Live Link"
+                                                >
+                                                    <ExternalLink className="w-3.5 h-3.5 text-violet-600 group-hover:scale-110 transition-transform" />
+                                                    <span>Candidate Portal ({candidateInterview.linkCode})</span>
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleGenerateLinkForCandidate(candidate);
+                                                    }}
+                                                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition active:scale-[0.98] shadow-xs cursor-pointer"
+                                                    title="Generate Candidate Interview Link & Portal"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                    <span>Generate Link</span>
+                                                </button>
+                                            )}
 
-                                            <button
-                                                onClick={(e) => handleRejectCandidate(candidate.id, candidate.name, e)}
-                                                className="flex-1 flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-rose-50 border border-rose-400 text-rose-500 rounded-xl text-xs sm:text-sm font-semibold transition active:scale-[0.98] shadow-xs"
-                                            >
-                                                <X className="w-4 h-4 text-rose-500 stroke-[2.5]" />
-                                                <span>Reject Candidate</span>
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={(e) => handleSelectCandidate(candidate.id, candidate.name, e)}
+                                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white hover:bg-emerald-50 border border-emerald-500 text-emerald-600 rounded-xl text-xs font-semibold transition active:scale-[0.98] shadow-xs cursor-pointer"
+                                                >
+                                                    <Check className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                                                    <span>Select</span>
+                                                </button>
+
+                                                <button
+                                                    onClick={(e) => handleRejectCandidate(candidate.id, candidate.name, e)}
+                                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-white hover:bg-rose-50 border border-rose-400 text-rose-500 rounded-xl text-xs font-semibold transition active:scale-[0.98] shadow-xs cursor-pointer"
+                                                >
+                                                    <X className="w-3.5 h-3.5 text-rose-500 stroke-[2.5]" />
+                                                    <span>Reject</span>
+                                                </button>
+                                            </div>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-end min-w-[180px] shrink-0">
+                                        <div className="flex flex-col items-end gap-2 min-w-[190px] shrink-0">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleOpenCandidatePortalModal(candidate);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-mono text-xs font-bold border border-violet-200/80 transition shadow-2xs cursor-pointer"
+                                                title="View Candidate Portal Link"
+                                            >
+                                                <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
+                                                <span>Portal: /i/{candidateInterview?.linkCode || "portal"}</span>
+                                            </button>
                                             <div className="flex items-center gap-2 text-xs font-semibold text-violet-600 bg-violet-50 hover:bg-violet-100 px-4 py-2 rounded-xl transition">
                                                 <span>Hide Transcript</span>
                                                 <ChevronUp className="w-4 h-4" />
@@ -724,6 +870,58 @@ const Candidates = () => {
                                                         <p className="text-xs text-emerald-900 font-medium leading-relaxed">
                                                             {candidate.recommendation}
                                                         </p>
+                                                    </div>
+
+                                                    {/* Candidate Portal Access Card */}
+                                                    <div className="bg-violet-50/80 border border-violet-200/90 rounded-2xl p-4 space-y-2.5 shadow-2xs">
+                                                        <div className="flex items-center justify-between text-xs">
+                                                            <span className="font-bold text-violet-900 flex items-center gap-1.5">
+                                                                <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
+                                                                <span>Candidate Portal Access</span>
+                                                            </span>
+                                                            <span className="font-mono text-[11px] bg-white text-violet-700 font-bold px-2 py-0.5 rounded-md border border-violet-200">
+                                                                Code: {candidateInterview?.linkCode || candidate.linkCode || "ava318"}
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="text"
+                                                                readOnly
+                                                                value={`${window.location.origin}/i/${candidateInterview?.linkCode || candidate.linkCode || "ava318"}`}
+                                                                className="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 select-all font-semibold"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleCopyPortalLink(candidateInterview?.linkCode || candidate.linkCode || "ava318")}
+                                                                className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1 transition shadow-2xs cursor-pointer"
+                                                                title="Copy Candidate Portal Link"
+                                                            >
+                                                                <Copy className="w-3.5 h-3.5" />
+                                                                <span>Copy</span>
+                                                            </button>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 pt-1">
+                                                            <a
+                                                                href={`/i/${candidateInterview?.linkCode || candidate.linkCode || "ava318"}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="flex-1 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-2xs"
+                                                            >
+                                                                <ExternalLink className="w-3.5 h-3.5" />
+                                                                <span>Open Portal</span>
+                                                            </a>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleGenerateLinkForCandidate(candidate)}
+                                                                className="px-3 py-2 border border-violet-300 bg-white hover:bg-violet-50 text-violet-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                                                title="Generate or Refresh Candidate Link"
+                                                            >
+                                                                <Sparkles className="w-3.5 h-3.5" />
+                                                                <span>New Link</span>
+                                                            </button>
+                                                        </div>
                                                     </div>
 
                                                     {/* HR Decision Card */}
@@ -1098,6 +1296,131 @@ const Candidates = () => {
                                 className="px-4 py-2 bg-violet-600 text-white rounded-xl text-xs font-semibold"
                             >
                                 Apply
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Candidate Portal Modal */}
+            {selectedPortalCandidate && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
+                    <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
+                                    <Sparkles className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-base">Candidate Portal Access</h3>
+                                    <p className="text-xs text-slate-500">Live AI Interview Session &amp; Assessment Link</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedPortalCandidate(null)}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Candidate Summary */}
+                        <div className="flex items-center gap-3.5 p-4 bg-slate-50 rounded-2xl">
+                            <img
+                                src={selectedPortalCandidate.candidate.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
+                                alt={selectedPortalCandidate.candidate.name}
+                                className="w-12 h-12 rounded-full object-cover border border-slate-200"
+                            />
+                            <div className="space-y-0.5">
+                                <h4 className="font-bold text-slate-900 text-sm">{selectedPortalCandidate.candidate.name}</h4>
+                                <div className="text-xs text-slate-500 flex items-center gap-2">
+                                    <span>{selectedPortalCandidate.candidate.role}</span>
+                                    <span>•</span>
+                                    <span className="font-mono text-slate-700">{selectedPortalCandidate.candidate.email}</span>
+                                </div>
+                                {selectedPortalCandidate.candidate.phone && (
+                                    <p className="text-[11px] font-mono text-violet-700">Phone: {selectedPortalCandidate.candidate.phone}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Candidate Portal URL Box */}
+                        <div className="p-4 bg-violet-50/80 border border-violet-200 rounded-2xl space-y-3">
+                            <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-violet-900 flex items-center gap-1.5">
+                                    <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
+                                    <span>Candidate Portal Access URL</span>
+                                </span>
+                                <span className="font-mono text-[11px] bg-white text-violet-700 font-bold px-2 py-0.5 rounded-md border border-violet-200">
+                                    Code: {selectedPortalCandidate.linkCode}
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={`${window.location.origin}/i/${selectedPortalCandidate.linkCode}`}
+                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 select-all font-semibold"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => handleCopyPortalLink(selectedPortalCandidate.linkCode)}
+                                    className="px-3.5 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer shrink-0"
+                                >
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>{copiedPortalId === selectedPortalCandidate.linkCode ? "Copied!" : "Copy"}</span>
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] border-t border-violet-100">
+                                <div>
+                                    <span className="text-slate-400 block">Candidate Login Email:</span>
+                                    <span className="font-semibold text-slate-800 truncate block">{selectedPortalCandidate.candidate.email}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 block">Phone Verification:</span>
+                                    <span className="font-semibold font-mono text-violet-700 block">{selectedPortalCandidate.candidate.phone || "Required at login"}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="space-y-2 pt-1">
+                            <a
+                                href={`/i/${selectedPortalCandidate.linkCode}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Open Candidate Portal (Live AI Interview)</span>
+                            </a>
+
+                            <div className="grid grid-cols-2 gap-2.5">
+                                <Link
+                                    to={`/app/email?candidateEmail=${encodeURIComponent(selectedPortalCandidate.candidate.email || "")}&interviewCode=${selectedPortalCandidate.linkCode}&role=${encodeURIComponent(selectedPortalCandidate.candidate.role || "")}`}
+                                    className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                >
+                                    <Mail className="w-3.5 h-3.5" />
+                                    <span>Email Candidate</span>
+                                </Link>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handleGenerateLinkForCandidate(selectedPortalCandidate.candidate)}
+                                    className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition text-center cursor-pointer"
+                                >
+                                    <RotateCw className="w-3.5 h-3.5" />
+                                    <span>Regenerate Code</span>
+                                </button>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedPortalCandidate(null)}
+                                className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer"
+                            >
+                                Done / Close
                             </button>
                         </div>
                     </div>

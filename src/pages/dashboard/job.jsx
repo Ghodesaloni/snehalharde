@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { jobsApi, resumesApi } from "@/services/api";
-import { getMatchingResumesForJob, getEffectiveJobSkills } from "@/utils/jdMatcher";
+import { jobsApi } from "@/services/api";
 import {
     FileText,
     MapPin,
@@ -260,7 +259,6 @@ const parseJobDescriptionClientSide = (text = "", filename = "") => {
 
 const Jobs = () => {
     const [jobs, setJobs] = useState(seedJobs);
-    const [resumes, setResumes] = useState([]);
     const [q, setQ] = useState("");
     const [modal, setModal] = useState(false);
     const [form, setForm] = useState(defaultFormState);
@@ -272,23 +270,17 @@ const Jobs = () => {
     const fileInputRef = useRef(null);
 
     useEffect(() => {
-        const loadJobsAndResumes = async () => {
+        const loadJobs = async () => {
             try {
-                const [jobsRes, resumesRes] = await Promise.allSettled([
-                    jobsApi.getAll(),
-                    resumesApi.getAll()
-                ]);
-                if (jobsRes.status === "fulfilled" && Array.isArray(jobsRes.value)) {
-                    setJobs(jobsRes.value);
-                }
-                if (resumesRes.status === "fulfilled" && Array.isArray(resumesRes.value)) {
-                    setResumes(resumesRes.value);
+                const data = await jobsApi.getAll();
+                if (Array.isArray(data)) {
+                    setJobs(data);
                 }
             } catch (err) {
-                console.error("Failed to load jobs and resumes from database:", err);
+                console.error("Failed to load jobs from database:", err);
             }
         };
-        loadJobsAndResumes();
+        loadJobs();
     }, []);
 
     const handleDeleteJob = async (jobId, jobTitle) => {
@@ -549,11 +541,7 @@ const Jobs = () => {
                 </div>
             ) : (
                 <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {filtered.map((j) => {
-                        const matchedResumes = getMatchingResumesForJob(resumes, j, safeJobs);
-                        const effectiveSkills = getEffectiveJobSkills(j);
-
-                        return (
+                    {filtered.map((j) => (
                         <div key={j.id} data-testid={`job-card-${j.id}`} className="bg-white rounded-2xl border border-slate-100 p-6 card-hover flex flex-col justify-between shadow-xs">
                             <div>
                                 <div className="flex items-start justify-between gap-2">
@@ -582,9 +570,9 @@ const Jobs = () => {
                                 )}
 
                                 {/* Key Skills Badges */}
-                                {effectiveSkills.length > 0 && (
+                                {j.keySkills && j.keySkills.length > 0 && (
                                     <div className="mt-3.5 flex flex-wrap gap-1.5">
-                                        {effectiveSkills.slice(0, 4).map((skill, sIdx) => (
+                                        {j.keySkills.slice(0, 4).map((skill, sIdx) => (
                                             <span
                                                 key={sIdx}
                                                 className="text-[11px] font-medium px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-100 rounded-md"
@@ -592,9 +580,9 @@ const Jobs = () => {
                                                 {skill}
                                             </span>
                                         ))}
-                                        {effectiveSkills.length > 4 && (
+                                        {j.keySkills.length > 4 && (
                                             <span className="text-[11px] font-medium px-1.5 py-0.5 bg-slate-50 text-slate-500 rounded-md border border-slate-100">
-                                                +{effectiveSkills.length - 4} more
+                                                +{j.keySkills.length - 4} more
                                             </span>
                                         )}
                                     </div>
@@ -615,61 +603,13 @@ const Jobs = () => {
                                         </span>
                                     )}
                                     <Link
-                                        to={`/app/resumes?jobId=${encodeURIComponent(j.id)}`}
+                                        to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
                                         className="px-2.5 py-1 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-100 font-semibold flex items-center gap-1 transition"
-                                        title="View automatically shortlisted resumes matching this job's JD"
+                                        title="View candidates for this job"
                                     >
                                         <Users className="w-3 h-3 text-violet-500" />
-                                        {matchedResumes.length} shortlisted →
+                                        {j.candidates} candidates →
                                     </Link>
-                                </div>
-
-                                {/* Automatically Shortlisted Resumes Matching JD under this Job */}
-                                <div className="mt-4 pt-3 border-t border-slate-100">
-                                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 mb-2">
-                                        <span className="flex items-center gap-1">
-                                            <Sparkles className="w-3 h-3 text-violet-600" />
-                                            <span>Shortlisted Resumes (JD Match)</span>
-                                        </span>
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                            {matchedResumes.length} Matched
-                                        </span>
-                                    </div>
-                                    {matchedResumes.length === 0 ? (
-                                        <div className="text-[11px] text-slate-400 italic py-1.5 px-2.5 bg-slate-50/70 rounded-xl border border-slate-100">
-                                            No resumes match this job's JD yet.
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-0.5">
-                                            {matchedResumes.map((cand) => (
-                                                <Link
-                                                    key={cand.id}
-                                                    to={`/app/resumes?jobId=${encodeURIComponent(j.id)}`}
-                                                    className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50/80 hover:bg-violet-50/60 border border-slate-100 transition text-xs"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="font-bold text-slate-800 truncate text-[11px]">
-                                                            {cand.name}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500 truncate">
-                                                            {(cand.matchedSkills || []).slice(0, 3).join(", ")}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5 shrink-0">
-                                                        <span className="px-1.5 py-0.5 rounded-md bg-violet-50 text-violet-700 border border-violet-200 text-[10px] font-extrabold">
-                                                            {cand.matchScore}% JD
-                                                        </span>
-                                                        <span className="px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200 text-[10px] font-bold">
-                                                            ATS: {cand.atsScore}
-                                                        </span>
-                                                        <span className="px-1.5 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200 text-[10px] font-bold">
-                                                            Shortlisted
-                                                        </span>
-                                                    </div>
-                                                </Link>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
@@ -677,11 +617,11 @@ const Jobs = () => {
                                 <span className="text-slate-400 font-medium">Posted {j.posted}</span>
                                 <div className="flex items-center gap-2">
                                     <Link
-                                        to={`/app/resumes?jobId=${encodeURIComponent(j.id)}`}
+                                        to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
                                         className="text-slate-600 hover:text-violet-600 font-semibold px-2 py-1 rounded-lg hover:bg-slate-50 transition"
-                                        title="View Shortlisted Resumes for this Job"
+                                        title="View Candidates"
                                     >
-                                        Resumes ({matchedResumes.length})
+                                        Candidates
                                     </Link>
                                     <button
                                         onClick={() => setSelectedJobView(j)}
@@ -700,8 +640,7 @@ const Jobs = () => {
                                 </div>
                             </div>
                         </div>
-                        );
-                    })}
+                    ))}
                 </div>
             )}
 
@@ -758,13 +697,13 @@ const Jobs = () => {
                             )}
 
                             {/* Key Skills */}
-                            {getEffectiveJobSkills(selectedJobView).length > 0 && (
+                            {selectedJobView.keySkills && selectedJobView.keySkills.length > 0 && (
                                 <div>
                                     <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                         <Tag className="w-3.5 h-3.5 text-blue-600" /> Required Key Skills
                                     </h4>
                                     <div className="flex flex-wrap gap-2">
-                                        {getEffectiveJobSkills(selectedJobView).map((skill, idx) => (
+                                        {selectedJobView.keySkills.map((skill, idx) => (
                                             <span
                                                 key={idx}
                                                 className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-100 rounded-lg text-xs font-semibold"
@@ -775,63 +714,6 @@ const Jobs = () => {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Automatically Shortlisted Resumes Matching JD */}
-                            {(() => {
-                                const modalMatchedResumes = getMatchingResumesForJob(resumes, selectedJobView, safeJobs);
-                                return (
-                                    <div>
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                                                <Sparkles className="w-3.5 h-3.5 text-violet-600" /> Shortlisted Resumes Matching JD ({modalMatchedResumes.length})
-                                            </h4>
-                                            <Link
-                                                to={`/app/resumes?jobId=${encodeURIComponent(selectedJobView.id)}`}
-                                                className="text-xs font-bold text-violet-600 hover:text-violet-800 hover:underline"
-                                            >
-                                                Open in Resume Screener →
-                                            </Link>
-                                        </div>
-                                        {modalMatchedResumes.length === 0 ? (
-                                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-500 text-center">
-                                                No resumes currently match the Job Description requirements for <strong>{selectedJobView.title}</strong>.
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                                                {modalMatchedResumes.map((cand) => (
-                                                    <div
-                                                        key={cand.id}
-                                                        className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-3"
-                                                    >
-                                                        <div className="min-w-0">
-                                                            <div className="text-xs font-bold text-slate-900 truncate">
-                                                                {cand.name}{" "}
-                                                                <span className="text-[11px] font-normal text-slate-500">
-                                                                    ({cand.email})
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-[11px] text-slate-600 mt-0.5 truncate">
-                                                                Matched Skills: <span className="font-semibold text-violet-700">{(cand.matchedSkills || []).join(", ")}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 shrink-0">
-                                                            <span className="px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200 text-[11px] font-extrabold">
-                                                                JD Match: {cand.matchScore}%
-                                                            </span>
-                                                            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold">
-                                                                ATS: {cand.atsScore}/100
-                                                            </span>
-                                                            <span className="px-2.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 text-[11px] font-bold">
-                                                                Shortlisted
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
                         </div>
 
                         <div className="mt-6 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
@@ -844,11 +726,11 @@ const Jobs = () => {
 
                             <div className="flex flex-wrap items-center gap-2">
                                 <Link
-                                    to={`/app/resumes?jobId=${encodeURIComponent(selectedJobView.id)}`}
+                                    to={`/app/candidates?job=${encodeURIComponent(selectedJobView.title)}`}
                                     className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                                 >
                                     <Users className="w-3.5 h-3.5" />
-                                    <span>View Shortlisted Resumes ({getMatchingResumesForJob(resumes, selectedJobView, safeJobs).length})</span>
+                                    <span>View Applicants ({selectedJobView.candidates || 0})</span>
                                 </Link>
                                 <button
                                     onClick={() => handleDeleteJob(selectedJobView.id, selectedJobView.title)}
