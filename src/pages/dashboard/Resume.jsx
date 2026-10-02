@@ -910,7 +910,7 @@ const Resumes = () => {
                             <div className="text-xs font-medium text-slate-500">Total Candidates</div>
                             <div className="text-2xl font-extrabold text-slate-900 mt-0.5">{tabCounts.total}</div>
                             <div className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                                In current database
+                                In candidate records
                             </div>
                         </div>
                     </div>
@@ -1029,15 +1029,6 @@ const Resumes = () => {
                         </div>
 
                         <div className="shrink-0 flex items-center gap-2">
-                            <Link
-                                to="/candidate-login"
-                                target="_blank"
-                                className="flex items-center gap-2 px-3.5 py-2.5 bg-white border border-slate-200 hover:border-violet-300 hover:bg-violet-50/50 text-slate-700 hover:text-violet-700 rounded-xl text-xs sm:text-sm font-semibold shadow-2xs transition"
-                                title="Open Candidate Portal Login"
-                            >
-                                <ExternalLink className="w-4 h-4 text-violet-600" />
-                                <span>Candidate Portal</span>
-                            </Link>
                             <button
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
@@ -1924,39 +1915,15 @@ const Resumes = () => {
                                                 {candidate.matchScore}%
                                             </td>
 
-                                            {/* Status & Candidate Portal */}
+                                            {/* Status */}
                                             <td className="py-3.5 px-3 whitespace-nowrap">
-                                                <div className="space-y-1">
-                                                    <span
-                                                        className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold ${getStatusPill(
-                                                            candidate.status
-                                                        )}`}
-                                                    >
-                                                        {candidate.status}
-                                                    </span>
-                                                    {(() => {
-                                                        const cleanEmail = (candidate.email || "").toLowerCase().trim();
-                                                        const iv = interviews.find(i => (i.email && i.email.toLowerCase().trim() === cleanEmail) || i.candidateId === candidate.id);
-                                                        if (iv) {
-                                                            return (
-                                                                <div>
-                                                                    <a
-                                                                        href={`/i/${iv.linkCode}`}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 text-[10px] font-bold transition shadow-2xs"
-                                                                        title={`Candidate Portal Ready: ${iv.date} ${iv.time}`}
-                                                                    >
-                                                                        <ExternalLink className="w-2.5 h-2.5 text-violet-600" />
-                                                                        <span>Portal ({iv.time})</span>
-                                                                    </a>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    })()}
-                                                </div>
+                                                <span
+                                                    className={`inline-block px-2.5 py-1 rounded-full text-[11px] font-semibold ${getStatusPill(
+                                                        candidate.status
+                                                    )}`}
+                                                >
+                                                    {candidate.status}
+                                                </span>
                                             </td>
 
                                             {/* Actions */}
@@ -2030,41 +1997,6 @@ const Resumes = () => {
                                                             <span>View Full Breakdown</span>
                                                         </button>
                                                         <div className="border-t border-slate-100 my-1" />
-                                                        
-                                                        {/* Candidate Portal Direct Actions */}
-                                                        {(() => {
-                                                            const cleanEmail = (candidate.email || "").toLowerCase().trim();
-                                                            const iv = interviews.find(i => (i.email && i.email.toLowerCase().trim() === cleanEmail) || i.candidateId === candidate.id);
-                                                            const portalUrl = iv ? `/i/${iv.linkCode}` : `/candidate-login?email=${encodeURIComponent(candidate.email || "")}`;
-                                                            return (
-                                                                <>
-                                                                    <a
-                                                                        href={portalUrl}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        onClick={() => setOpenActionMenuId(null)}
-                                                                        className="w-full px-3.5 py-2 hover:bg-violet-50 flex items-center gap-2 text-violet-700 font-semibold cursor-pointer"
-                                                                    >
-                                                                        <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
-                                                                        <span>Open Candidate Portal</span>
-                                                                    </a>
-                                                                    {iv && (
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const fullLink = `${window.location.origin}/i/${iv.linkCode}`;
-                                                                                navigator.clipboard.writeText(fullLink);
-                                                                                toast.success(`Copied Candidate Portal Link for ${candidate.name}!`);
-                                                                                setOpenActionMenuId(null);
-                                                                            }}
-                                                                            className="w-full px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-700 cursor-pointer"
-                                                                        >
-                                                                            <Copy className="w-3.5 h-3.5 text-slate-500" />
-                                                                            <span>Copy Portal Link</span>
-                                                                        </button>
-                                                                    )}
-                                                                </>
-                                                            );
-                                                        })()}
 
                                                         <button
                                                             onClick={() => {
@@ -2903,34 +2835,10 @@ const Resumes = () => {
                             <div className="space-y-4 text-xs animate-in zoom-in-95">
                                 <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center gap-2.5 text-emerald-800 font-medium">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                                    <span>Interview link successfully generated &amp; linked to resume!</span>
+                                    <span>Interview scheduled &amp; linked to candidate successfully!</span>
                                 </div>
 
-                                <div className="space-y-1.5">
-                                    <label className="font-semibold text-slate-700 block">Candidate Interview Link</label>
-                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl font-mono text-violet-700 font-bold break-all flex items-center justify-between gap-2">
-                                        <span>{`${window.location.origin}/i/${generatedLinkData.linkCode}`}</span>
-                                        <button
-                                            onClick={() => {
-                                                const url = `${window.location.origin}/i/${generatedLinkData.linkCode}`;
-                                                navigator.clipboard.writeText(url);
-                                                setCopiedInterviewLink(true);
-                                                toast.success("Copied candidate link!");
-                                                setTimeout(() => setCopiedInterviewLink(false), 2000);
-                                            }}
-                                            className="p-1 text-slate-500 hover:text-violet-600"
-                                            title="Copy link"
-                                        >
-                                            {copiedInterviewLink ? (
-                                                <Check className="w-4 h-4 text-emerald-600" />
-                                            ) : (
-                                                <Copy className="w-4 h-4" />
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 p-3 bg-slate-50/70 rounded-2xl border border-slate-100 text-slate-600">
+                                <div className="space-y-2 p-3.5 bg-slate-50/70 rounded-2xl border border-slate-100 text-xs text-slate-600">
                                     <div className="flex justify-between">
                                         <span className="text-slate-400">Candidate:</span>
                                         <span className="font-semibold text-slate-800">{generatedLinkData.name} ({generatedLinkData.email})</span>
@@ -2951,43 +2859,20 @@ const Resumes = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 pt-2">
-                                    <button
-                                        onClick={() => {
-                                            const url = `${window.location.origin}/i/${generatedLinkData.linkCode}`;
-                                            navigator.clipboard.writeText(url);
-                                            toast.success("Interview URL copied to clipboard!");
-                                        }}
-                                        className="flex-1 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                                    >
-                                        <Copy className="w-3.5 h-3.5" />
-                                        <span>Copy Portal Link</span>
-                                    </button>
-                                    <a
-                                        href={`/i/${generatedLinkData.linkCode}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/25 flex items-center justify-center gap-1.5 text-center transition"
-                                    >
-                                        <span>Open Candidate Portal</span>
-                                        <ExternalLink className="w-3.5 h-3.5" />
-                                    </a>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
                                     <Link
                                         to={`/app/email?candidateEmail=${encodeURIComponent(selectedCandidate?.email || "")}&interviewCode=${generatedLinkData.linkCode}&role=${encodeURIComponent(generatedLinkData.role || "")}`}
-                                        className="py-2 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                        className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
                                     >
                                         <Mail className="w-3.5 h-3.5" />
                                         <span>Send via Email</span>
                                     </Link>
                                     <Link
                                         to="/app/interviews"
-                                        className="py-2 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                        className="py-2.5 px-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 transition text-center shadow-xs"
                                     >
                                         <Calendar className="w-3.5 h-3.5" />
-                                        <span>All Interviews</span>
+                                        <span>View in Interviews</span>
                                     </Link>
                                 </div>
                             </div>

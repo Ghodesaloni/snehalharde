@@ -365,8 +365,8 @@ const Candidates = () => {
                         All Interviewed Candidates
                     </h1>
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-xs font-semibold border border-violet-200 shadow-2xs">
-                        <Database className="w-3.5 h-3.5 text-violet-600" />
-                        <span>System Active</span>
+                        <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                        <span>Pipeline Active</span>
                     </div>
                 </div>
 

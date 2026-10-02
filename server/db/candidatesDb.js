@@ -5,30 +5,13 @@ const { evaluateTranscriptAlgorithmically } = require("../services/interviewEval
 const COLLECTION = "candidates";
 
 function matchesUser(item, targetEmail) {
-  if (!targetEmail || targetEmail === "all" || targetEmail === "default") return true;
+  if (!targetEmail) return false;
   const target = targetEmail.toLowerCase().trim();
   const createdBy = (item.createdBy || "").toLowerCase().trim();
   const userEmail = (item.userEmail || "").toLowerCase().trim();
 
-  // If item has no creator or is shared workspace candidate data, visible to all
-  if (!createdBy && !userEmail) return true;
-
-  if (createdBy === target || userEmail === target) return true;
-
-  // Handle recognized team recruiters who have access to workspace talent pool
-  const teamEmails = [
-    "bondreriya9@gmail.com",
-    "salonighode@gmail.com",
-    "salonighode3@gmail.com",
-    "snehal.harde2935@gmail.com",
-    "snehalharde09@gmail.com",
-    "sneha.harde2935@gmail.com"
-  ];
-  if (teamEmails.includes(target)) {
-    return true;
-  }
-
-  return false;
+  // Strict email isolation: only return candidates belonging to this specific email login
+  return createdBy === target || userEmail === target;
 }
 
 function applyTranscriptEvaluation(cand) {
@@ -65,11 +48,7 @@ class CandidatesDatabase {
       if (filters.userEmail) {
         const emailLower = filters.userEmail.toLowerCase().trim();
         params.push(emailLower);
-        if (emailLower === "salonighode@gmail.com" || emailLower === "salonighode3@gmail.com") {
-          conditions.push(`(LOWER(created_by) IN ('salonighode@gmail.com', 'salonighode3@gmail.com') OR LOWER(user_email) IN ('salonighode@gmail.com', 'salonighode3@gmail.com'))`);
-        } else {
-          conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
-        }
+        conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
       }
 
       if (filters.status && filters.status !== "All") {

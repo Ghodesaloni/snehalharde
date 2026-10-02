@@ -264,7 +264,7 @@ const ForgotPassword = () => {
                     Recovery Token
                   </span>
                   <span className="text-[10px] bg-violet-100 text-violet-700 font-semibold px-2 py-0.5 rounded-full">
-                    {dispatchedMode === "aws_ses" ? "Delivered via AWS SES" : (dispatchedMode === "live_smtp" ? "Delivered via SMTP" : "Token Ready")}
+                    {dispatchedMode === "live_smtp" ? "Delivered via Email" : "Token Ready"}
                   </span>
                 </div>
                 <div className="bg-white p-2.5 rounded-lg border border-slate-200 font-mono text-xs font-extrabold text-slate-800 break-all select-all">
@@ -500,7 +500,7 @@ const ForgotPassword = () => {
                 Credentials Updated!
               </h2>
               <p className="text-slate-600 text-sm mt-2 leading-relaxed">
-                Your password has been securely reset and updated in the database.
+                Your password has been securely reset and updated.
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 Your recovery token has been consumed and deactivated.
