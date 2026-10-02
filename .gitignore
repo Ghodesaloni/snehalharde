@@ -17,6 +17,9 @@ dist-ssr
 .env.local
 .env.*.local
 server/data/aws_server_config.json
+server/data/*.json
+server/data/**/*.json
+server/data/s3_storage_mirror/
 
 # Editor directories and files
 .vscode/*
@@ -28,3 +31,4 @@ server/data/aws_server_config.json
 *.njsproj
 *.sln
 *.sw?
+
