@@ -270,6 +270,7 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
 
         const analysis = await analyzeResumeAgainstJd(candidateDataForAnalysis, job);
 
+        const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
         const candidateRecord = resumesDb.create({
           name: parsed.candidate.name,
           email: parsed.candidate.email,
@@ -308,7 +309,9 @@ router.post("/upload-batch", handleMultipleUpload, async (req, res) => {
           resumeFileName: originalName,
           requiresOcr: parsed.requires_ocr,
           ocrWarning: parsed.ocr_warning,
-          rawText: parsed.raw_text?.slice(0, 3000)
+          rawText: parsed.raw_text?.slice(0, 3000),
+          createdBy: authorEmail,
+          userEmail: authorEmail
         });
 
         results.push(candidateRecord);
@@ -448,7 +451,12 @@ router.get("/:id", async (req, res) => {
 // POST /api/resumes - create/upload resume directly
 router.post("/", (req, res) => {
   try {
-    const candidate = resumesDb.create(req.body);
+    const authorEmail = req.body.createdBy || req.body.userEmail || req.headers["x-user-email"] || "";
+    const candidate = resumesDb.create({
+      ...req.body,
+      createdBy: authorEmail,
+      userEmail: authorEmail
+    });
     res.status(201).json({ success: true, data: candidate, message: "Resume added successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -1,5 +1,30 @@
 [
   {
+    "id": "job-1790932825628",
+    "loc": "Karnataka",
+    "dept": "Engineering",
+    "type": "Full-time",
+    "title": "devops",
+    "posted": "02 Oct 2026",
+    "status": "Active",
+    "expLevel": "3-5 Years",
+    "jobLevel": "Entry Level / Junior",
+    "workMode": "On-site",
+    "createdAt": "2026-10-02T09:20:25.652Z",
+    "createdBy": "snehal.harde2935@gmail.com",
+    "keySkills": [
+      "Docker",
+      "AWS",
+      "System Design"
+    ],
+    "reportsTo": "Engineering Manager",
+    "updatedAt": "2026-10-02T09:20:25.652Z",
+    "userEmail": "snehal.harde2935@gmail.com",
+    "candidates": 0,
+    "description": "",
+    "isRemotePosition": false
+  },
+  {
     "id": "job-1790773190388",
     "loc": "Karnataka",
     "dept": "Engineering",

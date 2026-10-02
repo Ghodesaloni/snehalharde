@@ -24,6 +24,10 @@ const databaseUrl = process.env.AWS_RDS_URL || process.env.DATABASE_URL;
 
 // Normalize DATABASE_URL and strip accidental bracket wrappers if entered from template [PASSWORD]
 function getCleanDatabaseUrl() {
+  // If explicit DB_HOST or AWS_RDS_HOST is configured, prefer direct RDS parameters
+  if (process.env.DB_HOST || process.env.AWS_RDS_HOST) {
+    return null;
+  }
   const rawUrl =
     process.env.AWS_RDS_URL ||
     process.env.DATABASE_URL ||

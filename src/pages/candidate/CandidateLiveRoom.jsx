@@ -1324,7 +1324,7 @@ const CandidateLiveRoom = () => {
                         </div>
 
                         <p className="text-xs text-slate-400 font-medium">
-                            The full speech-to-text transcript and competency evaluation have been saved directly to the candidate database.
+                            The full speech-to-text transcript and competency evaluation have been securely saved and processed.
                         </p>
 
                         <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">

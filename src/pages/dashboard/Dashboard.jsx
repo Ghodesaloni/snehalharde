@@ -331,7 +331,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="font-bold text-slate-900">Recent Jobs Database</div>
+                        <div className="font-bold text-slate-900">Recent Job Openings</div>
                         <Link to="/app/jobs" className="text-xs text-violet-600 font-semibold hover:underline">View All Jobs</Link>
                     </div>
                     <div className="overflow-x-auto">
@@ -348,7 +348,7 @@ const Dashboard = () => {
                                 {recentJobs.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="py-8 text-center text-slate-400 text-xs">
-                                            No jobs in database yet.
+                                            No jobs posted yet.
                                         </td>
                                     </tr>
                                 ) : (
@@ -412,8 +412,8 @@ const Dashboard = () => {
 
                 <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                        <div className="font-bold text-slate-900">Recent HR Activity</div>
-                        <span className="text-xs text-slate-400 font-medium">Live Feed</span>
+                        <div className="font-bold text-slate-900">Recent Activity</div>
+                        <span className="text-xs text-slate-400 font-medium">Activity Log</span>
                     </div>
                     <div className="space-y-4">
                         {activity.length === 0 ? (

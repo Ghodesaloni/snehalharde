@@ -187,7 +187,7 @@ const Register = () => {
       }
 
       setRegisteredSuccess(true);
-      toast.success("Successfully registered! Your HR account is active and saved in the database.");
+      toast.success("Successfully registered! Your HR account is active and ready.");
     } catch (err) {
       console.error("Registration error:", err);
       const errMsg = err.response?.data?.error || err.message || "Registration failed.";
@@ -295,7 +295,7 @@ const Register = () => {
               </h2>
 
               <p className="text-slate-600 mt-3 text-sm leading-relaxed">
-                Your HR recruiter account has been safely registered and saved in the database. For security and privacy, credentials and database records are encrypted and not displayed on screen.
+                Your HR recruiter account has been safely registered. For security and privacy, your credentials and records are encrypted and protected.
               </p>
 
               <div className="mt-8 space-y-3">

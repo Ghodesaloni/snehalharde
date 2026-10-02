@@ -61,7 +61,7 @@ const VerifyEmail = () => {
           <div className="py-8 space-y-4">
             <Loader2 className="w-12 h-12 text-violet-600 animate-spin mx-auto" />
             <h2 className="text-xl font-bold text-slate-800">Verifying Your Token...</h2>
-            <p className="text-sm text-slate-500">Validating one-time token against PostgreSQL database...</p>
+            <p className="text-sm text-slate-500">Validating one-time verification token...</p>
           </div>
         ) : status === "success" || status === "already_used" ? (
           <div className="space-y-5">
@@ -69,7 +69,7 @@ const VerifyEmail = () => {
               <CheckCircle2 size={36} />
             </div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <ShieldCheck size={14} /> PostgreSQL Record Verified
+              <ShieldCheck size={14} /> Account Verified
             </div>
             <h1 className="text-2xl font-extrabold text-slate-900">Email Verified!</h1>
             <p className="text-sm text-slate-600 leading-relaxed">

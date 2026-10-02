@@ -500,7 +500,7 @@ const ForgotPassword = () => {
                 Credentials Updated!
               </h2>
               <p className="text-slate-600 text-sm mt-2 leading-relaxed">
-                Your password has been securely reset and updated in the database.
+                Your password has been securely reset and updated.
               </p>
               <p className="text-xs text-slate-500 mt-1">
                 Your recovery token has been consumed and deactivated.

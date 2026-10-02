@@ -910,7 +910,7 @@ const Resumes = () => {
                             <div className="text-xs font-medium text-slate-500">Total Candidates</div>
                             <div className="text-2xl font-extrabold text-slate-900 mt-0.5">{tabCounts.total}</div>
                             <div className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                                In current database
+                                In candidate records
                             </div>
                         </div>
                     </div>

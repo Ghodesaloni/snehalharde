@@ -119,31 +119,36 @@ router.get("/demo-accounts", (req, res) => {
   });
 });
 
-// GET /api/users - list users
+// GET /api/users - returns only the requesting user's profile to prevent cross-account email leakage
 router.get("/", async (req, res) => {
+  const userEmail = (req.headers["x-user-email"] || req.query.userEmail || "").toLowerCase().trim();
+  if (!userEmail) {
+    return res.json({ success: true, count: 0, data: [] });
+  }
+
   try {
     const result = await query(
-      "SELECT id, uid, email, name, avatar, role, company, designation, phone, last_login, created_at FROM users ORDER BY id ASC"
+      "SELECT id, email, full_name as name, company, designation, phone, is_verified, created_at FROM public.users WHERE LOWER(email) = $1 LIMIT 1",
+      [userEmail]
     );
     if (result && result.rows && result.rows.length > 0) {
-      return res.json({ success: true, count: result.rows.length, data: result.rows });
+      return res.json({ success: true, count: 1, data: result.rows });
     }
   } catch (err) {
-    // ignore postgresql error and fall through to file store
+    // ignore postgresql error and fall through
   }
 
   const users = readData(USERS_COLLECTION, defaultUsers);
-  const sanitized = users.map(u => ({
+  const matched = users.filter(u => u.email && u.email.toLowerCase() === userEmail);
+  const sanitized = matched.map(u => ({
     id: u.id,
     uid: u.uid,
     email: u.email,
-    name: u.name,
-    avatar: u.avatar,
-    role: u.role,
-    company: u.company,
-    designation: u.designation,
+    name: u.name || u.fullName,
+    role: u.role || "HR",
+    company: u.company || "AvaHire",
+    designation: u.designation || "Recruiter",
     phone: u.phone,
-    last_login: u.last_login,
     created_at: u.created_at
   }));
   res.json({ success: true, count: sanitized.length, data: sanitized });
