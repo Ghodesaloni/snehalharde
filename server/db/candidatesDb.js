@@ -22,15 +22,19 @@ function applyTranscriptEvaluation(cand) {
     return {
       ...cand,
       score: evalRes.overallScore,
+      total_score: evalRes.total_score,
       accuracyScore: evalRes.accuracyScore,
       confidenceScore: evalRes.confidenceScore,
       totalQuestions: evalRes.totalQuestions,
       correctAnswersCount: evalRes.correctAnswersCount,
       incorrectOrSkippedCount: evalRes.incorrectOrSkippedCount,
-      status: evalRes.status,
-      recommendation: evalRes.recommendation,
-      evaluationBreakdown: evalRes.evaluationBreakdown,
-      summaryPoints: evalRes.summaryPoints
+      status: cand.status || evalRes.status,
+      recommendation: cand.recommendation || evalRes.recommendation,
+      evaluationBreakdown: (cand.evaluationBreakdown && cand.evaluationBreakdown.length > 0) ? cand.evaluationBreakdown : evalRes.evaluationBreakdown,
+      summaryPoints: (cand.summaryPoints && cand.summaryPoints.length > 0) ? cand.summaryPoints : evalRes.summaryPoints,
+      questionEvaluations: (cand.questionEvaluations && cand.questionEvaluations.length > 0) ? cand.questionEvaluations : (cand.qaEvaluations || evalRes.qaEvaluations),
+      qaEvaluations: (cand.qaEvaluations && cand.qaEvaluations.length > 0) ? cand.qaEvaluations : (cand.questionEvaluations || evalRes.qaEvaluations),
+      question_evaluations: (cand.question_evaluations && cand.question_evaluations.length > 0) ? cand.question_evaluations : (cand.qaEvaluations || evalRes.qaEvaluations)
     };
   }
   return cand;
@@ -125,21 +129,25 @@ class CandidatesDatabase {
     const list = readData(COLLECTION, []);
     const id = data.id || `cand-${Date.now()}`;
 
-    // Compute dynamic evaluation based on correct answers and confidence if transcript is present
+    // Compute dynamic evaluation based on rubric and answers
     let evaluatedScore = data.score !== undefined ? data.score : 90;
     let evaluatedStatus = data.status || "Under Review";
     let evaluatedRecommendation = data.recommendation || "";
     let evaluatedBreakdown = data.evaluationBreakdown || [];
     let evaluatedSummaryPoints = data.summaryPoints || [];
+    let evaluatedQAs = data.question_evaluations || data.qaEvaluations || data.questionEvaluations || [];
 
     const transcript = data.transcript || data.transcripts || [];
     if (Array.isArray(transcript) && transcript.some(t => !t.isAI && t.speaker !== "Ava" && t.speaker !== "AI Interviewer")) {
       const evalRes = evaluateTranscriptAlgorithmically(transcript, data.role);
-      evaluatedScore = evalRes.overallScore;
-      evaluatedStatus = evalRes.status;
-      evaluatedRecommendation = evalRes.recommendation;
-      evaluatedBreakdown = evalRes.evaluationBreakdown;
-      evaluatedSummaryPoints = evalRes.summaryPoints;
+      evaluatedScore = data.score !== undefined ? data.score : evalRes.overallScore;
+      evaluatedStatus = data.status || evalRes.status;
+      evaluatedRecommendation = data.recommendation || evalRes.recommendation;
+      evaluatedBreakdown = (data.evaluationBreakdown && data.evaluationBreakdown.length > 0) ? data.evaluationBreakdown : evalRes.evaluationBreakdown;
+      evaluatedSummaryPoints = (data.summaryPoints && data.summaryPoints.length > 0) ? data.summaryPoints : evalRes.summaryPoints;
+      if (!evaluatedQAs || evaluatedQAs.length === 0) {
+        evaluatedQAs = evalRes.qaEvaluations || [];
+      }
     }
 
     const newCand = {
@@ -154,12 +162,16 @@ class CandidatesDatabase {
       duration: data.duration || "0m 00s",
       mode: data.mode || "AI Live Interview",
       score: evaluatedScore,
+      total_score: evaluatedScore,
       status: evaluatedStatus,
       notes: data.notes || `Live interview evaluated based on technical correctness of answers and level of confidence. Overall score: ${evaluatedScore}/100 (${evaluatedStatus}).`,
       summaryPoints: evaluatedSummaryPoints,
       recommendation: evaluatedRecommendation,
       transcript: transcript,
       evaluationBreakdown: evaluatedBreakdown,
+      questionEvaluations: evaluatedQAs,
+      qaEvaluations: evaluatedQAs,
+      question_evaluations: evaluatedQAs,
       audioUrl: data.audioUrl || data.audio_url || "",
       createdBy: data.createdBy || data.userEmail || "",
       userEmail: data.userEmail || data.createdBy || "",
@@ -182,9 +194,9 @@ class CandidatesDatabase {
         INSERT INTO public.candidates (
           id, name, email, phone, role, avatar, interview_date, timestamp,
           duration, mode, score, status, notes, summary_points, recommendation,
-          transcript, evaluation_breakdown, created_by, user_email, created_at
+          transcript, evaluation_breakdown, question_evaluations, created_by, user_email, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
@@ -200,6 +212,7 @@ class CandidatesDatabase {
           recommendation = EXCLUDED.recommendation,
           transcript = EXCLUDED.transcript,
           evaluation_breakdown = EXCLUDED.evaluation_breakdown,
+          question_evaluations = EXCLUDED.question_evaluations,
           created_by = EXCLUDED.created_by,
           user_email = EXCLUDED.user_email
         RETURNING *;
@@ -223,6 +236,7 @@ class CandidatesDatabase {
         newCand.recommendation,
         JSON.stringify(newCand.transcript),
         JSON.stringify(newCand.evaluationBreakdown),
+        JSON.stringify(newCand.question_evaluations),
         newCand.createdBy,
         newCand.userEmail
       ];
@@ -268,6 +282,14 @@ class CandidatesDatabase {
         params.push(updates.recommendation);
         setClauses.push(`recommendation = $${params.length}`);
       }
+      if (updates.question_evaluations !== undefined || updates.qaEvaluations !== undefined) {
+        params.push(JSON.stringify(updates.question_evaluations || updates.qaEvaluations));
+        setClauses.push(`question_evaluations = $${params.length}`);
+      }
+      if (updates.evaluationBreakdown !== undefined) {
+        params.push(JSON.stringify(updates.evaluationBreakdown));
+        setClauses.push(`evaluation_breakdown = $${params.length}`);
+      }
 
       if (setClauses.length > 0) {
         params.push(id);
@@ -303,6 +325,7 @@ class CandidatesDatabase {
 
   _mapRow(row) {
     if (!row) return null;
+    const qEvals = typeof row.question_evaluations === "string" ? JSON.parse(row.question_evaluations) : (row.question_evaluations || []);
     const mapped = {
       id: row.id,
       name: row.name,
@@ -315,12 +338,16 @@ class CandidatesDatabase {
       duration: row.duration,
       mode: row.mode,
       score: row.score,
+      total_score: row.score,
       status: row.status,
       notes: row.notes,
       summaryPoints: typeof row.summary_points === "string" ? JSON.parse(row.summary_points) : (row.summary_points || []),
       recommendation: row.recommendation,
       transcript: typeof row.transcript === "string" ? JSON.parse(row.transcript) : (row.transcript || []),
       evaluationBreakdown: typeof row.evaluation_breakdown === "string" ? JSON.parse(row.evaluation_breakdown) : (row.evaluation_breakdown || []),
+      questionEvaluations: qEvals,
+      qaEvaluations: qEvals,
+      question_evaluations: qEvals,
       audioUrl: row.audio_url || row.audioUrl || "",
       createdBy: row.created_by,
       userEmail: row.user_email,

@@ -792,9 +792,40 @@ router.post("/session", async (req, res) => {
   }
 });
 
-const { evaluateTranscriptAlgorithmically } = require("../services/interviewEvaluatorService");
+const {
+  evaluateCandidateInterview,
+  evaluateSingleAnswerWithGemini,
+  generateExpectedRubric,
+  evaluateTranscriptAlgorithmically
+} = require("../services/interviewEvaluatorService");
 
-// 7. POST /api/candidate-portal/complete - Explicit completion endpoint connecting to HR Portal
+// 7. POST /api/candidate-portal/evaluate-answer - Real-time individual answer evaluation via Gemini
+router.post("/evaluate-answer", async (req, res) => {
+  try {
+    const { question, expectedRubric, candidateAnswer, role, candidateName } = req.body;
+    if (!question || !candidateAnswer) {
+      return res.status(400).json({ success: false, error: "question and candidateAnswer are required" });
+    }
+
+    const evaluation = await evaluateSingleAnswerWithGemini({
+      question,
+      expectedRubric: expectedRubric || generateExpectedRubric(question, role || "Software Engineer"),
+      candidateAnswer,
+      role: role || "Software Engineer",
+      candidateName: candidateName || "Candidate"
+    });
+
+    res.json({
+      success: true,
+      data: evaluation
+    });
+  } catch (err) {
+    console.error("Error evaluating single answer:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. POST /api/candidate-portal/complete - Explicit completion endpoint connecting to HR Portal
 router.post("/complete", async (req, res) => {
   try {
     const {
@@ -814,8 +845,12 @@ router.post("/complete", async (req, res) => {
     const targetRole = role || (existing ? existing.role : "Senior Full Stack Engineer");
     const activeTranscripts = transcripts || (existing ? existing.transcripts : []);
 
-    // Calculate dynamic score based on correct answers and level of confidence
-    const evaluation = evaluateTranscriptAlgorithmically(activeTranscripts, targetRole);
+    // Calculate dynamic Gemini scoring based on rubric weights (40% tech, 25% completeness, 15% relevance, 15% problem-solving, 5% clarity)
+    const evaluation = await evaluateCandidateInterview({
+      transcript: activeTranscripts,
+      role: targetRole,
+      name: candidateName || (existing ? existing.candidateName : "Candidate")
+    });
 
     const completedSession = await candidateSessionsDb.createOrUpdate({
       ...(existing || {}),
@@ -828,6 +863,7 @@ router.post("/complete", async (req, res) => {
       company: company || (existing ? existing.company : "AvaHire Technologies Pvt. Ltd."),
       status: "Completed",
       overallScore: evaluation.overallScore,
+      total_score: evaluation.total_score || evaluation.overallScore,
       accuracyScore: evaluation.accuracyScore,
       confidenceScore: evaluation.confidenceScore,
       techDepthScore: `${(evaluation.accuracyScore / 10).toFixed(1)} / 10`,
@@ -837,6 +873,8 @@ router.post("/complete", async (req, res) => {
       transcripts: activeTranscripts,
       evaluationBreakdown: evaluation.evaluationBreakdown,
       summaryPoints: evaluation.summaryPoints,
+      questionEvaluations: evaluation.qaEvaluations || evaluation.question_evaluations || [],
+      qaEvaluations: evaluation.qaEvaluations || evaluation.question_evaluations || [],
       completedAt: new Date().toISOString()
     });
 
@@ -879,14 +917,18 @@ async function syncSessionToHRPorizontal(session, authorEmail, evalOverride = nu
       role: session.role,
       company: session.company,
       score: evaluation.overallScore,
+      total_score: evaluation.overallScore,
       status: evaluation.status,
       duration: formattedDuration,
       mode: "AI Live Interview",
       recommendation: evaluation.recommendation,
-      notes: `Live interview evaluated based on technical correctness of answers (${evaluation.correctAnswersCount}/${evaluation.totalQuestions} correct) and level of confidence (${evaluation.confidenceScore}/100). Overall score: ${evaluation.overallScore}/100 (${evaluation.status}).`,
+      notes: `Live interview evaluated using AI rubric: Technical Correctness 40%, Completeness 25%, Relevance 15%, Problem-Solving 15%, Clarity 5%. Overall score: ${evaluation.overallScore}/100 (${evaluation.status}).`,
       summaryPoints: evaluation.summaryPoints,
       transcript: transcripts,
       evaluationBreakdown: evaluation.evaluationBreakdown,
+      question_evaluations: evaluation.qaEvaluations || evaluation.question_evaluations || [],
+      qaEvaluations: evaluation.qaEvaluations || evaluation.question_evaluations || [],
+      questionEvaluations: evaluation.qaEvaluations || evaluation.question_evaluations || [],
       createdBy: defaultAuthor,
       userEmail: defaultAuthor
     });

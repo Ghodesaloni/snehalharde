@@ -213,15 +213,20 @@ async function syncAllCollectionsToPostgres(client) {
           INSERT INTO public.candidates (
             id, name, email, phone, role, avatar, interview_date, timestamp,
             duration, mode, score, status, notes, summary_points, recommendation,
-            transcript, evaluation_breakdown, created_by, user_email, created_at
+            transcript, evaluation_breakdown, question_evaluations, created_by, user_email, created_at
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-            $15, $16, $17, $18, $19, NOW()
+            $15, $16, $17, $18, $19, $20, NOW()
           ) ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             email = EXCLUDED.email,
             score = EXCLUDED.score,
             status = EXCLUDED.status,
+            summary_points = EXCLUDED.summary_points,
+            recommendation = EXCLUDED.recommendation,
+            transcript = EXCLUDED.transcript,
+            evaluation_breakdown = EXCLUDED.evaluation_breakdown,
+            question_evaluations = EXCLUDED.question_evaluations,
             created_by = EXCLUDED.created_by,
             user_email = EXCLUDED.user_email,
             updated_at = NOW();
@@ -231,6 +236,7 @@ async function syncAllCollectionsToPostgres(client) {
           Number(c.score || 90), c.status || "Under Review", c.notes || "",
           JSON.stringify(c.summaryPoints || []), c.recommendation || "",
           JSON.stringify(c.transcript || []), JSON.stringify(c.evaluationBreakdown || []),
+          JSON.stringify(c.question_evaluations || c.qaEvaluations || []),
           c.createdBy || "", c.userEmail || c.createdBy || ""
         ]);
       }
@@ -447,11 +453,13 @@ async function initTables() {
           recommendation TEXT,
           transcript JSONB DEFAULT '[]'::jsonb,
           evaluation_breakdown JSONB DEFAULT '[]'::jsonb,
+          question_evaluations JSONB DEFAULT '[]'::jsonb,
           created_by VARCHAR(255),
           user_email VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
+        ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS question_evaluations JSONB DEFAULT '[]'::jsonb;
       `);
 
       // 6. Interviews table
