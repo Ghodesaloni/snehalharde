@@ -548,13 +548,13 @@ const Candidates = () => {
                         </div>
                     </div>
                 ) : (
-                    filteredCandidates.map((candidate) => {
+                    filteredCandidates.map((candidate, idx) => {
                         const isExpanded = expandedCandidateId === candidate.id;
                         const candidateInterview = getCandidateInterview(candidate);
 
                         return (
                             <div
-                                key={candidate.id}
+                                key={candidate.id ? `${candidate.id}-${idx}` : `cand-${idx}`}
                                 data-testid={`candidate-card-${candidate.id}`}
                                 className={`bg-white rounded-2xl border transition-all duration-300 overflow-hidden shadow-xs ${isExpanded
                                         ? "border-violet-300 shadow-md ring-1 ring-violet-200"

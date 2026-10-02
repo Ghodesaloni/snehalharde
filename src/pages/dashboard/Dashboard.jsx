@@ -22,7 +22,8 @@ import {
     ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
-import { dashboardApi } from "@/services/api";
+import { dashboardApi, jobsApi, resumesApi } from "@/services/api";
+import { getMatchingResumesForJob } from "@/utils/jdMatcher";
 
 const initialKpis = [
     { icon: "fa-briefcase", color: "bg-violet-100 text-violet-600", label: "Total Jobs", value: "0", sub: "0 Active Jobs", subColor: "text-slate-400", link: "/app/jobs" },
@@ -48,6 +49,8 @@ const initialStageData = [
 const Dashboard = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState(null);
+    const [allJobs, setAllJobs] = useState([]);
+    const [allResumes, setAllResumes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -62,9 +65,19 @@ const Dashboard = () => {
                 } catch {
                     // ignore
                 }
-                const data = await dashboardApi.getStats(userEmail);
+                const [data, jobsList, resumesList] = await Promise.all([
+                    dashboardApi.getStats(userEmail).catch(() => null),
+                    jobsApi.getAll().catch(() => []),
+                    resumesApi.getAll().catch(() => [])
+                ]);
                 if (data) {
                     setStats(data);
+                }
+                if (Array.isArray(jobsList)) {
+                    setAllJobs(jobsList);
+                }
+                if (Array.isArray(resumesList)) {
+                    setAllResumes(resumesList);
                 }
             } catch (err) {
                 console.error("Failed to load dashboard stats:", err);
@@ -83,8 +96,16 @@ const Dashboard = () => {
 
     const weekData = stats?.weekData || initialWeekData;
     const stageData = stats?.stageData || initialStageData;
-    const topJobs = stats?.topJobs || [];
-    const recentJobs = stats?.jobs || topJobs;
+    const rawTopJobs = allJobs.length > 0 ? allJobs.slice(0, 5) : (stats?.topJobs || []);
+    const topJobs = rawTopJobs.map((j) => ({
+        ...j,
+        candidates: getMatchingResumesForJob(allResumes, j, allJobs).length
+    }));
+    const rawRecentJobs = allJobs.length > 0 ? allJobs.slice(0, 6) : (stats?.jobs || topJobs);
+    const recentJobs = rawRecentJobs.map((j) => ({
+        ...j,
+        candidates: getMatchingResumesForJob(allResumes, j, allJobs).length
+    }));
     const upcoming = stats?.upcoming || [];
     const activity = stats?.activity || [];
 
@@ -280,12 +301,12 @@ const Dashboard = () => {
                                 </Link>
                             </div>
                         ) : (
-                            topJobs.map((j) => (
+                            topJobs.map((j, i) => (
                                 <Link
-                                    key={j.id || j.title}
-                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                    key={j.id ? `${j.id}-${i}` : `top-job-${i}`}
+                                    to={j.id ? `/app/resumes?jobId=${encodeURIComponent(j.id)}` : `/app/resumes?job=${encodeURIComponent(j.title)}`}
                                     className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition-colors group"
-                                    title="Click to view candidates for this job"
+                                    title="Click to view shortlisted resumes matching this job's JD"
                                 >
                                     <div className="w-9 h-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center text-sm font-bold group-hover:bg-violet-600 group-hover:text-white transition-colors">
                                         <i className="fa-solid fa-briefcase"></i>
@@ -296,7 +317,7 @@ const Dashboard = () => {
                                     </div>
                                     <div className="text-right">
                                         <div className="text-sm font-bold text-slate-900">{j.candidates}</div>
-                                        <div className="text-[10px] text-slate-400">Candidates</div>
+                                        <div className="text-[10px] text-slate-400">Shortlisted</div>
                                     </div>
                                     <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${j.status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{j.status}</span>
                                 </Link>
@@ -331,17 +352,17 @@ const Dashboard = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    recentJobs.map((j) => (
-                                        <tr key={j.id || j.title} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
+                                    recentJobs.map((j, i) => (
+                                        <tr key={j.id ? `${j.id}-${i}` : `rjob-${i}`} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50">
                                             <td className="py-3 font-medium text-slate-900 truncate max-w-[130px]">{j.title}</td>
                                             <td className="text-slate-500 text-xs">{j.dept}</td>
                                             <td className="text-slate-900 font-semibold text-xs">{j.candidates}</td>
                                             <td>
                                                 <Link
-                                                    to={`/app/candidates?job=${encodeURIComponent(j.title)}`}
+                                                    to={j.id ? `/app/resumes?jobId=${encodeURIComponent(j.id)}` : `/app/resumes?job=${encodeURIComponent(j.title)}`}
                                                     className="text-[11px] font-semibold text-violet-600 hover:text-violet-800 hover:underline"
                                                 >
-                                                    Candidates →
+                                                    Resumes →
                                                 </Link>
                                             </td>
                                         </tr>
@@ -367,8 +388,8 @@ const Dashboard = () => {
                                 </Link>
                             </div>
                         ) : (
-                            upcoming.map((u) => (
-                                <div key={u.id || u.name} className="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 p-2 rounded-xl transition">
+                            upcoming.map((u, i) => (
+                                <div key={u.id ? `${u.id}-${i}` : `upcoming-${i}`} className="flex items-center justify-between gap-3 py-2 border-b border-slate-50 last:border-0 hover:bg-slate-50/60 p-2 rounded-xl transition">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
                                             {(u.name || "C").split(" ").map(n => n[0]).join("")}
@@ -403,7 +424,7 @@ const Dashboard = () => {
                             </div>
                         ) : (
                             activity.map((a, i) => (
-                                <div key={a.id || i} className="flex gap-3 items-start">
+                                <div key={a.id ? `${a.id}-${i}` : `activity-${i}`} className="flex gap-3 items-start">
                                     <div className={`w-8 h-8 rounded-lg ${a.color} flex items-center justify-center shrink-0 text-xs`}>
                                         <i className={`fa-solid ${a.icon}`}></i>
                                     </div>

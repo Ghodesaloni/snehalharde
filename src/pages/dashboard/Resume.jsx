@@ -1297,7 +1297,7 @@ const Resumes = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredCandidates.map((candidate) => {
+                                filteredCandidates.map((candidate, idx) => {
                                     const isSelectedRow = selectedCandidateId === candidate.id;
                                     const isChecked = selectedRowIds.includes(candidate.id);
                                     const isAnalyzing = analyzingCandidateId === candidate.id;
@@ -1309,7 +1309,7 @@ const Resumes = () => {
 
                                     return (
                                         <tr
-                                            key={candidate.id}
+                                            key={candidate.id ? `${candidate.id}-${idx}` : `row-${idx}`}
                                             onClick={() => setSelectedCandidateId(candidate.id)}
                                             className={`transition-colors cursor-pointer group ${
                                                 isSelectedRow ? "bg-violet-50/60 border-l-4 border-l-violet-600" : "hover:bg-slate-50/70"

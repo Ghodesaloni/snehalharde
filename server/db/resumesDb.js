@@ -5,35 +5,58 @@ const { classifyCandidateDomain, ALL_DOMAINS } = require("../services/domainClas
 const COLLECTION = "resumes";
 
 function matchesUser(item, targetEmail) {
-  if (!targetEmail) return true;
+  if (!targetEmail) return false;
   const target = targetEmail.toLowerCase().trim();
   const createdBy = (item.createdBy || "").toLowerCase().trim();
   const userEmail = (item.userEmail || "").toLowerCase().trim();
 
-  if (createdBy === target || userEmail === target) return true;
-
-  // Handle Saloni Ghode email aliases
-  if (
-    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
-    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
-     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
-  ) {
-    return true;
-  }
-
-  // Handle Snehal Harde email aliases
-  if (
-    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
-    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
-     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
-  ) {
-    return true;
-  }
-
-  return false;
+  // Strict email isolation: only return resumes belonging to this specific email login
+  return createdBy === target || userEmail === target;
 }
 
 class ResumesDatabase {
+  _mapRow(row) {
+    if (!row) return null;
+    const skills = typeof row.skills === "string" ? JSON.parse(row.skills) : (row.skills || []);
+    const matchedSkills = typeof row.matched_skills === "string" ? JSON.parse(row.matched_skills) : (row.matched_skills || []);
+    const missingSkills = typeof row.missing_skills === "string" ? JSON.parse(row.missing_skills) : (row.missing_skills || []);
+    const keyPoints = typeof row.key_points === "string" ? JSON.parse(row.key_points) : (row.key_points || {});
+
+    return {
+      id: row.id,
+      candidateId: row.candidate_id || row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      role: row.role,
+      jobId: row.target_job_id,
+      targetJobId: row.target_job_id,
+      targetJobTitle: row.target_job_title,
+      field: row.field || row.domain || "Engineering",
+      domain: row.domain || row.field || "Engineering",
+      score: Number(row.score || 85),
+      atsScore: Number(row.score || 85),
+      matchScore: Number(row.score || 85),
+      status: row.status || "Review",
+      skills,
+      allSkills: skills,
+      matchedSkills,
+      missingSkills,
+      experience: row.experience,
+      expYears: Number(row.exp_years || 0),
+      education: row.education,
+      summary: row.summary,
+      keyPoints,
+      rawText: row.raw_text,
+      resumeFileName: row.resume_file_name,
+      fileUrl: row.file_url,
+      createdBy: row.created_by,
+      userEmail: row.user_email || row.created_by,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  }
+
   classifyDomain(candidate) {
     if (candidate.domain && ALL_DOMAINS.includes(candidate.domain)) {
       return candidate.domain;
@@ -91,6 +114,69 @@ class ResumesDatabase {
           : "Application processed."
       }
     };
+  }
+
+  async getAllAsync(filters = {}) {
+    // 1. Try PostgreSQL first
+    try {
+      const p = getPool();
+      let query = "SELECT * FROM public.resumes";
+      const params = [];
+      const conditions = [];
+
+      if (filters.userEmail) {
+        const emailLower = filters.userEmail.toLowerCase().trim();
+        params.push(emailLower);
+        conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+      }
+
+      if (filters.status && filters.status !== "All") {
+        params.push(filters.status.toLowerCase());
+        conditions.push(`LOWER(status) = $${params.length}`);
+      }
+
+      if (filters.jobId && filters.jobId !== "All") {
+        params.push(filters.jobId);
+        conditions.push(`target_job_id = $${params.length}`);
+      }
+
+      if (filters.field && filters.field !== "All" && filters.field !== "All Fields") {
+        params.push(filters.field.toLowerCase());
+        conditions.push(`LOWER(field) = $${params.length}`);
+      }
+
+      if (filters.search) {
+        params.push(`%${filters.search.toLowerCase()}%`);
+        const idx = params.length;
+        conditions.push(`(LOWER(name) LIKE $${idx} OR LOWER(email) LIKE $${idx} OR LOWER(role) LIKE $${idx} OR LOWER(domain) LIKE $${idx})`);
+      }
+
+      if (conditions.length > 0) {
+        query += " WHERE " + conditions.join(" AND ");
+      }
+      query += " ORDER BY created_at DESC";
+
+      const res = await p.query(query, params);
+      if (res.rows && res.rows.length > 0) {
+        return res.rows.map(r => this.ensureFields(this._mapRow(r)));
+      }
+    } catch (err) {
+      console.warn("PostgreSQL resumes getAllAsync fallback:", err.message);
+    }
+
+    return this.getAll(filters);
+  }
+
+  async getByIdAsync(id) {
+    if (!id) return null;
+    try {
+      const p = getPool();
+      const res = await p.query("SELECT * FROM public.resumes WHERE id = $1 LIMIT 1", [id]);
+      if (res.rows && res.rows.length > 0) {
+        return this.ensureFields(this._mapRow(res.rows[0]));
+      }
+    } catch (e) {}
+    return this.getById(id);
   }
 
   getAll(filters = {}) {
@@ -173,17 +259,49 @@ class ResumesDatabase {
 
   findDuplicate(resumeData) {
     const list = readData(COLLECTION, []);
-    if (resumeData.email) {
-      const byEmail = list.find(r => r.email && r.email.toLowerCase() === resumeData.email.toLowerCase());
+    
+    // 1. Match by Email (primary unique identity)
+    if (resumeData.email && resumeData.email.trim() && !resumeData.email.includes("@example.com")) {
+      const emailLower = resumeData.email.trim().toLowerCase();
+      const byEmail = list.find(r => r.email && r.email.trim().toLowerCase() === emailLower);
       if (byEmail) return byEmail;
     }
+
+    // 2. Match by Phone Number
+    if (resumeData.phone) {
+      const cleanPhone = String(resumeData.phone).replace(/\D/g, "");
+      if (cleanPhone.length >= 10) {
+        const byPhone = list.find(r => {
+          if (!r.phone) return false;
+          const otherClean = String(r.phone).replace(/\D/g, "");
+          return otherClean.length >= 10 && otherClean.slice(-10) === cleanPhone.slice(-10);
+        });
+        if (byPhone) return byPhone;
+      }
+    }
+
+    // 3. Match by Name and exact resume filename
     if (resumeData.name && resumeData.resumeFileName) {
+      const nameLower = resumeData.name.trim().toLowerCase();
+      const fileLower = resumeData.resumeFileName.trim().toLowerCase();
       const byNameAndFile = list.find(r =>
-        r.name && r.name.toLowerCase() === resumeData.name.toLowerCase() &&
-        r.resumeFileName && r.resumeFileName.toLowerCase() === resumeData.resumeFileName.toLowerCase()
+        r.name && r.name.trim().toLowerCase() === nameLower &&
+        r.resumeFileName && r.resumeFileName.trim().toLowerCase() === fileLower
       );
       if (byNameAndFile) return byNameAndFile;
     }
+
+    // 4. Match by exact Name and same target role
+    if (resumeData.name && resumeData.role && resumeData.name.trim().toLowerCase() !== "candidate") {
+      const nameLower = resumeData.name.trim().toLowerCase();
+      const roleLower = resumeData.role.trim().toLowerCase();
+      const byNameAndRole = list.find(r =>
+        r.name && r.name.trim().toLowerCase() === nameLower &&
+        r.role && r.role.trim().toLowerCase() === roleLower
+      );
+      if (byNameAndRole) return byNameAndRole;
+    }
+
     return null;
   }
 
@@ -191,7 +309,14 @@ class ResumesDatabase {
     // Check for duplicate candidate to update rather than creating multiple duplicate rows
     const existing = this.findDuplicate(resumeData);
     if (existing) {
-      return this.update(existing.id, resumeData);
+      const updated = this.update(existing.id, {
+        ...resumeData,
+        // preserve original creation date and id
+        id: existing.id,
+        uploadedDate: existing.uploadedDate || new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+        createdAt: existing.createdAt
+      });
+      return { ...updated, isDuplicateUpdated: true, duplicateOfId: existing.id };
     }
 
     const list = readData(COLLECTION, []);
@@ -199,6 +324,8 @@ class ResumesDatabase {
     const skills = Array.isArray(resumeData.skills) ? resumeData.skills : (resumeData.skills ? resumeData.skills.split(",").map(s => s.trim()) : []);
     const allSkills = resumeData.allSkills || skills;
     const field = resumeData.field || resumeData.domain || this.classifyDomain({ ...resumeData, allSkills });
+
+    const authorEmail = (resumeData.createdBy || resumeData.userEmail || "").trim();
 
     const newCandidate = {
       id,
@@ -211,6 +338,8 @@ class ResumesDatabase {
       field,
       domain: field,
       secondaryDomains: resumeData.secondaryDomains || resumeData.secondary_domains || [],
+      createdBy: authorEmail,
+      userEmail: authorEmail,
       experience: resumeData.experience || "0 Years",
       expYears: resumeData.expYears !== undefined ? resumeData.expYears : 0,
       skills: skills.slice(0, 3),
@@ -254,23 +383,80 @@ class ResumesDatabase {
         INSERT INTO public.resumes (
           id, candidate_id, name, email, phone, role, target_job_id,
           target_job_title, field, domain, score, status, skills,
-          experience, exp_years, resume_file_name, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
+          matched_skills, missing_skills, experience, exp_years,
+          education, summary, key_points, raw_text, resume_file_name,
+          created_by, user_email, created_at, updated_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+          $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, NOW(), NOW()
+        )
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
-          status = EXCLUDED.status,
+          phone = EXCLUDED.phone,
+          role = EXCLUDED.role,
+          target_job_id = EXCLUDED.target_job_id,
+          target_job_title = EXCLUDED.target_job_title,
+          field = EXCLUDED.field,
+          domain = EXCLUDED.domain,
           score = EXCLUDED.score,
+          status = EXCLUDED.status,
+          skills = EXCLUDED.skills,
+          matched_skills = EXCLUDED.matched_skills,
+          missing_skills = EXCLUDED.missing_skills,
+          experience = EXCLUDED.experience,
+          exp_years = EXCLUDED.exp_years,
+          education = EXCLUDED.education,
+          summary = EXCLUDED.summary,
+          key_points = EXCLUDED.key_points,
+          resume_file_name = EXCLUDED.resume_file_name,
+          created_by = COALESCE(EXCLUDED.created_by, public.resumes.created_by),
+          user_email = COALESCE(EXCLUDED.user_email, public.resumes.user_email),
           updated_at = NOW();
       `, [
         newCandidate.id, newCandidate.id, newCandidate.name, newCandidate.email,
         newCandidate.phone, newCandidate.role, newCandidate.jobId,
         newCandidate.targetJobTitle, newCandidate.field, newCandidate.domain,
         newCandidate.atsScore || newCandidate.matchScore || 0, newCandidate.status,
-        JSON.stringify(newCandidate.allSkills), newCandidate.experience,
-        newCandidate.expYears, newCandidate.resumeFileName
+        JSON.stringify(newCandidate.allSkills || []),
+        JSON.stringify(newCandidate.matchedSkills || []),
+        JSON.stringify(newCandidate.missingSkills || []),
+        newCandidate.experience, newCandidate.expYears,
+        typeof newCandidate.education === "string" ? newCandidate.education : JSON.stringify(newCandidate.education || ""),
+        newCandidate.summary,
+        JSON.stringify(newCandidate.keyPoints || {}),
+        newCandidate.rawText,
+        newCandidate.resumeFileName,
+        newCandidate.createdBy || null,
+        newCandidate.userEmail || null
       ]).catch(err => console.warn("PostgreSQL resume insert warning:", err.message));
     } catch (e) {}
+
+    // Sync to candidatesDb
+    try {
+      const candidatesDb = require("./candidatesDb");
+      candidatesDb.create({
+        id: newCandidate.id,
+        name: newCandidate.name,
+        email: newCandidate.email,
+        phone: newCandidate.phone,
+        role: newCandidate.role,
+        score: newCandidate.atsScore || newCandidate.matchScore || 0,
+        status: newCandidate.status === "Shortlisted" ? "Shortlisted" : "Under Review",
+        notes: newCandidate.summary,
+        createdBy: newCandidate.createdBy,
+        userEmail: newCandidate.userEmail
+      }).catch(() => {});
+    } catch (_) {}
+
+    // Sync to interviewsDb if status is Selected or Shortlisted
+    try {
+      const sLower = String(newCandidate.status || "").trim().toLowerCase();
+      if (sLower === "selected" || sLower === "shortlisted") {
+        const interviewsDb = require("./interviewsDb");
+        interviewsDb.syncFromResume(newCandidate);
+      }
+    } catch (_) {}
 
     return newCandidate;
   }
@@ -287,17 +473,58 @@ class ResumesDatabase {
     };
     writeData(COLLECTION, list);
 
+    const updatedItem = list[idx];
+
+    // Two-way backend connection to interviews page:
+    // When candidate status is updated to Selected or Shortlisted, sync to interviews
+    // When candidate status is updated to Rejected, remove candidate from interviews
+    if (updates.status) {
+      try {
+        const interviewsDb = require("./interviewsDb");
+        const sLower = String(updates.status).trim().toLowerCase();
+        if (sLower === "selected" || sLower === "shortlisted") {
+          interviewsDb.syncFromResume(updatedItem);
+        } else if (sLower === "rejected") {
+          interviewsDb.removeForCandidate(updatedItem.id, updatedItem.email);
+        }
+      } catch (err) {
+        console.warn("Interview sync from resume notice:", err.message);
+      }
+    }
+
     // Update in PostgreSQL public.resumes
     try {
       const pool = getPool();
+      const item = list[idx];
       pool.query(`
         UPDATE public.resumes SET
-          status = COALESCE($2, status),
-          score = COALESCE($3, score),
-          target_job_id = COALESCE($4, target_job_id),
+          name = COALESCE($2, name),
+          email = COALESCE($3, email),
+          status = COALESCE($4, status),
+          score = COALESCE($5, score),
+          target_job_id = COALESCE($6, target_job_id),
+          target_job_title = COALESCE($7, target_job_title),
+          field = COALESCE($8, field),
+          domain = COALESCE($9, domain),
+          skills = COALESCE($10, skills),
+          matched_skills = COALESCE($11, matched_skills),
+          missing_skills = COALESCE($12, missing_skills),
           updated_at = NOW()
         WHERE id = $1
-      `, [id, updates.status || null, updates.atsScore || updates.score || null, updates.jobId || null])
+      `, [
+        id,
+        item.name || null,
+        item.email || null,
+        updates.status || item.status || null,
+        updates.atsScore || updates.score || item.atsScore || null,
+        updates.jobId || updates.targetJobId || item.jobId || null,
+        item.targetJobTitle || null,
+        item.field || null,
+        item.domain || null,
+        JSON.stringify(item.allSkills || item.skills || []),
+        JSON.stringify(item.matchedSkills || []),
+        JSON.stringify(item.missingSkills || [])
+      ])
       .catch(err => console.warn("PostgreSQL resume update warning:", err.message));
     } catch (e) {}
 
@@ -313,6 +540,12 @@ class ResumesDatabase {
     const filtered = list.filter(r => r.id !== id);
     if (filtered.length === list.length) return false;
     writeData(COLLECTION, filtered);
+
+    // Sync removal in interviewsDb
+    try {
+      const interviewsDb = require("./interviewsDb");
+      interviewsDb.removeForCandidate(id);
+    } catch (_) {}
 
     // Delete in PostgreSQL public.resumes
     try {

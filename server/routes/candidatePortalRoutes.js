@@ -48,8 +48,9 @@ function matchPhoneNumbers(inputPhone, storedPhone) {
 
 /**
  * Gather all resumes from resumesDb and candidatesDb so candidate portal is connected to all resumes
+ * Excludes rejected candidates and prioritizes/selects candidates in a selective way
  */
-async function getAllCandidateResumes() {
+async function getAllCandidateResumes(filters = {}) {
   const resumes = resumesDb.getAll() || [];
   let candidates = [];
   try {
@@ -62,6 +63,11 @@ async function getAllCandidateResumes() {
   // 1. Primary resume collection from resumesDb
   for (const r of resumes) {
     const key = normalizeEmail(r.email);
+    const statusLower = String(r.status || "").trim().toLowerCase();
+    
+    // Completely exclude rejected candidates
+    if (statusLower === "rejected") continue;
+
     if (key) {
       map.set(key, {
         id: r.id,
@@ -74,7 +80,9 @@ async function getAllCandidateResumes() {
         skills: r.skills || r.allSkills || [],
         experience: r.experience || (r.expYears ? `${r.expYears} Years` : "1-2 Years"),
         status: r.status || "Shortlisted",
-        source: "resumes"
+        source: "resumes",
+        createdBy: r.createdBy || "",
+        userEmail: r.userEmail || ""
       });
     }
   }
@@ -82,6 +90,9 @@ async function getAllCandidateResumes() {
   // 2. Also supplement with candidates from candidatesDb if not already present
   for (const c of candidates) {
     const key = normalizeEmail(c.email);
+    const statusLower = String(c.status || "").trim().toLowerCase();
+    if (statusLower === "rejected") continue;
+
     if (key && !map.has(key)) {
       map.set(key, {
         id: c.id,
@@ -94,7 +105,9 @@ async function getAllCandidateResumes() {
         skills: c.skills || [],
         experience: c.experience || "1-2 Years",
         status: c.status || "Applied",
-        source: "candidates"
+        source: "candidates",
+        createdBy: c.createdBy || "",
+        userEmail: c.userEmail || ""
       });
     } else if (key && map.has(key)) {
       const existing = map.get(key);
@@ -104,7 +117,37 @@ async function getAllCandidateResumes() {
     }
   }
 
-  return Array.from(map.values());
+  let result = Array.from(map.values());
+
+  // Filter by userEmail if provided for user isolation
+  if (filters.userEmail) {
+    const target = filters.userEmail.toLowerCase().trim();
+    const userFiltered = result.filter(c => 
+      (c.createdBy && c.createdBy.toLowerCase().trim() === target) ||
+      (c.userEmail && c.userEmail.toLowerCase().trim() === target)
+    );
+    if (userFiltered.length > 0) {
+      result = userFiltered;
+    }
+  }
+
+  // Selective ordering:
+  // "in that way like selected candidates list will be shown in interview page , list must be shown in selective way"
+  // Candidates marked as "Selected" or "Shortlisted" are given selective prominence
+  const selectedOnly = result.filter(c => {
+    const s = String(c.status || "").toLowerCase().trim();
+    return s === "selected" || s === "shortlisted";
+  });
+
+  if (selectedOnly.length > 0) {
+    return selectedOnly.sort((a, b) => {
+      const aSel = String(a.status || "").toLowerCase() === "selected" ? 0 : 1;
+      const bSel = String(b.status || "").toLowerCase() === "selected" ? 0 : 1;
+      return aSel - bSel;
+    });
+  }
+
+  return result;
 }
 
 /**
@@ -347,8 +390,9 @@ router.get("/interview-settings", (req, res) => {
 // GET /api/candidate-portal/resumes - Retrieve all submitted resumes for candidate portal connection
 router.get("/resumes", async (req, res) => {
   try {
-    const list = await getAllCandidateResumes();
-    const allInterviews = await interviewsDb.getAll();
+    const authorEmail = req.query.userEmail || req.headers["x-user-email"];
+    const list = await getAllCandidateResumes({ userEmail: authorEmail });
+    const allInterviews = await interviewsDb.getAll({ userEmail: authorEmail });
     const sanitized = list.map(r => {
       const cleanEmail = normalizeEmail(r.email);
       const scheduled = allInterviews.find(iv => 
