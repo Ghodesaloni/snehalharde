@@ -102,11 +102,11 @@ function resolveJob(jobId, customJdBody) {
 }
 
 // GET /api/resumes - list all candidates/resumes
-router.get("/", async (req, res) => {
+router.get("/", (req, res) => {
   try {
     const { status, role, search, field, domain, jobId, sortBy, userEmail } = req.query;
     const authorEmail = userEmail || req.headers["x-user-email"];
-    const list = await resumesDb.getAllAsync({ status, role, search, field, domain, jobId, sortBy, userEmail: authorEmail });
+    const list = resumesDb.getAll({ status, role, search, field, domain, jobId, sortBy, userEmail: authorEmail });
     res.json({
       success: true,
       count: list.length,
@@ -436,9 +436,9 @@ router.post("/:id/analyze-jd", async (req, res) => {
 });
 
 // GET /api/resumes/:id - get single resume/candidate
-router.get("/:id", async (req, res) => {
+router.get("/:id", (req, res) => {
   try {
-    const resume = await resumesDb.getByIdAsync(req.params.id);
+    const resume = resumesDb.getById(req.params.id);
     if (!resume) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }

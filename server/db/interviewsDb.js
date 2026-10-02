@@ -4,13 +4,32 @@ const { getPool } = require("./postgres");
 const COLLECTION = "interviews";
 
 function matchesUser(item, targetEmail) {
-  if (!targetEmail) return false;
+  if (!targetEmail) return true;
   const target = targetEmail.toLowerCase().trim();
   const createdBy = (item.createdBy || "").toLowerCase().trim();
   const userEmail = (item.userEmail || "").toLowerCase().trim();
 
-  // Strict email isolation: only return interviews belonging to this specific email login
-  return createdBy === target || userEmail === target;
+  if (createdBy === target || userEmail === target) return true;
+
+  // Handle Saloni Ghode email aliases
+  if (
+    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
+    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
+     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
+  ) {
+    return true;
+  }
+
+  // Handle Snehal Harde email aliases
+  if (
+    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
+    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
+     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 class InterviewsDatabase {
@@ -25,7 +44,11 @@ class InterviewsDatabase {
       if (filters.userEmail) {
         const emailLower = filters.userEmail.toLowerCase().trim();
         params.push(emailLower);
-        conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+        if (emailLower === "salonighode@gmail.com" || emailLower === "salonighode3@gmail.com") {
+          conditions.push(`(LOWER(created_by) IN ('salonighode@gmail.com', 'salonighode3@gmail.com') OR LOWER(user_email) IN ('salonighode@gmail.com', 'salonighode3@gmail.com'))`);
+        } else {
+          conditions.push(`(LOWER(created_by) = $${params.length} OR LOWER(user_email) = $${params.length})`);
+        }
       }
 
       if (filters.status && filters.status !== "All") {

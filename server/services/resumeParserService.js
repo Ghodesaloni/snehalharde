@@ -340,36 +340,9 @@ function evaluateResumeQuality(parsed, requiresOcr, ocrWarning) {
  * @returns {Promise<Object>} Structured Resume Object conforming to specification
  */
 async function parseResume(fileBuffer, mimeType = "", filename = "") {
-  // Step 1 & 2: Text extraction, OCR & Document Validation
+  // Step 1 & 2: Text extraction & Cleaning
   const extraction = await extractResumeText(fileBuffer, mimeType, filename);
-  const { cleanText, requiresOcr, ocrWarning, isValidResume, rejectionReason, candidateInfo } = extraction;
-
-  // Immediately reject non-resume documents/images (selfies, logos, WhatsApp UI, receipts, etc.)
-  if (isValidResume === false) {
-    return {
-      isValidResume: false,
-      rejectionReason: rejectionReason || "File does not contain a valid professional resume.",
-      candidate: {
-        name: "Invalid Document",
-        email: null,
-        phone: null,
-        location: null
-      },
-      professional_summary: "",
-      domains: { primary: "General", secondary: [], confidence: 0 },
-      skills: { technical: [], soft: [], tools: [], databases: [], cloud: [] },
-      all_normalized_skills: [],
-      education: [],
-      experience: [],
-      experience_years: 0,
-      experience_display: "0 Years",
-      projects: [],
-      certifications: [],
-      raw_text: cleanText || "",
-      requires_ocr: requiresOcr,
-      ocr_warning: ocrWarning || rejectionReason
-    };
-  }
+  const { cleanText, requiresOcr, ocrWarning } = extraction;
 
   // Step 3: Section Detection
   const sections = detectResumeSections(cleanText);
@@ -381,13 +354,8 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
   const githubMatch = cleanText.match(GITHUB_REGEX);
   const portfolioMatch = cleanText.match(PORTFOLIO_REGEX);
 
-  const fallbackName = candidateInfo?.candidateName && candidateInfo.candidateName !== "Candidate" && candidateInfo.candidateName !== "null"
-    ? candidateInfo.candidateName
-    : extractCandidateName(sections.contactHeader, cleanText);
-
-  const location = candidateInfo?.location || extractLocation(sections.contactHeader || cleanText);
-  const finalEmail = emailMatch ? emailMatch[0] : (candidateInfo?.email || null);
-  const finalPhone = phoneMatch ? phoneMatch[0] : (candidateInfo?.phone || null);
+  const candidateName = extractCandidateName(sections.contactHeader, cleanText);
+  const location = extractLocation(sections.contactHeader || cleanText);
 
   // Step 5: Skill Extraction & Categorization
   const normalizedSkills = extractNormalizedSkills(cleanText);
@@ -446,18 +414,17 @@ async function parseResume(fileBuffer, mimeType = "", filename = "") {
   );
 
   // Professional summary fallback
-  let summary = sections.summary || candidateInfo?.summary;
+  let summary = sections.summary;
   if (!summary) {
-    summary = `${fallbackName} is an experienced ${primaryRole} specializing in ${normalizedSkills.slice(0, 4).map(s => s.normalized).join(", ")}.`;
+    summary = `${candidateName} is an experienced ${primaryRole} specializing in ${normalizedSkills.slice(0, 4).map(s => s.normalized).join(", ")}.`;
   }
 
   // Step 8: Resume Quality Assessment
   const intermediate = {
-    isValidResume: true,
     candidate: {
-      name: fallbackName,
-      email: finalEmail,
-      phone: finalPhone,
+      name: candidateName,
+      email: emailMatch ? emailMatch[0] : null,
+      phone: phoneMatch ? phoneMatch[0] : null,
       location,
       linkedin: linkedInMatch ? linkedInMatch[0] : null,
       github: githubMatch ? githubMatch[0] : null,

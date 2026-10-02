@@ -44,26 +44,6 @@ const defaultTemplates = [
 ];
 
 class EmailCenterDatabase {
-  async getTemplatesAsync() {
-    try {
-      const pool = postgresDb.getPool();
-      const res = await pool.query("SELECT * FROM public.email_templates ORDER BY id ASC");
-      if (res.rows && res.rows.length > 0) {
-        return res.rows.map(r => ({
-          id: r.id,
-          name: r.name,
-          subject: r.subject,
-          body: r.body,
-          category: r.category || "General",
-          uses: Number(r.uses || 0),
-          createdAt: r.created_at,
-          updatedAt: r.updated_at
-        }));
-      }
-    } catch (e) {}
-    return this.getTemplates();
-  }
-
   getTemplates() {
     return readData(TEMPLATES_COLLECTION, defaultTemplates);
   }
@@ -86,20 +66,6 @@ class EmailCenterDatabase {
     };
     templates.push(newTemplate);
     writeData(TEMPLATES_COLLECTION, templates);
-
-    try {
-      const pool = postgresDb.getPool();
-      pool.query(`
-        INSERT INTO public.email_templates (id, name, subject, body, category, uses, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-        ON CONFLICT (id) DO UPDATE SET
-          name = EXCLUDED.name,
-          subject = EXCLUDED.subject,
-          body = EXCLUDED.body,
-          updated_at = NOW();
-      `, [newTemplate.id, newTemplate.name, newTemplate.subject, newTemplate.body, newTemplate.category, 0]).catch(() => {});
-    } catch (e) {}
-
     return newTemplate;
   }
 
@@ -109,20 +75,6 @@ class EmailCenterDatabase {
     if (idx === -1) return null;
     templates[idx] = { ...templates[idx], ...data, updatedAt: new Date().toISOString() };
     writeData(TEMPLATES_COLLECTION, templates);
-
-    try {
-      const pool = postgresDb.getPool();
-      pool.query(`
-        UPDATE public.email_templates SET
-          name = COALESCE($2, name),
-          subject = COALESCE($3, subject),
-          body = COALESCE($4, body),
-          category = COALESCE($5, category),
-          updated_at = NOW()
-        WHERE id = $1
-      `, [id, data.name || null, data.subject || null, data.body || null, data.category || null]).catch(() => {});
-    } catch (e) {}
-
     return templates[idx];
   }
 
@@ -142,36 +94,8 @@ class EmailCenterDatabase {
       }
     }
 
-    const emailId = emailData.id || `smtp-${Date.now()}`;
-
-    // Persist to PostgreSQL public.email_sent
-    try {
-      const pool = postgresDb.getPool();
-      pool.query(`
-        INSERT INTO public.email_sent (
-          id, recipient, recipient_name, sender_email, user_email, created_by,
-          subject, body, html, type, template_id, status, delivery_mode, sent_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
-        ON CONFLICT (id) DO NOTHING
-      `, [
-        emailId,
-        emailData.recipient || emailData.to || "recipient@example.com",
-        emailData.candidateName || emailData.recipientName || null,
-        emailData.from || "salonighode@gmail.com",
-        emailData.userEmail || null,
-        emailData.createdBy || null,
-        emailData.subject || "Email Notification",
-        emailData.body || "",
-        emailData.html || null,
-        emailData.type || "Interview",
-        emailData.templateId ? String(emailData.templateId) : null,
-        "Delivered",
-        emailData.deliveryMode || "smtp"
-      ]).catch(e => console.warn("PostgreSQL email_sent log notice:", e.message));
-    } catch (e) {}
-
     return {
-      id: emailId,
+      id: emailData.id || `smtp-${Date.now()}`,
       recipient: emailData.recipient,
       subject: emailData.subject,
       status: "Dispatched",

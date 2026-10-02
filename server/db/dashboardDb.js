@@ -5,54 +5,52 @@ const candidatesDb = require("./candidatesDb");
 const emailCenterDb = require("./emailCenterDb");
 
 function matchesUser(item, targetEmail) {
-  if (!targetEmail) return false;
+  if (!targetEmail) return true;
   const target = targetEmail.toLowerCase().trim();
   const createdBy = (item.createdBy || "").toLowerCase().trim();
   const userEmail = (item.userEmail || "").toLowerCase().trim();
 
-  // Strict email isolation: only return records belonging to this specific email login
-  return createdBy === target || userEmail === target;
+  if (createdBy === target || userEmail === target) return true;
+
+  // Handle Saloni Ghode email aliases
+  if (
+    (target === "salonighode@gmail.com" || target === "salonighode3@gmail.com") &&
+    (createdBy === "salonighode@gmail.com" || createdBy === "salonighode3@gmail.com" ||
+     userEmail === "salonighode@gmail.com" || userEmail === "salonighode3@gmail.com")
+  ) {
+    return true;
+  }
+
+  // Handle Snehal Harde email aliases
+  if (
+    (target === "snehal.harde2935@gmail.com" || target === "snehalharde09@gmail.com" || target === "sneha.harde2935@gmail.com") &&
+    (createdBy === "snehal.harde2935@gmail.com" || createdBy === "snehalharde09@gmail.com" ||
+     userEmail === "snehal.harde2935@gmail.com" || userEmail === "snehalharde09@gmail.com")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 class DashboardDatabase {
   async getStats(userEmail) {
-    const cleanEmail = (userEmail || "").toLowerCase().trim();
-    if (!cleanEmail) {
-      return {
-        kpis: [
-          { icon: "fa-briefcase", color: "bg-violet-100 text-violet-600", label: "Total Jobs", value: "0", sub: "0 Active Jobs", subColor: "text-slate-400" },
-          { icon: "fa-users", color: "bg-emerald-100 text-emerald-600", label: "Total Candidates", value: "0", sub: "0 In Pipeline", subColor: "text-slate-400" },
-          { icon: "fa-calendar", color: "bg-blue-100 text-blue-600", label: "Interviews Scheduled", value: "0", sub: "0 Total Sessions", subColor: "text-slate-400" },
-          { icon: "fa-chart-line", color: "bg-amber-100 text-amber-600", label: "Completed Interviews", value: "0", sub: "Evaluated by AI", subColor: "text-slate-400" },
-          { icon: "fa-circle-check", color: "bg-rose-100 text-rose-600", label: "Selected Candidates", value: "0", sub: "Ready for offer", subColor: "text-slate-400" }
-        ],
-        weekData: [
-          { d: "Mon", v: 0 }, { d: "Tue", v: 0 }, { d: "Wed", v: 0 }, { d: "Thu", v: 0 },
-          { d: "Fri", v: 0 }, { d: "Sat", v: 0 }, { d: "Sun", v: 0 }
-        ],
-        stageData: [
-          { name: "Applied", value: 0, pct: "0%", color: "#3b82f6" },
-          { name: "Screening", value: 0, pct: "0%", color: "#8b5cf6" },
-          { name: "Interview", value: 0, pct: "0%", color: "#f59e0b" },
-          { name: "Interviewed", value: 0, pct: "0%", color: "#14b8a6" },
-          { name: "Selected", value: 0, pct: "0%", color: "#22c55e" }
-        ],
-        jobs: [],
-        topJobs: [],
-        upcoming: [],
-        activity: []
-      };
+    let jobs = await Promise.resolve(jobsDb.getAll());
+    let resumes = await Promise.resolve(resumesDb.getAll());
+    let interviews = await Promise.resolve(interviewsDb.getAll());
+    let candidates = await Promise.resolve(candidatesDb.getAll());
+
+    if (userEmail) {
+      jobs = jobs.filter(j => matchesUser(j, userEmail));
+      resumes = resumes.filter(r => matchesUser(r, userEmail));
+      interviews = interviews.filter(i => matchesUser(i, userEmail));
+      candidates = candidates.filter(c => matchesUser(c, userEmail));
+    } else {
+      jobs = [];
+      resumes = [];
+      interviews = [];
+      candidates = [];
     }
-
-    let jobs = await (jobsDb.getAllAsync ? jobsDb.getAllAsync({ userEmail: cleanEmail }) : jobsDb.getAll({ userEmail: cleanEmail }));
-    let resumes = await (resumesDb.getAllAsync ? resumesDb.getAllAsync({ userEmail: cleanEmail }) : resumesDb.getAll({ userEmail: cleanEmail }));
-    let interviews = await interviewsDb.getAll({ userEmail: cleanEmail });
-    let candidates = await candidatesDb.getAll({ userEmail: cleanEmail });
-
-    jobs = jobs.filter(j => matchesUser(j, cleanEmail));
-    resumes = resumes.filter(r => matchesUser(r, cleanEmail));
-    interviews = interviews.filter(i => matchesUser(i, cleanEmail));
-    candidates = candidates.filter(c => matchesUser(c, cleanEmail));
 
     const activeJobs = jobs.filter(j => (j.status || "").toLowerCase() === "active").length;
     const selectedCandidates = candidates.filter(c => (c.status || "").toLowerCase() === "selected").length +
@@ -164,13 +162,13 @@ class DashboardDatabase {
       avatar: i.avatar || ""
     }));
 
-    // Recent activity stream strictly for the authenticated user
+    // Recent real activity stream
     const activity = [];
     candidates.slice(0, 3).forEach(c => {
       activity.push({
         id: `act-${c.id}`,
-        user: "You",
-        action: `AI Interview completed: ${c.name} (${c.role}) - Score: ${c.score || 0}%`,
+        user: c.name,
+        action: `AI Interview Completed - Score: ${c.score || 0}%`,
         time: c.interviewDate || "Recently",
         icon: "fa-robot",
         color: "text-violet-500 bg-violet-50"
@@ -179,8 +177,8 @@ class DashboardDatabase {
     interviews.slice(0, 3).forEach(i => {
       activity.push({
         id: `act-${i.id}`,
-        user: "You",
-        action: `Scheduled interview: ${i.name} for ${i.role}`,
+        user: i.name,
+        action: `Scheduled AI Technical Interview for ${i.role}`,
         time: i.date || "Scheduled",
         icon: "fa-calendar-check",
         color: "text-blue-500 bg-blue-50"
@@ -189,8 +187,8 @@ class DashboardDatabase {
     resumes.slice(0, 3).forEach(r => {
       activity.push({
         id: `act-${r.id}`,
-        user: "You",
-        action: `Screened resume: ${r.name} (${r.role}) - ATS: ${r.atsScore || 0}%`,
+        user: r.name,
+        action: `Resume uploaded & screened (ATS: ${r.atsScore || 0})`,
         time: r.uploadedDate || "Recently",
         icon: "fa-file-lines",
         color: "text-emerald-500 bg-emerald-50"
