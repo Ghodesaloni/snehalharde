@@ -73,6 +73,18 @@ const CandidateWaitingRoom = () => {
     const formattedSeconds = String(seconds).padStart(2, "0");
 
     const handleEnterNow = () => {
+        try {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {});
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen().catch(() => {});
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen().catch(() => {});
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen().catch(() => {});
+            }
+        } catch (e) {}
         toast.success("Connecting to AvaHire AI Interviewer...");
         navigate(`/i/${interviewData.linkCode || code || "akc123"}/live`);
     };

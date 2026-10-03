@@ -25,7 +25,10 @@ import {
     User,
     ArrowDown,
     AlertTriangle,
-    Loader2
+    Loader2,
+    Maximize2,
+    Minimize2,
+    ShieldAlert
 } from "lucide-react";
 import { toast } from "sonner";
 import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
@@ -53,6 +56,11 @@ const CandidateLiveRoom = () => {
     const [connectionStatus, setConnectionStatus] = useState("connecting"); // connecting, connected, disconnected, error
     const [connectionError, setConnectionError] = useState(null);
     const roomRef = useRef(null);
+
+    // Full-Screen Mode State
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showFullscreenWarning, setShowFullscreenWarning] = useState(false);
+    const [fullscreenExitCount, setFullscreenExitCount] = useState(0);
 
     // Call Controls State
     const [isMicOn, setIsMicOn] = useState(true);
@@ -218,12 +226,197 @@ const CandidateLiveRoom = () => {
         }
     }, [transcripts, liveUtterance, autoScroll, showTranscript]);
 
+    // -------------------------------------------------------------
+    // VOICE DETECTOR MICROPHONE (VAD) & REAL-TIME STT ENGINE
+    // Connected with Live Transcript: Detects candidate voice and converts it to text
+    // -------------------------------------------------------------
+    const [isCandidateSpeaking, setIsCandidateSpeaking] = useState(false);
+    const [candidateVoiceLevel, setCandidateVoiceLevel] = useState(0);
+    const vadAnalyserRef = useRef(null);
+    const vadAnimFrameRef = useRef(null);
+    const vadCtxRef = useRef(null);
+
+    // Initialize Web Audio VAD on candidate's microphone audio track
+    const attachVoiceActivityDetector = (audioTrack) => {
+        try {
+            if (!audioTrack) return;
+            const mediaStreamTrack = audioTrack.mediaStreamTrack || audioTrack;
+            if (!mediaStreamTrack) return;
+
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+
+            if (vadCtxRef.current && vadCtxRef.current.state !== "closed") {
+                try { vadCtxRef.current.close(); } catch (e) {}
+            }
+
+            const ctx = new AudioCtx();
+            vadCtxRef.current = ctx;
+
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 256;
+            analyser.smoothingTimeConstant = 0.3;
+            vadAnalyserRef.current = analyser;
+
+            const stream = new MediaStream([mediaStreamTrack]);
+            const source = ctx.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            const checkCandidateVoice = () => {
+                if (!vadAnalyserRef.current) return;
+                vadAnalyserRef.current.getByteFrequencyData(dataArray);
+
+                let sum = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    sum += dataArray[i];
+                }
+                const avg = sum / dataArray.length;
+                const level = Math.min(100, Math.round((avg / 128) * 100));
+                setCandidateVoiceLevel(level);
+
+                const voiceActive = level > 12;
+                setIsCandidateSpeaking(voiceActive);
+
+                vadAnimFrameRef.current = requestAnimationFrame(checkCandidateVoice);
+            };
+
+            checkCandidateVoice();
+            console.log("[VoiceDetector] Web Audio VAD attached to candidate mic.");
+        } catch (err) {
+            console.warn("[VoiceDetector] Could not attach VAD:", err);
+        }
+    };
+
+    // Continuous Speech Recognition Engine: Converts Candidate Voice into Live Transcript & Captions
+    useEffect(() => {
+        if (connectionStatus !== "connected" || !isMicOn || interviewEnded) return;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
+        let recognition = null;
+        let isEngineRunning = true;
+
+        try {
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = "en-US";
+
+            const candidateName = interviewData?.name || "Candidate";
+
+            recognition.onresult = (event) => {
+                let interimTranscript = "";
+                let finalTranscript = "";
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    const transcriptPiece = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcriptPiece;
+                    } else {
+                        interimTranscript += transcriptPiece;
+                    }
+                }
+
+                const timeStr = formatTime(elapsedSeconds);
+
+                if (interimTranscript.trim()) {
+                    setLiveUtterance({
+                        speaker: candidateName,
+                        roleTag: "Candidate",
+                        time: timeStr,
+                        text: interimTranscript.trim(),
+                    });
+                    setCurrentCaption(interimTranscript.trim());
+                }
+
+                if (finalTranscript.trim()) {
+                    setLiveUtterance(null);
+                    setTranscripts((prev) => {
+                        const last = prev[prev.length - 1];
+                        if (
+                            last &&
+                            last.speaker === candidateName &&
+                            last.text.trim().toLowerCase() === finalTranscript.trim().toLowerCase()
+                        ) {
+                            return prev;
+                        }
+                        return [
+                            ...prev,
+                            {
+                                id: `cand-stt-${Date.now()}-${Math.random()}`,
+                                speaker: candidateName,
+                                roleTag: "Candidate",
+                                time: timeStr,
+                                text: finalTranscript.trim(),
+                            },
+                        ];
+                    });
+                    setCurrentCaption(finalTranscript.trim());
+                }
+            };
+
+            recognition.onerror = (e) => {
+                if (e.error !== "no-speech" && e.error !== "aborted") {
+                    console.warn("[VoiceDetector STT] Notice:", e.error);
+                }
+            };
+
+            recognition.onend = () => {
+                if (isEngineRunning && connectionStatus === "connected" && isMicOn && !interviewEnded) {
+                    try {
+                        recognition.start();
+                    } catch (e) {}
+                }
+            };
+
+            try {
+                recognition.start();
+                console.log("[VoiceDetector STT] Live Speech-to-Text transcription active.");
+            } catch (e) {}
+
+        } catch (err) {
+            console.warn("[VoiceDetector STT] Initialization notice:", err);
+        }
+
+        return () => {
+            isEngineRunning = false;
+            if (vadAnimFrameRef.current) {
+                cancelAnimationFrame(vadAnimFrameRef.current);
+            }
+            try {
+                if (recognition) recognition.stop();
+            } catch (e) {}
+        };
+    }, [connectionStatus, isMicOn, interviewEnded, interviewData?.name, elapsedSeconds]);
+
+    // Suppress benign WebRTC negotiation timeouts from crashing the React error overlay
+    useEffect(() => {
+        const handleUnhandledRejection = (event) => {
+            const errReason = event?.reason;
+            const msg = String(errReason?.message || errReason || "").toLowerCase();
+            const name = String(errReason?.name || "");
+            if (name === "NegotiationError" || msg.includes("negotiation") || msg.includes("negotiation timed out")) {
+                console.warn("[LiveKit] Handled and prevented negotiation timeout error:", errReason);
+                event.preventDefault();
+            }
+        };
+        window.addEventListener("unhandledrejection", handleUnhandledRejection);
+        return () => window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    }, []);
+
     // LiveKit Room Connection & Agent Initialization
     useEffect(() => {
         let isMounted = true;
         const room = new Room({
             adaptiveStream: true,
             dynacast: true,
+            stopLocalTrackOnUnpublish: true,
+            publishDefaults: {
+                simulcast: false, // Prevents multi-layer SDP negotiation delays and timeouts
+            },
             audioCaptureDefaults: {
                 autoGainControl: true,
                 echoCancellation: true,
@@ -343,7 +536,7 @@ const CandidateLiveRoom = () => {
                     }
                 });
 
-                // Data Packet Handling (e.g. agent notifications / termination)
+                // Data Packet Handling (e.g. agent notifications / termination / conclusion)
                 room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
                     try {
                         const str = new TextDecoder().decode(payload);
@@ -354,6 +547,9 @@ const CandidateLiveRoom = () => {
                             setTerminationReason(reasonText);
                             handleEndAndSaveInterview(reasonText);
                             toast.error(`Interview ended: ${reasonText}`);
+                        } else if (parsed.type === "interview_completed" || topic === "interview_completed") {
+                            toast.success("Interview completed! Transitioning to Thank You page...");
+                            handleEndAndSaveInterview();
                         }
                     } catch (e) {
                         // Non-json data packet
@@ -371,7 +567,9 @@ const CandidateLiveRoom = () => {
                 });
 
                 // Connect to Room
-                await room.connect(serverUrl, token);
+                await room.connect(serverUrl, token, {
+                    autoSubscribe: true,
+                });
 
                 if (!isMounted || room.state !== ConnectionState.Connected) {
                     try { room.disconnect(); } catch (e) {}
@@ -380,36 +578,45 @@ const CandidateLiveRoom = () => {
 
                 setConnectionStatus("connected");
 
-                // Automatically Publish Local Microphone safely
-                try {
-                    if (isMounted && room.state === ConnectionState.Connected) {
-                        await room.localParticipant.setMicrophoneEnabled(true);
+                // Safely and sequentially initialize local audio and camera without SDP collisions
+                const initLocalMedia = async () => {
+                    if (!isMounted || room.state !== ConnectionState.Connected) return;
+                    try {
+                        const micId = localStorage.getItem("avahire_selected_mic_id");
+                        if (micId) {
+                            await room.localParticipant.setMicrophoneEnabled(true, { deviceId: micId });
+                        } else {
+                            await room.localParticipant.setMicrophoneEnabled(true);
+                        }
                         setIsMicOn(true);
                         const micPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
                         if (micPub && micPub.audioTrack) {
                             addAudioTrackToRecorder(micPub.audioTrack);
+                            attachVoiceActivityDetector(micPub.audioTrack);
                         }
+                    } catch (micErr) {
+                        console.warn("Notice publishing mic track:", micErr?.message || micErr);
                     }
-                } catch (micErr) {
-                    console.warn("Failed to enable mic:", micErr?.message || micErr);
-                }
 
-                // Automatically Publish Local Camera safely
-                try {
-                    if (isMounted && room.state === ConnectionState.Connected) {
+                    // Gentle delay so the first peer connection negotiation settles
+                    await new Promise((resolve) => setTimeout(resolve, 350));
+
+                    if (!isMounted || room.state !== ConnectionState.Connected) return;
+                    try {
                         await room.localParticipant.setCameraEnabled(true);
                         setIsCameraOn(true);
                         setHasCandidateVideo(true);
 
-                        // Attach local camera video track to PiP preview
                         const camPub = room.localParticipant.getTrackPublication(Track.Source.Camera);
                         if (camPub && camPub.videoTrack && candidateVideoRef.current) {
                             camPub.videoTrack.attach(candidateVideoRef.current);
                         }
+                    } catch (camErr) {
+                        console.warn("Notice publishing camera track:", camErr?.message || camErr);
                     }
-                } catch (camErr) {
-                    console.warn("Failed to enable camera:", camErr?.message || camErr);
-                }
+                };
+
+                initLocalMedia();
 
             } catch (err) {
                 console.error("LiveKit connection error:", err);
@@ -491,6 +698,111 @@ const CandidateLiveRoom = () => {
         };
     }, [connectionStatus]);
 
+    // -------------------------------------------------------------
+    // FULL-SCREEN INTERVIEW MODE (Anti-Distraction & Proctoring)
+    // -------------------------------------------------------------
+    const enterFullscreen = async () => {
+        try {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                await elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) {
+                await elem.webkitRequestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                await elem.mozRequestFullScreen();
+            } else if (elem.msRequestFullscreen) {
+                await elem.msRequestFullscreen();
+            }
+            setIsFullscreen(true);
+            setShowFullscreenWarning(false);
+            toast.success("Full-Screen Interview Mode Active");
+        } catch (err) {
+            console.warn("[FullScreen] Direct request notice:", err?.message || err);
+            if (connectionStatus === "connected" && !interviewEnded) {
+                setShowFullscreenWarning(true);
+            }
+        }
+    };
+
+    const exitFullscreen = async () => {
+        try {
+            if (
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            ) {
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    await document.mozCancelFullScreen();
+                } else if (document.msExitFullscreen) {
+                    await document.msExitFullscreen();
+                }
+            }
+            setIsFullscreen(false);
+            setShowFullscreenWarning(false);
+        } catch (err) {
+            console.warn("[FullScreen] Exit notice:", err?.message || err);
+        }
+    };
+
+    // Full-Screen Event Listener & Exit Detector
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            const inFullscreen = !!(
+                document.fullscreenElement ||
+                document.webkitFullscreenElement ||
+                document.mozFullScreenElement ||
+                document.msFullscreenElement
+            );
+            setIsFullscreen(inFullscreen);
+
+            if (!inFullscreen && connectionStatus === "connected" && !interviewEnded) {
+                setShowFullscreenWarning(true);
+                setFullscreenExitCount((prev) => prev + 1);
+                toast.warning("Full-Screen Mode Exited: Please re-enter full-screen mode to continue your assessment.");
+
+                // Broadcast integrity event to LiveKit data channel
+                const currentRoom = roomRef.current;
+                if (currentRoom && currentRoom.state === ConnectionState.Connected) {
+                    try {
+                        const payload = JSON.stringify({
+                            type: "fullscreen_exit",
+                            reason: "Candidate exited full-screen mode",
+                            timestamp: Date.now()
+                        });
+                        currentRoom.localParticipant.publishData(new TextEncoder().encode(payload), {
+                            reliable: true,
+                            topic: "fullscreen_exit"
+                        });
+                    } catch (e) {}
+                }
+            } else if (inFullscreen) {
+                setShowFullscreenWarning(false);
+            }
+        };
+
+        document.addEventListener("fullscreenchange", handleFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
+        document.addEventListener("mozfullscreenchange", handleFullscreenChange);
+        document.addEventListener("MSFullscreenChange", handleFullscreenChange);
+
+        // Attempt initial full-screen when interview starts/connects
+        if (connectionStatus === "connected" && !interviewEnded) {
+            enterFullscreen().catch(() => {});
+        }
+
+        return () => {
+            document.removeEventListener("fullscreenchange", handleFullscreenChange);
+            document.removeEventListener("webkitfullscreenchange", handleFullscreenChange);
+            document.removeEventListener("mozfullscreenchange", handleFullscreenChange);
+            document.removeEventListener("MSFullscreenChange", handleFullscreenChange);
+        };
+    }, [connectionStatus, interviewEnded]);
+
     // Toggle Microphone
     const handleToggleMic = async () => {
         if (!roomRef.current || roomRef.current.state !== ConnectionState.Connected) return;
@@ -543,6 +855,7 @@ const CandidateLiveRoom = () => {
 
     // End / Leave Interview and Sync Candidate to Candidates Database
     const handleEndAndSaveInterview = async (reason = "") => {
+        exitFullscreen();
         if (roomRef.current) {
             try {
                 roomRef.current.disconnect();
@@ -691,9 +1004,17 @@ const CandidateLiveRoom = () => {
                 window.dispatchEvent(new Event("avahire_candidates_updated"));
             }
 
-            toast.success(`Interview ended! ${candidateName} added to Candidates and removed from Interviews.`);
+            toast.success("Interview completed! Transitioning to Thank You page...");
+            
+            // Directly navigate to the Thank You page without intermediate card modal
+            const thankYouLinkCode = interviewData?.linkCode || code || "";
+            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you` : "/thank-you";
+            navigate(thankYouPath, { replace: true });
         } catch (err) {
             console.error("Error saving candidate from live interview:", err);
+            const thankYouLinkCode = interviewData?.linkCode || code || "";
+            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you` : "/thank-you";
+            navigate(thankYouPath, { replace: true });
         }
     };
 
@@ -844,6 +1165,32 @@ const CandidateLiveRoom = () => {
 
                 {/* Right: Actions */}
                 <div className="flex items-center gap-2.5 sm:gap-4">
+                    {/* Full-Screen Mode Toggle */}
+                    <button
+                        id="btn-header-fullscreen-toggle"
+                        type="button"
+                        onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+                        className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl border backdrop-blur-md transition cursor-pointer ${
+                            isFullscreen
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm"
+                                : "bg-black/35 hover:bg-black/55 text-slate-300 border-white/15 hover:border-white/30"
+                        }`}
+                        title={isFullscreen ? "Exit Full-Screen Mode" : "Enter Full-Screen Mode"}
+                    >
+                        {isFullscreen ? (
+                            <>
+                                <Minimize2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="hidden sm:inline">Full-Screen</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            </>
+                        ) : (
+                            <>
+                                <Maximize2 className="w-3.5 h-3.5 text-slate-300" />
+                                <span className="hidden sm:inline">Full-Screen</span>
+                            </>
+                        )}
+                    </button>
+
                     {/* Live Transcript Toggle */}
                     <button
                         id="btn-header-transcript-toggle"
@@ -947,7 +1294,10 @@ const CandidateLiveRoom = () => {
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-                                    <span>Real-Time WebRTC Stream</span>
+                                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                        Voice Detector Mic Synced
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -1144,13 +1494,18 @@ const CandidateLiveRoom = () => {
                     <div className="bg-black/70 backdrop-blur-xs px-2.5 py-1 rounded-lg text-[10px] font-bold text-white truncate max-w-[140px] shadow-sm border border-white/10">
                         You • {interviewData.name || "Candidate"}
                     </div>
-                    <div className="flex items-center gap-1 bg-black/70 backdrop-blur-xs px-1.5 py-0.5 rounded-md border border-white/10">
+                    <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-xs px-2 py-0.5 rounded-md border border-white/10">
                         {!isMicOn ? (
                             <div className="w-4 h-4 rounded-full bg-red-600 flex items-center justify-center text-white" title="Muted">
                                 <MicOff className="w-2.5 h-2.5" />
                             </div>
+                        ) : isCandidateSpeaking ? (
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-500/40 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                                <span>Voice Active</span>
+                            </div>
                         ) : (
-                            <div className="w-4 h-4 rounded-full bg-emerald-500/30 text-emerald-400 flex items-center justify-center" title="Mic Active">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500/30 text-emerald-400 flex items-center justify-center" title="Voice Detector Standby">
                                 <Mic className="w-2.5 h-2.5" />
                             </div>
                         )}
@@ -1277,69 +1632,52 @@ const CandidateLiveRoom = () => {
                 </div>
             </footer>
 
-            {/* MODAL: INTERVIEW COMPLETED / TERMINATED & SCORECARD SUMMARY */}
-            {(interviewEnded || terminationReason) && (
-                <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in zoom-in-95">
-                    <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 text-slate-900 space-y-6 shadow-2xl border border-slate-100 text-center">
-                        <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mx-auto shadow-md ${
-                            terminationReason ? "bg-rose-50 text-rose-600 shadow-rose-500/10" : "bg-emerald-50 text-emerald-600 shadow-emerald-500/10"
-                        }`}>
-                            {terminationReason ? <AlertTriangle className="w-9 h-9 stroke-[2.5]" /> : <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />}
+            {/* 8. Full-Screen Mode Exit Warning & Re-entry Modal */}
+            {showFullscreenWarning && !isFullscreen && connectionStatus === "connected" && !interviewEnded && (
+                <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="max-w-md w-full bg-[#0e1322] border border-amber-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-amber-950/60 text-center space-y-6 relative overflow-hidden">
+                        {/* Top Amber Accent Glow */}
+                        <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
+
+                        <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+                            <ShieldAlert className="w-8 h-8" />
                         </div>
 
-                        <div className="space-y-1">
-                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                                {terminationReason ? "Interview Terminated" : "Interview Submitted!"}
-                            </h2>
-                            <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                                {terminationReason
-                                    ? `Session ended due to integrity policy violation: ${terminationReason}`
-                                    : `Great job, ${interviewData.name || "Candidate"}. Your responses have been evaluated by AvaHire AI.`}
+                        <div className="space-y-2">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] font-extrabold uppercase tracking-wider">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                                Full-Screen Required
+                            </div>
+                            <h3 className="text-xl font-extrabold text-white tracking-tight">
+                                Return to Full-Screen Mode
+                            </h3>
+                            <p className="text-xs text-slate-300 leading-relaxed">
+                                To maintain assessment integrity and prevent external distractions, your interview must be conducted in full-screen mode with browser tabs and address bar hidden.
                             </p>
                         </div>
 
-                        {/* AI Evaluation Metrics Breakdown */}
-                        <div className="p-4 rounded-2xl bg-[#f8f9ff] border border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                            <div className="p-2 bg-white rounded-xl border border-slate-100/80">
-                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Tech Depth</div>
-                                <div className="text-base font-black text-emerald-600 mt-0.5">92 / 100</div>
+                        {fullscreenExitCount > 0 && (
+                            <div className="p-3 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between text-xs">
+                                <span className="text-slate-400 font-medium">Full-Screen Exits Recorded:</span>
+                                <span className="font-mono font-bold text-amber-400 bg-amber-950/60 px-2.5 py-0.5 rounded-lg border border-amber-500/30">
+                                    {fullscreenExitCount} {fullscreenExitCount === 1 ? "time" : "times"}
+                                </span>
                             </div>
-                            <div className="p-2 bg-white rounded-xl border border-slate-100/80">
-                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Clarity</div>
-                                <div className="text-base font-black text-indigo-600 mt-0.5">95 / 100</div>
-                            </div>
-                            <div className="p-2 bg-white rounded-xl border border-slate-100/80">
-                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Problem Solving</div>
-                                <div className="text-base font-black text-violet-600 mt-0.5">89 / 100</div>
-                            </div>
-                            <div className="p-2 bg-white rounded-xl border border-slate-100/80">
-                                <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Architecture</div>
-                                <div className="text-base font-black text-blue-600 mt-0.5">88 / 100</div>
-                            </div>
-                        </div>
+                        )}
 
-                        <div className="flex items-center justify-center gap-2 p-2.5 rounded-xl bg-violet-50 text-violet-700 text-xs font-bold border border-violet-100">
-                            <Sparkles className="w-4 h-4 text-violet-600" />
-                            <span>Overall Evaluation Match: 91% • Saved to Candidates Page</span>
-                        </div>
-
-                        <p className="text-xs text-slate-400 font-medium">
-                            The full speech-to-text transcript and competency evaluation have been securely saved and processed.
-                        </p>
-
-                        <div className="pt-2 flex flex-col sm:flex-row items-center gap-2.5">
+                        <div className="space-y-3 pt-2">
                             <button
-                                onClick={() => navigate(`/app/candidates?search=${encodeURIComponent(interviewData.name || "")}`)}
-                                className="w-full sm:flex-1 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-violet-500/25 transition cursor-pointer"
+                                id="btn-reenter-fullscreen"
+                                type="button"
+                                onClick={enterFullscreen}
+                                className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-extrabold rounded-2xl text-sm shadow-xl shadow-amber-500/25 transition flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                             >
-                                View in Candidate Page →
+                                <Maximize2 className="w-4 h-4 text-slate-950 stroke-[2.5]" />
+                                <span>Re-Enter Full-Screen Mode</span>
                             </button>
-                            <button
-                                onClick={() => navigate(`/i/${interviewData.linkCode || code || "akc123"}/thank-you`)}
-                                className="w-full sm:flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer"
-                            >
-                                Candidate Receipt
-                            </button>
+                            <p className="text-[11px] text-slate-400">
+                                Clicking the button restores full display coverage. Physical keyboard functions remain active.
+                            </p>
                         </div>
                     </div>
                 </div>

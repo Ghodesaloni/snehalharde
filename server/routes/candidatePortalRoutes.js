@@ -156,21 +156,34 @@ async function getAllCandidateResumes(filters = {}) {
 function parseInterviewDateTime(dateStr, timeStr) {
   if (!dateStr) return null;
   try {
-    let d = new Date(dateStr);
-    if (isNaN(d.getTime())) {
-      const parts = String(dateStr).trim().split(/\s+/);
-      if (parts.length === 3) {
-        d = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
-      }
-    }
-    if (isNaN(d.getTime())) {
+    const rawDate = String(dateStr).trim().toLowerCase();
+    let d = new Date();
+
+    if (rawDate === "today") {
       d = new Date();
+    } else if (rawDate === "tomorrow") {
+      d = new Date();
+      d.setDate(d.getDate() + 1);
+    } else if (rawDate === "yesterday") {
+      d = new Date();
+      d.setDate(d.getDate() - 1);
+    } else {
+      let parsed = new Date(dateStr);
+      if (isNaN(parsed.getTime())) {
+        const parts = String(dateStr).trim().split(/\s+/);
+        if (parts.length === 3) {
+          parsed = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
+        }
+      }
+      if (!isNaN(parsed.getTime())) {
+        d = parsed;
+      }
     }
 
     let hours = 11;
     let minutes = 0;
-    if (timeStr) {
-      const match = String(timeStr).match(/(\d+):(\d+)\s*(AM|PM)?/i);
+    if (timeStr && typeof timeStr === "string") {
+      const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
       if (match) {
         hours = parseInt(match[1], 10);
         minutes = parseInt(match[2], 10);
@@ -187,7 +200,8 @@ function parseInterviewDateTime(dateStr, timeStr) {
 }
 
 /**
- * Compute candidate interview schedule window and know at which time the candidate should login and enter
+ * Compute candidate interview schedule window and know at which time the candidate should login and enter.
+ * Enforces strict 5-minute join rule: if candidate does not join within 5 minutes of scheduled time, link expires.
  */
 function getCandidateScheduleTiming(scheduledInterview) {
   if (!scheduledInterview) return null;
@@ -201,11 +215,17 @@ function getCandidateScheduleTiming(scheduledInterview) {
     if (dMatch) durationMins = parseInt(dMatch[1], 10);
   }
 
+  const currentStatus = String(scheduledInterview.status || "").toLowerCase().trim();
+  const isAlreadyCompleted = currentStatus === "completed";
+  const isAlreadyJoined = currentStatus === "active" || currentStatus === "in live interview" || currentStatus === "joined";
+
   let windowStart = null;
   let windowEnd = null;
+  let joinExpiryTime = null;
   let isWindowActive = true;
   let isUpcoming = false;
   let isPast = false;
+  let isExpired = false;
   let diffMinutes = 0;
   let timingMessage = "";
   let timingBadge = "Scheduled Slot";
@@ -213,10 +233,26 @@ function getCandidateScheduleTiming(scheduledInterview) {
   if (parsedDate && !isNaN(parsedDate.getTime())) {
     windowStart = new Date(parsedDate.getTime() - 30 * 60 * 1000); // 30 minutes before
     windowEnd = new Date(parsedDate.getTime() + (durationMins + 30) * 60 * 1000); // duration + 30 mins
+    // Strict 5-minute rule: Candidate must join within 5 minutes of scheduled start time
+    joinExpiryTime = new Date(parsedDate.getTime() + 5 * 60 * 1000);
 
     diffMinutes = Math.round((parsedDate.getTime() - now.getTime()) / (60 * 1000));
 
-    if (now < windowStart) {
+    if (isAlreadyCompleted) {
+      timingBadge = "Completed";
+      timingMessage = `Your interview on ${scheduledInterview.date} at ${scheduledInterview.time} has been completed.`;
+    } else if (isAlreadyJoined) {
+      isWindowActive = true;
+      timingBadge = "In Progress";
+      timingMessage = `Interview session is currently active.`;
+    } else if (now > joinExpiryTime) {
+      // Exceeded 5 minutes from scheduled start time without joining
+      isPast = true;
+      isExpired = true;
+      isWindowActive = false;
+      timingBadge = "Link Expired (5m Window Exceeded)";
+      timingMessage = `This interview link has expired. Candidates must click 'Join Interview' within 5 minutes of their scheduled time (${scheduledInterview.date} at ${scheduledInterview.time}). Please contact HR to reschedule.`;
+    } else if (now < windowStart) {
       isUpcoming = true;
       isWindowActive = false;
       const hours = Math.floor(diffMinutes / 60);
@@ -224,19 +260,16 @@ function getCandidateScheduleTiming(scheduledInterview) {
       const timeRemainingStr = hours > 0 ? `${hours} hr ${mins} min` : `${mins} min`;
       timingBadge = `Upcoming (${timeRemainingStr})`;
       timingMessage = `Your interview is scheduled for ${scheduledInterview.date} at ${scheduledInterview.time}. Entry portal opens 30 minutes prior to your slot. Candidate entry window begins in ${timeRemainingStr}.`;
-    } else if (now > windowEnd) {
-      isPast = true;
-      isWindowActive = false;
-      timingBadge = "Expired Slot";
-      timingMessage = `Your scheduled interview slot for ${scheduledInterview.date} at ${scheduledInterview.time} has concluded. Please contact HR for a reschedule.`;
     } else {
       isWindowActive = true;
       timingBadge = "Entry Open Now";
-      timingMessage = `Your scheduled interview slot is ACTIVE right now (${scheduledInterview.date} at ${scheduledInterview.time}). You may proceed into the room.`;
+      timingMessage = `Your scheduled interview slot is ACTIVE right now (${scheduledInterview.date} at ${scheduledInterview.time}). Please join within 5 minutes of your scheduled start time.`;
     }
   } else {
     timingMessage = `Interview scheduled for ${scheduledInterview.date || "Assigned Date"} at ${scheduledInterview.time || "Assigned Slot"}.`;
   }
+
+  const finalIsExpired = isExpired || Boolean(scheduledInterview.isExpired) || currentStatus === "expired";
 
   return {
     scheduledDate: scheduledInterview.date,
@@ -245,10 +278,12 @@ function getCandidateScheduleTiming(scheduledInterview) {
     durationMins,
     windowStartTime: windowStart ? windowStart.toISOString() : null,
     windowEndTime: windowEnd ? windowEnd.toISOString() : null,
-    canEnterNow: true,
+    joinExpiryTime: joinExpiryTime ? joinExpiryTime.toISOString() : null,
+    canEnterNow: isWindowActive && !finalIsExpired && !isAlreadyCompleted,
     isWindowActive,
     isUpcoming,
     isPast,
+    isExpired: finalIsExpired,
     diffMinutes,
     timingBadge,
     timingMessage,
@@ -303,6 +338,16 @@ router.get("/session/:linkCode", async (req, res) => {
     let session = await candidateSessionsDb.getByLinkCode(linkCode);
     const scheduledInterview = await interviewsDb.getByLinkCode(linkCode);
 
+    // Compute live schedule timing & check 5-minute expiration rule
+    const scheduleTiming = scheduledInterview ? getCandidateScheduleTiming(scheduledInterview) : null;
+    const isLinkExpired = Boolean(scheduleTiming?.isExpired || scheduledInterview?.isExpired || session?.isExpired || scheduledInterview?.status === "Expired" || session?.status === "Expired");
+
+    if (scheduledInterview && isLinkExpired && scheduledInterview.status !== "Expired") {
+      scheduledInterview.isExpired = true;
+      scheduledInterview.status = "Expired";
+      await interviewsDb.update(scheduledInterview.id, { isExpired: true, status: "Expired" }).catch(() => {});
+    }
+
     // If not found in sessions table, attempt to hydrate from scheduled interview and resume in HR Portal
     const allResumes = resumesDb.getAll() || [];
     let allCandidates = [];
@@ -352,6 +397,12 @@ router.get("/session/:linkCode", async (req, res) => {
 
     const resumeAnalysis = analyzeCandidateResumeForAgent(combinedCandidateData, scheduledInterview);
 
+    const initialStatus = scheduledInterview?.status === "Completed"
+      ? "Completed"
+      : isLinkExpired
+      ? "Expired"
+      : "Invited";
+
     if (!session && scheduledInterview) {
       session = await candidateSessionsDb.createOrUpdate({
         id: `sess-${scheduledInterview.id}`,
@@ -367,7 +418,8 @@ router.get("/session/:linkCode", async (req, res) => {
         experience: resumeAnalysis.experience,
         projects: resumeAnalysis.projects,
         questions: resumeAnalysis.generatedQuestions,
-        status: scheduledInterview.status === "Completed" ? "Completed" : "Invited",
+        status: initialStatus,
+        isExpired: isLinkExpired,
         overallScore: scheduledInterview.score || 94,
         techDepthScore: "9.2 / 10",
         clarityScore: "9.5 / 10",
@@ -390,12 +442,19 @@ router.get("/session/:linkCode", async (req, res) => {
         experience: resumeAnalysis.experience,
         projects: resumeAnalysis.projects,
         questions: resumeAnalysis.generatedQuestions,
-        status: "Invited",
+        status: isLinkExpired ? "Expired" : "Invited",
+        isExpired: isLinkExpired,
         overallScore: 94,
         techDepthScore: "9.2 / 10",
         clarityScore: "9.5 / 10",
         recommendation: "Recommended for Senior Technical Review"
       };
+    }
+
+    if (session && isLinkExpired && session.status !== "Expired") {
+      session.isExpired = true;
+      session.status = "Expired";
+      await candidateSessionsDb.createOrUpdate(session).catch(() => {});
     }
 
     const interviewSettings = settingsDb.getInterviewSettings();
@@ -404,6 +463,8 @@ router.get("/session/:linkCode", async (req, res) => {
       success: true,
       data: {
         ...session,
+        isExpired: isLinkExpired,
+        status: isLinkExpired ? "Expired" : session.status,
         projects: resumeAnalysis.projects,
         projectHighlights: resumeAnalysis.projectHighlights,
         questions: resumeAnalysis.generatedQuestions,
@@ -415,9 +476,9 @@ router.get("/session/:linkCode", async (req, res) => {
           date: scheduledInterview.date,
           time: scheduledInterview.time,
           duration: scheduledInterview.duration || interviewSettings.duration,
-          status: scheduledInterview.status,
-          isExpired: scheduledInterview.isExpired,
-          timing: getCandidateScheduleTiming(scheduledInterview)
+          status: isLinkExpired ? "Expired" : scheduledInterview.status,
+          isExpired: isLinkExpired,
+          timing: scheduleTiming
         } : null
       }
     });
@@ -655,13 +716,16 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Check expiry
-    if (scheduledInterview.isExpired || scheduledInterview.status === "Expired") {
+    // Check expiry (including the 5-minute joining window expiry rule)
+    if (scheduleTiming?.isExpired || scheduledInterview.isExpired || scheduledInterview.status === "Expired") {
+      if (scheduledInterview && scheduledInterview.status !== "Expired") {
+        await interviewsDb.update(scheduledInterview.id, { isExpired: true, status: "Expired" }).catch(() => {});
+      }
       return res.status(403).json({
         success: false,
         isExpired: true,
         timing: scheduleTiming,
-        error: `Interview Expired: The scheduled slot for ${scheduledInterview.date} at ${scheduledInterview.time} has expired. Please contact your recruiter for a reschedule.`
+        error: `Interview Expired: The 5-minute joining window for your scheduled interview on ${scheduledInterview.date} at ${scheduledInterview.time} has passed. Please contact HR for a reschedule.`
       });
     }
 
