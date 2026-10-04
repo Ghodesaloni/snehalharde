@@ -883,19 +883,18 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                
                                 {/* Candidate Join Window */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Hourglass className="w-4 h-4" />
+                                            <Calendar className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
                                                 Candidate Join Window
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Allowed early or late window for candidates to enter the room.
+                                                Window before interview time candidate is allowed to join.
                                             </div>
                                         </div>
                                     </div>
@@ -913,19 +912,18 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                
-                                {/* Grace Period / Buffer Time */}
+                                {/* Grace Period */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
                                         <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Clock className="w-4 h-4" />
+                                            <Hourglass className="w-4 h-4" />
                                         </div>
                                         <div>
                                             <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Grace Period / Buffer Time
+                                                Grace Period
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Extra time buffer before strictly terminating the session.
+                                                Buffer time allowed for late joiners before link expires.
                                             </div>
                                         </div>
                                     </div>
@@ -1014,7 +1012,6 @@ const Settings = () => {
                             </h3>
 
                             <div className="space-y-4">
-                                
                                 {/* AI Avatar Persona */}
                                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
                                     <div className="flex items-center gap-3">
@@ -1026,7 +1023,7 @@ const Settings = () => {
                                                 AI Avatar Persona
                                             </div>
                                             <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Select the interactive 3D/Video avatar appearance.
+                                                Select the visual persona and voice for the interviewer.
                                             </div>
                                         </div>
                                     </div>
