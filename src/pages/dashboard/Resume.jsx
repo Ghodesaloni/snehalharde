@@ -687,20 +687,11 @@ const Resumes = () => {
                             AI Powered
                         </span>
                     </div>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Evaluate candidate resumes against Job Descriptions, calculate ATS scores, and automatically separate shortlisted talent.
-                    </p>
+
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* Filters Button */}
-                    <button
-                        onClick={() => setShowFilterModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-full text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition shadow-sm"
-                    >
-                        <SlidersHorizontal className="w-4 h-4 text-slate-500" />
-                        <span>Filter Options</span>
-                    </button>
+
 
                     {/* Upload Resume Button (Strictly Resumes Only) */}
                     <button
@@ -820,57 +811,7 @@ const Resumes = () => {
                 </div>
             </div>
 
-            {/* Resume Upload Section */}
-            <div
-                onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(true);
-                }}
-                onDragLeave={() => setIsDragOver(false)}
-                onDrop={handleDrop}
-                className={`relative rounded-2xl p-5 sm:p-6 border-2 border-dashed transition-all duration-200 shadow-sm ${
-                    isDragOver
-                        ? "bg-violet-100/70 border-violet-500 shadow-md shadow-violet-500/15 scale-[1.003]"
-                        : "bg-purple-50/40 hover:bg-purple-50/70 border-violet-300 hover:border-violet-400 hover:shadow-md hover:shadow-violet-500/10"
-                }`}
-            >
-                {isUploading ? (
-                    <div className="py-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <div className="w-5 h-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin shrink-0" />
-                        <span className="text-sm font-semibold text-violet-900">
-                            Screening candidate resumes against Job Description...
-                        </span>
-                    </div>
-                ) : (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5 text-center sm:text-left">
-                            <div className="w-11 h-11 rounded-xl bg-violet-100/90 border border-violet-200/80 flex items-center justify-center text-violet-600 shrink-0 shadow-xs">
-                                <Upload className="w-5 h-5" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-bold text-slate-900">
-                                    Drag &amp; Drop candidate resumes here
-                                </h3>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Supported formats: <span className="font-semibold text-slate-700">PDF, DOCX, DOC, TXT</span> (Max 10MB per file). Resumes are automatically analyzed with ATS scoring.
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="shrink-0 flex items-center gap-2">
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={isUploading}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white rounded-xl text-xs sm:text-sm font-semibold shadow-sm hover:shadow-md shadow-violet-600/20 transition-all cursor-pointer disabled:opacity-50"
-                            >
-                                <FileText className="w-4 h-4" />
-                                <span>Browse Resumes to Screen</span>
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
 
             {/* Candidate List Table (Full width, spacious, clean hierarchy) */}
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden flex flex-col">
@@ -1234,13 +1175,7 @@ const Resumes = () => {
                 </div>
 
                 {/* Pagination Footer */}
-                <div className="p-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500 bg-slate-50/40">
-                    <div>
-                        {filteredCandidates.length === 0
-                            ? "Showing 0 candidates"
-                            : `Showing 1 to ${filteredCandidates.length} of ${candidates.length} candidates (Tab: ${activeTab})`}
-                    </div>
-
+                <div className="p-4 border-t border-slate-100 flex items-center justify-end gap-3 text-xs text-slate-500 bg-slate-50/40">
                     <div className="flex items-center gap-1.5">
                         <button className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center hover:bg-white text-slate-600 disabled:opacity-40">
                             <ChevronLeft className="w-3.5 h-3.5" />
