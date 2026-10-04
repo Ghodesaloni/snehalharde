@@ -492,16 +492,6 @@ const Candidates = () => {
                     >
                         <Filter className="w-4 h-4" />
                     </button>
-
-                    {/* Generate Interview Link / Candidate Portal Quick Button */}
-                    <button
-                        onClick={() => navigate("/app/interviews?generate=true")}
-                        className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer active:scale-95"
-                        title="Generate Interview Link & Candidate Portal"
-                    >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Generate Link</span>
-                    </button>
                 </div>
             </div>
 
@@ -625,8 +615,8 @@ const Candidates = () => {
                                     {/* Column 4: Candidate Portal + Select & Reject Action Buttons */}
                                     {!isExpanded ? (
                                         <div className="flex flex-col gap-2 min-w-[190px] shrink-0">
-                                            {/* Candidate Portal / Generate Link */}
-                                            {candidateInterview ? (
+                                            {/* Candidate Portal */}
+                                            {candidateInterview && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -637,18 +627,6 @@ const Candidates = () => {
                                                 >
                                                     <ExternalLink className="w-3.5 h-3.5 text-violet-600 group-hover:scale-110 transition-transform" />
                                                     <span>Candidate Portal ({candidateInterview.linkCode})</span>
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleGenerateLinkForCandidate(candidate);
-                                                    }}
-                                                    className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition active:scale-[0.98] shadow-xs cursor-pointer"
-                                                    title="Generate Candidate Interview Link & Portal"
-                                                >
-                                                    <Sparkles className="w-3.5 h-3.5" />
-                                                    <span>Generate Link</span>
                                                 </button>
                                             )}
 

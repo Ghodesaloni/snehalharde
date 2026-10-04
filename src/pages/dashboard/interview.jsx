@@ -7,106 +7,256 @@ import {
     Copy,
     Check,
     Eye,
-    Share2,
     RotateCw,
     FileText,
-    MoreVertical,
-    Filter,
-    ChevronDown,
     ChevronLeft,
     ChevronRight,
-    Plus,
-    X,
     Sparkles,
     ShieldCheck,
     ExternalLink,
     Mail,
     Users,
-    Briefcase,
     Phone,
     UserCheck,
-    Lock
+    Video,
+    CheckCircle2,
+    X,
+    Plus
 } from "lucide-react";
-import { getStoredInterviews, saveInterviews, addOrUpdateInterview } from "@/utils/interviewStore";
-import { interviewsApi, candidatePortalApi, candidatesApi } from "@/services/api";
+import { getStoredInterviews, saveInterviews, addOrUpdateInterview, removeInterview } from "@/utils/interviewStore";
+import { interviewsApi, candidatePortalApi, candidatesApi, resumesApi } from "@/services/api";
 
 const Interviews = () => {
-    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // Active Tab State: "interviewee" (Shortlisted Interviewees) | "interviews" (AI Video Interviews)
+    const initialTab = searchParams.get("tab") === "interviews" ? "interviews" : "interviewee";
+    const [activeTab, setActiveTab] = useState(initialTab);
+
+    // Core Data States
     const [interviews, setInterviews] = useState(getStoredInterviews);
-    const [resumesList, setResumesList] = useState([]);
     const [candidatesList, setCandidatesList] = useState([]);
-    const [statusFilter, setStatusFilter] = useState("All Status");
+    const [resumesList, setResumesList] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Modal and Feedback States
     const [copiedId, setCopiedId] = useState(null);
     const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
     const [generatedPortalData, setGeneratedPortalData] = useState(null);
     const [selectedInterviewForView, setSelectedInterviewForView] = useState(null);
+    const [selectedCandidateForSchedule, setSelectedCandidateForSchedule] = useState(null);
+
+    // Pagination
     const [pageSize, setPageSize] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
 
-    // Form state for generating interview link
-    const [candidateSourceTab, setCandidateSourceTab] = useState("candidates"); // "candidates" | "resumes" | "custom"
+    // Form state for scheduling / generating interview link
     const [previewLinkCode, setPreviewLinkCode] = useState(() => "ava" + Math.floor(100 + Math.random() * 900));
     const [newCandidateName, setNewCandidateName] = useState("");
     const [newCandidateEmail, setNewCandidateEmail] = useState("");
     const [newCandidatePhone, setNewCandidatePhone] = useState("");
-    const [selectedResumeId, setSelectedResumeId] = useState("");
+    const [selectedCandidateId, setSelectedCandidateId] = useState("");
     const [newRole, setNewRole] = useState("Software Engineer");
-    const [newDate, setNewDate] = useState("");
-    const [newTime, setNewTime] = useState("");
+    const [newDate, setNewDate] = useState(() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return d.toISOString().split("T")[0];
+    });
+    const [newTime, setNewTime] = useState("11:00");
     const [newValidity, setNewValidity] = useState("45 Minutes");
 
-    useEffect(() => {
-        const fetchInterviews = async () => {
-            try {
-                const [data, rList, cList] = await Promise.all([
-                    interviewsApi.getAll().catch(() => null),
-                    candidatePortalApi.getResumes().catch(() => []),
-                    candidatesApi.getAll().catch(() => [])
-                ]);
-                if (data) {
-                    setInterviews(data);
-                    saveInterviews(data);
-                }
-                if (Array.isArray(rList)) {
-                    setResumesList(rList);
-                }
-                if (Array.isArray(cList)) {
-                    setCandidatesList(cList);
-                }
-            } catch (err) {
-                console.error("Failed to load interviews from backend:", err);
+    const loadData = async () => {
+        setLoading(true);
+        try {
+            const [ivData, cList, rList] = await Promise.all([
+                interviewsApi.getAll().catch(() => null),
+                candidatesApi.getAll().catch(() => []),
+                resumesApi.getAll().catch(() => [])
+            ]);
+
+            if (ivData && Array.isArray(ivData)) {
+                setInterviews(ivData);
+                saveInterviews(ivData);
+            } else {
                 setInterviews(getStoredInterviews());
             }
+
+            if (Array.isArray(cList)) {
+                setCandidatesList(cList);
+            }
+            if (Array.isArray(rList)) {
+                setResumesList(rList);
+            }
+        } catch (err) {
+            console.error("Failed to load interview and candidate data:", err);
+            setInterviews(getStoredInterviews());
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadData();
+
+        const handleSync = () => {
+            loadData();
         };
-        fetchInterviews();
+        window.addEventListener("avahire_interviews_updated", handleSync);
+        window.addEventListener("avahire_candidates_updated", handleSync);
+        return () => {
+            window.removeEventListener("avahire_interviews_updated", handleSync);
+            window.removeEventListener("avahire_candidates_updated", handleSync);
+        };
     }, []);
 
-    // Handle incoming URL parameters (e.g., from Candidate page "Generate Link")
-    useEffect(() => {
-        const isGen = searchParams.get("generate");
-        const candEmail = searchParams.get("candidateEmail") || searchParams.get("email");
-        const candName = searchParams.get("candidateName") || searchParams.get("name");
-        const candRole = searchParams.get("role") || searchParams.get("candidateRole");
-        const candPhone = searchParams.get("candidatePhone") || searchParams.get("phone");
-        const candId = searchParams.get("candidateId") || searchParams.get("id");
-
-        if (isGen === "true" || candEmail || candName) {
-            if (candName) setNewCandidateName(decodeURIComponent(candName));
-            if (candEmail) setNewCandidateEmail(decodeURIComponent(candEmail));
-            if (candRole) setNewRole(decodeURIComponent(candRole));
-            if (candPhone) setNewCandidatePhone(decodeURIComponent(candPhone));
-            if (candId) setSelectedResumeId(decodeURIComponent(candId));
-            setCandidateSourceTab("candidates");
-            setIsGenerateModalOpen(true);
-        }
-    }, [searchParams]);
-
-    const filteredInterviews = useMemo(() => {
-        return interviews.filter((iv) => {
-            if (statusFilter === "All Status") return true;
-            return iv.status?.toLowerCase() === statusFilter.toLowerCase();
+    // Helper to find interview session for a candidate
+    const getCandidateInterview = (cand) => {
+        if (!cand) return null;
+        return interviews.find((iv) => {
+            const sameEmail = iv.email && cand.email && iv.email.toLowerCase().trim() === cand.email.toLowerCase().trim();
+            const sameId = (iv.candidateId && iv.candidateId === cand.id) || (iv.resumeId && iv.resumeId === cand.id) || iv.id === cand.interviewId;
+            return sameEmail || sameId;
         });
-    }, [interviews, statusFilter]);
+    };
+
+    // Combine & Normalize all Shortlisted Candidates
+    const allShortlistedCandidates = useMemo(() => {
+        const map = new Map();
+
+        candidatesList.forEach((c) => {
+            const isShortlisted =
+                c.status === "Shortlisted" ||
+                c.stage === "Shortlisted" ||
+                c.status === "Interview Scheduled" ||
+                c.status === "Screened" ||
+                (typeof c.score === "number" && c.score >= 60);
+
+            if (isShortlisted || candidatesList.length <= 10) {
+                const key = (c.email || c.id || "").toLowerCase().trim();
+                map.set(key, {
+                    id: c.id || `cand-${Date.now()}`,
+                    name: c.name || "Candidate",
+                    email: c.email || "",
+                    phone: c.phone || "",
+                    role: c.role || c.jobTitle || "Software Engineer",
+                    department: c.department || "Engineering",
+                    score: typeof c.score === "number" ? c.score : 88,
+                    skills: Array.isArray(c.skills) ? c.skills : (c.skills ? String(c.skills).split(",") : ["React", "TypeScript", "Node.js"]),
+                    experience: c.experience || "3+ years",
+                    location: c.location || "Remote / India",
+                    status: c.status || "Shortlisted",
+                    appliedDate: c.appliedDate || c.date || "Recent",
+                    avatar: c.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.name || "Cand")}`,
+                    source: "Candidate Pipeline"
+                });
+            }
+        });
+
+        resumesList.forEach((r) => {
+            const isShortlisted =
+                r.status === "Shortlisted" ||
+                r.status === "Interview Scheduled" ||
+                r.matchScore >= 60 ||
+                r.score >= 60;
+
+            const key = (r.email || r.id || "").toLowerCase().trim();
+            if (key && !map.has(key) && isShortlisted) {
+                map.set(key, {
+                    id: r.id || `res-${Date.now()}`,
+                    name: r.name || r.candidateName || "Candidate",
+                    email: r.email || "",
+                    phone: r.phone || "",
+                    role: r.role || r.targetRole || "Software Developer",
+                    department: "Engineering",
+                    score: r.matchScore || r.score || 85,
+                    skills: Array.isArray(r.skills) ? r.skills : ["Full Stack", "Problem Solving"],
+                    experience: r.experience || "2+ years",
+                    location: r.location || "India",
+                    status: r.status || "Shortlisted",
+                    appliedDate: r.uploadedAt || "Recent",
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(r.name || "Res")}`,
+                    source: "Resume Screening"
+                });
+            }
+        });
+
+        if (map.size === 0) {
+            const defaults = [
+                {
+                    id: "cand-demo-1",
+                    name: "Ananya Sharma",
+                    email: "ananya.sharma@example.com",
+                    phone: "+91 98765 43210",
+                    role: "Frontend Engineer",
+                    department: "Engineering",
+                    score: 95,
+                    skills: ["React.js", "Next.js", "Tailwind CSS", "TypeScript"],
+                    experience: "4 Years",
+                    location: "Bengaluru, India",
+                    status: "Shortlisted",
+                    appliedDate: "Today",
+                    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150",
+                    source: "AI Resume Match"
+                },
+                {
+                    id: "cand-demo-2",
+                    name: "Rohan Varma",
+                    email: "rohan.varma@example.com",
+                    phone: "+91 91234 56789",
+                    role: "Full Stack Developer",
+                    department: "Engineering",
+                    score: 92,
+                    skills: ["Node.js", "React", "PostgreSQL", "AWS"],
+                    experience: "5 Years",
+                    location: "Pune, India",
+                    status: "Shortlisted",
+                    appliedDate: "Yesterday",
+                    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150",
+                    source: "AI Resume Match"
+                },
+                {
+                    id: "cand-demo-3",
+                    name: "Priyanka Patel",
+                    email: "priyanka.patel@example.com",
+                    phone: "+91 99887 76655",
+                    role: "Python / AI Engineer",
+                    department: "AI & ML",
+                    score: 89,
+                    skills: ["Python", "FastAPI", "OpenAI", "PyTorch"],
+                    experience: "3.5 Years",
+                    location: "Hyderabad, India",
+                    status: "Shortlisted",
+                    appliedDate: "2 days ago",
+                    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150",
+                    source: "AI Resume Match"
+                }
+            ];
+            defaults.forEach((d) => map.set(d.email.toLowerCase(), d));
+        }
+
+        return Array.from(map.values());
+    }, [candidatesList, resumesList]);
+
+    // Candidates who do NOT have an active interview link generated yet (for Tab 1: Shortlisted Interviewees)
+    const shortlistedPendingList = useMemo(() => {
+        return allShortlistedCandidates
+            .map((cand) => {
+                const iv = getCandidateInterview(cand);
+                const hasGeneratedLink = !!iv && !!iv.linkCode;
+                return {
+                    ...cand,
+                    interviewSession: iv || null,
+                    hasGeneratedLink,
+                    linkCode: iv ? iv.linkCode : null,
+                    interviewStatus: iv ? iv.status : "Pending Schedule",
+                    interviewDate: iv ? iv.date : null,
+                    interviewTime: iv ? iv.time : null
+                };
+            })
+            .filter((cand) => !cand.hasGeneratedLink)
+            .sort((a, b) => (b.score || 0) - (a.score || 0));
+    }, [allShortlistedCandidates, interviews]);
 
     const handleCopyLink = (linkCode, id) => {
         const portalUrl = `${window.location.origin}/i/${linkCode}`;
@@ -116,31 +266,64 @@ const Interviews = () => {
         setTimeout(() => setCopiedId(null), 2500);
     };
 
-    const handleRegenerateLink = (id, name) => {
-        const newCode = "gen" + Math.floor(100 + Math.random() * 900);
-        const updated = interviews.map((iv) =>
-            iv.id === id
-                ? {
-                    ...iv,
-                    linkCode: newCode,
-                    status: "Active",
-                    expiry: "05:00 Remaining",
-                    isExpired: false
-                }
-                : iv
-        );
-        setInterviews(updated);
-        saveInterviews(updated);
-        const updatedEntry = updated.find(x => x.id === id);
-        if (updatedEntry) {
-            interviewsApi.update(id, { linkCode: newCode, status: "Active", isExpired: false }).catch(() => {});
-            setGeneratedPortalData(updatedEntry);
-            setIsGenerateModalOpen(true);
-        }
-        handleCopyLink(newCode, id);
-        toast.success(`New interview link generated for ${name}! (Code: ${newCode})`);
+    // Open Schedule Modal for a shortlisted candidate
+    const handleOpenScheduleForCandidate = (cand) => {
+        setSelectedCandidateForSchedule(cand);
+        setNewCandidateName(cand?.name || "");
+        setNewCandidateEmail(cand?.email || "");
+        setNewCandidatePhone(cand?.phone || "");
+        setNewRole(cand?.role || "Software Engineer");
+        setSelectedCandidateId(cand?.id || "");
+        setPreviewLinkCode("ava" + Math.floor(100 + Math.random() * 900));
+        setGeneratedPortalData(null);
+        setIsGenerateModalOpen(true);
     };
 
+    // Reschedule Candidate: Removes from AI Video Interviews & transfers back to Shortlisted Interviewees
+    const handleRescheduleAndTransferBack = async (iv) => {
+        if (!iv) return;
+
+        // 1. Remove from stored interviews & local state
+        const updated = removeInterview(iv.id || iv.linkCode);
+        setInterviews(updated);
+
+        // 2. Delete from backend API
+        try {
+            await interviewsApi.delete(iv.id || iv.linkCode);
+        } catch (e) {
+            console.warn("Interviews delete API fallback:", e);
+        }
+
+        // 3. Update candidate status back to "Shortlisted" in candidates API
+        if (iv.candidateId) {
+            try {
+                await candidatesApi.update(iv.candidateId, {
+                    status: "Shortlisted",
+                    interviewId: null,
+                    linkCode: null,
+                    interviewDate: null,
+                    interviewTime: null
+                });
+            } catch (e) {
+                console.warn("Candidates status reset API fallback:", e);
+            }
+        }
+
+        // 4. Fire storage events so both tabs refresh immediately
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("avahire_interviews_updated"));
+            window.dispatchEvent(new Event("avahire_candidates_updated"));
+        }
+
+        toast.success(`${iv.name} removed from AI Interviews and transferred back to Shortlisted Interviewees.`, {
+            action: {
+                label: "View Shortlisted",
+                onClick: () => handleTabChange("interviewee")
+            }
+        });
+    };
+
+    // Generate Interview Link & Schedule Candidate
     const handleCreateInterviewLink = (e) => {
         e.preventDefault();
         if (!newCandidateName || !newCandidateEmail) {
@@ -156,47 +339,62 @@ const Interviews = () => {
                 month: "long",
                 year: "numeric"
             })
-            : "02 September 2026";
+            : "05 October 2026";
 
         const dayName = !isNaN(dateObj)
             ? dateObj.toLocaleDateString("en-US", { weekday: "long" })
-            : "Tuesday";
+            : "Monday";
 
-        const candidateId = selectedResumeId || `cand-${Date.now()}`;
+        const formattedTime = newTime
+            ? (newTime.includes(":") ? (newTime.includes("M") ? newTime : `${newTime} AM`) : `${newTime}:00 AM`)
+            : "11:00 AM";
+
+        const candId = selectedCandidateId || `cand-${Date.now()}`;
         const newEntry = {
             id: `iv-${Date.now()}`,
-            candidateId,
-            resumeId: selectedResumeId || candidateId,
-            name: newCandidateName,
-            email: newCandidateEmail,
-            phone: newCandidatePhone || "",
-            avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150",
+            candidateId: candId,
+            resumeId: candId,
+            name: newCandidateName.trim(),
+            email: newCandidateEmail.trim().toLowerCase(),
+            phone: newCandidatePhone.trim() || "",
+            avatar: selectedCandidateForSchedule?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(newCandidateName)}`,
             role: newRole,
             company: "AvaHire Technologies Pvt. Ltd.",
             date: formattedDate,
             dayOfWeek: dayName,
-            time: newTime ? (newTime.includes(":") ? (newTime.includes("M") ? newTime : `${newTime} AM`) : `${newTime}:00 AM`) : "11:00 AM",
+            time: formattedTime,
             timeZone: "IST",
             duration: newValidity || "45 Minutes",
             linkCode: randomCode,
             status: "Scheduled",
             expiry: "Not started",
-            expiryTime: `${formattedDate}, ${newTime}`,
+            expiryTime: `${formattedDate}, ${formattedTime}`,
             isExpired: false
         };
 
         const updated = addOrUpdateInterview(newEntry);
-        setInterviews((prev) => [updated, ...prev.filter(x => x.id !== updated.id)]);
-        
-        interviewsApi.create(newEntry).then((created) => {
-            if (created) {
-                setInterviews((prev) => [created, ...prev.filter(x => x.id !== created.id)]);
-            }
-        }).catch((err) => console.warn("Interviews create API fallback:", err));
+        setInterviews((prev) => [updated, ...prev.filter((x) => x.id !== updated.id)]);
+
+        interviewsApi.create(newEntry).catch((err) => console.warn("Interviews create API fallback:", err));
+
+        if (candId) {
+            candidatesApi.update(candId, {
+                status: "Interview Scheduled",
+                interviewId: newEntry.id,
+                interviewDate: formattedDate,
+                interviewTime: formattedTime,
+                linkCode: newEntry.linkCode
+            }).catch(() => { });
+        }
 
         setGeneratedPortalData(newEntry);
         handleCopyLink(randomCode, newEntry.id);
-        toast.success(`Candidate interview scheduled! Candidate portal link generated.`);
+        toast.success(`Candidate interview scheduled! Transferred to AI Video Interviews.`);
+    };
+
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        setSearchParams({ tab });
     };
 
     const getStatusPill = (status) => {
@@ -235,369 +433,485 @@ const Interviews = () => {
 
     return (
         <div className="space-y-5 max-w-7xl mx-auto -mt-2" data-testid="interviews-page">
-            {/* Top Bar / Header Controls */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                        AI Video Interviews ({filteredInterviews.length})
-                    </h1>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* Filter Dropdown */}
-                    <div className="relative">
-                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-xs cursor-pointer">
-                            <Filter className="w-4 h-4 text-slate-500" />
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="appearance-none bg-transparent pr-6 text-xs font-semibold text-slate-700 focus:outline-none cursor-pointer"
-                            >
-                                <option>All Status</option>
-                                <option>Active</option>
-                                <option>Scheduled</option>
-                                <option>Completed</option>
-                                <option>Expired</option>
-                            </select>
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
+            {/* Top Navigation Tabs Header: Unified Switcher inside Interviews Page */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/25">
+                            {activeTab === "interviewee" ? <UserCheck className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                        </div>
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <span>{activeTab === "interviewee" ? "Shortlisted Interviewees" : "AI Video Interviews"}</span>
+                                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-violet-100 text-violet-700 border border-violet-200">
+                                    {activeTab === "interviewee" ? `${shortlistedPendingList.length} Ready to Schedule` : `${interviews.length} Sessions`}
+                                </span>
+                            </h1>
+                            <p className="text-xs sm:text-sm text-slate-500">
+                                {activeTab === "interviewee"
+                                    ? "Generate candidate portal links to schedule AI Video Interviews."
+                                    : "Active, scheduled & completed AI assessment sessions with live Avatar proctoring."}
+                            </p>
                         </div>
                     </div>
+                </div>
 
-                    {/* Generate Interview Link Button */}
+                {/* Switcher Navigation Pill */}
+                <div className="flex items-center gap-1.5 bg-slate-200/70 p-1 rounded-2xl shadow-inner border border-slate-300/40">
                     <button
-                        onClick={() => setIsGenerateModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
+                        onClick={() => handleTabChange("interviewee")}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            activeTab === "interviewee"
+                                ? "bg-white text-violet-700 shadow-xs border border-slate-200/80"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                        }`}
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>Generate Interview Link</span>
+                        <Users className="w-3.5 h-3.5 text-violet-600" />
+                        <span>Shortlisted Interviewees</span>
+                    </button>
+                    <button
+                        onClick={() => handleTabChange("interviews")}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                            activeTab === "interviews"
+                                ? "bg-white text-violet-700 shadow-xs border border-slate-200/80"
+                                : "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                        }`}
+                    >
+                        <Video className="w-3.5 h-3.5 text-violet-600" />
+                        <span>AI Video Interviews</span>
                     </button>
                 </div>
             </div>
 
-            {/* Candidate Portal Info Banner */}
-            <div className="bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start sm:items-center gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-xs flex items-center justify-center shrink-0 border border-white/20">
-                        <ExternalLink className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-sm sm:text-base">Candidate Portal Hub</h3>
-                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-400 text-emerald-950">
-                                Live &amp; Verified
-                            </span>
-                        </div>
-                        <p className="text-xs text-violet-100 mt-0.5 max-w-2xl">
-                            Candidate Portal link (<span className="font-mono text-white font-semibold">/i/[code]</span>) enables live AI interviews with Ava, camera/audio hardware checks, video proctoring, and instant evaluations.
-                        </p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                    <button
-                        onClick={() => {
-                            setGeneratedPortalData(null);
-                            setPreviewLinkCode("ava" + Math.floor(100 + Math.random() * 900));
-                            setIsGenerateModalOpen(true);
-                        }}
-                        className="px-4 py-2 bg-white text-violet-700 hover:bg-violet-50 rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
-                    >
-                        <Sparkles className="w-3.5 h-3.5 text-violet-600" />
-                        <span>Generate Candidate Link</span>
-                    </button>
-                    <Link
-                        to="/app/candidates"
-                        className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-semibold border border-white/20 transition flex items-center gap-1.5"
-                    >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>View Candidates</span>
-                    </Link>
-                </div>
-            </div>
-
-            {/* HR Cross-Navigation Quick Hub */}
-            <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">Navigate HR:</span>
-                    <Link to="/app/jobs" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Jobs</span>
-                    </Link>
-                    <Link to="/app/resumes" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Resumes</span>
-                    </Link>
-                    <Link to="/app/candidates" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Users className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Candidates</span>
-                    </Link>
-                    <Link to="/app/email" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Email Center</span>
-                    </Link>
-                    <Link to="/app/calendar" className="px-3 py-1.5 bg-slate-50 hover:bg-violet-50 hover:text-violet-700 text-slate-700 rounded-xl font-semibold border border-slate-200/80 transition flex items-center gap-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Calendar</span>
-                    </Link>
-                </div>
-            </div>
-
-            {/* Main Table Card */}
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-bold text-slate-700 tracking-wider">
-                                <th className="py-4 px-6">Candidate (Resume Verified)</th>
-                                <th className="py-4 px-6">Job Role</th>
-                                <th className="py-4 px-6">Date &amp; Time</th>
-                                <th className="py-4 px-6">Candidate Portal Link</th>
-                                <th className="py-4 px-6">Status</th>
-                                <th className="py-4 px-6">Expiry</th>
-                                <th className="py-4 px-6 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                            {filteredInterviews.length === 0 ? (
-                                <tr>
-                                    <td colSpan="7" className="py-12 text-center text-slate-400">
-                                        No interview sessions found for this status.
-                                    </td>
+            {/* TAB 1 CONTENT: Shortlisted Interviewees (Waiting for link generation & schedule) */}
+            {activeTab === "interviewee" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden animate-in fade-in duration-200">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/75 border-b border-slate-100 text-xs font-bold text-slate-600 tracking-wider">
+                                    <th className="py-4 px-6">Candidate Details</th>
+                                    <th className="py-4 px-6">Target Role</th>
+                                    <th className="py-4 px-6">Key Skills</th>
+                                    <th className="py-4 px-6">Status</th>
+                                    <th className="py-4 px-6 text-right">Action</th>
                                 </tr>
-                            ) : (
-                                filteredInterviews.map((iv) => {
-                                    const isCopied = copiedId === iv.id || copiedId === iv.linkCode;
-
-                                    return (
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {shortlistedPendingList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="py-16 text-center text-slate-400">
+                                            <div className="max-w-md mx-auto space-y-3">
+                                                <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+                                                    <CheckCircle2 className="w-6 h-6" />
+                                                </div>
+                                                <div className="font-bold text-slate-800 text-sm">All shortlisted candidates scheduled!</div>
+                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                    All candidate interview links have been generated and transferred to <strong>AI Video Interviews</strong>.
+                                                </p>
+                                                <div className="pt-2">
+                                                    <button
+                                                        onClick={() => handleTabChange("interviews")}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                                    >
+                                                        <Video className="w-3.5 h-3.5" />
+                                                        <span>View AI Video Interviews</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    shortlistedPendingList.map((cand) => (
                                         <tr
-                                            key={iv.id}
+                                            key={cand.id}
                                             className="hover:bg-slate-50/60 transition-colors group"
                                         >
-                                            {/* Column 1: Candidate */}
+                                            {/* Column 1: Candidate Info */}
                                             <td className="py-4 px-6">
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3.5">
                                                     <img
-                                                        src={iv.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
-                                                        alt={iv.name}
-                                                        className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                                                        src={cand.avatar}
+                                                        alt={cand.name}
+                                                        className="w-10 h-10 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-2xs"
                                                     />
                                                     <div className="space-y-0.5">
-                                                        <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                                                            <span>{iv.name}</span>
+                                                        <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                                            <span>{cand.name}</span>
+                                                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-semibold">
+                                                                {cand.experience}
+                                                            </span>
                                                         </div>
-                                                        <div className="text-slate-500 text-xs">
-                                                            {iv.email}
+                                                        <div className="text-slate-500 text-xs flex items-center gap-1.5">
+                                                            <span>{cand.email}</span>
                                                         </div>
-                                                        {iv.phone && (
+                                                        {cand.phone && (
                                                             <div className="text-[11px] font-mono text-violet-700 flex items-center gap-1">
-                                                                <Phone className="w-3 h-3 text-violet-500 shrink-0" />
-                                                                <span>{iv.phone}</span>
+                                                                <Phone className="w-3 h-3 text-violet-400 shrink-0" />
+                                                                <span>{cand.phone}</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Column 2: Job Role */}
-                                            <td className="py-4 px-6 text-slate-700 font-semibold">
-                                                {iv.role}
-                                            </td>
-
-                                            {/* Column 3: Date & Time */}
-                                            <td className="py-4 px-6 text-slate-600">
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center gap-1.5 font-semibold text-slate-800">
-                                                        <Calendar className="w-3.5 h-3.5 text-violet-600 shrink-0" />
-                                                        <span>{iv.date}</span>
+                                            {/* Column 2: Role & Department */}
+                                            <td className="py-4 px-6">
+                                                <div className="space-y-0.5">
+                                                    <div className="font-bold text-slate-800 text-xs sm:text-sm">
+                                                        {cand.role}
                                                     </div>
-                                                    <div className="flex items-center gap-1.5 text-slate-500">
-                                                        <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                                        <span>{iv.time}</span>
+                                                    <div className="text-[11px] text-slate-400">
+                                                        {cand.department || "Engineering"} · {cand.location}
                                                     </div>
                                                 </div>
                                             </td>
 
-                                            {/* Column 4: Candidate Portal Link */}
+                                            {/* Column 3: Skills */}
                                             <td className="py-4 px-6">
-                                                <div className="flex items-center gap-2">
-                                                    <a
-                                                        href={`/i/${iv.linkCode}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-mono text-xs font-bold border border-violet-200/80 transition group/portal shadow-2xs"
-                                                        title="Open Candidate Portal in New Tab"
-                                                    >
-                                                        <ExternalLink className="w-3.5 h-3.5 text-violet-600 group-hover/portal:scale-110 transition-transform" />
-                                                        <span>/i/{iv.linkCode}</span>
-                                                    </a>
-                                                    <button
-                                                        onClick={() => handleCopyLink(iv.linkCode, iv.id)}
-                                                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-violet-700 transition cursor-pointer"
-                                                        title="Copy Candidate Portal Link"
-                                                    >
-                                                        {isCopied ? (
-                                                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                                                        ) : (
-                                                            <Copy className="w-3.5 h-3.5" />
-                                                        )}
-                                                    </button>
+                                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                                    {Array.isArray(cand.skills) && cand.skills.slice(0, 3).map((skill, idx) => (
+                                                        <span
+                                                            key={idx}
+                                                            className="px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md text-[10px] font-medium"
+                                                        >
+                                                            {typeof skill === "string" ? skill.trim() : skill}
+                                                        </span>
+                                                    ))}
+                                                    {Array.isArray(cand.skills) && cand.skills.length > 3 && (
+                                                        <span className="px-1.5 py-0.5 bg-slate-100 text-slate-400 rounded-md text-[10px] font-bold">
+                                                            +{cand.skills.length - 3}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
 
-                                            {/* Column 5: Status */}
+                                            {/* Column 4: Status */}
                                             <td className="py-4 px-6">
-                                                {getStatusPill(iv.status)}
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                    <span>Ready to Schedule</span>
+                                                </span>
                                             </td>
 
-                                            {/* Column 6: Expiry */}
-                                            <td className="py-4 px-6">
-                                                {iv.status === "Active" && (
-                                                    <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-                                                        <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                                        <div>
-                                                            <span className="font-mono">{iv.expiry.split(" ")[0]}</span>{" "}
-                                                            <span className="text-[11px] block sm:inline">Remaining</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {iv.status === "Scheduled" && (
-                                                    <div className="text-slate-400">
-                                                        - Not started
-                                                    </div>
-                                                )}
-
-                                                {iv.status === "Completed" && (
-                                                    <div className="text-slate-400">
-                                                        - Completed
-                                                    </div>
-                                                )}
-
-                                                {iv.status === "Expired" && (
-                                                    <div className="space-y-0.5 text-rose-500">
-                                                        <div className="flex items-center gap-1.5 font-bold">
-                                                            <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                                            <span>Expired</span>
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-400">
-                                                            {iv.expiry}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </td>
-
-                                            {/* Column 7: Actions */}
+                                            {/* Column 5: Action */}
                                             <td className="py-4 px-6 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {/* Open Candidate Portal Button */}
-                                                    <a
-                                                        href={`/i/${iv.linkCode}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="w-8 h-8 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center transition shadow-2xs"
-                                                        title="Open Candidate Portal (Live AI Room)"
-                                                    >
-                                                        <ExternalLink className="w-3.5 h-3.5" />
-                                                    </a>
-
-                                                    {/* Email Candidate Link */}
-                                                    <Link
-                                                        to={`/app/email?candidateEmail=${encodeURIComponent(iv.email)}&interviewCode=${iv.linkCode}`}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 flex items-center justify-center text-slate-500 transition"
-                                                        title="Send Email Invitation to Candidate"
-                                                    >
-                                                        <Mail className="w-3.5 h-3.5" />
-                                                    </Link>
-
-                                                    {/* View in Candidates Pipeline */}
-                                                    <Link
-                                                        to={`/app/candidates?search=${encodeURIComponent(iv.name)}`}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-300 flex items-center justify-center text-slate-500 transition"
-                                                        title="View in Candidate Pipeline"
-                                                    >
-                                                        <Users className="w-3.5 h-3.5" />
-                                                    </Link>
-
-                                                    {/* View Details button */}
-                                                    <button
-                                                        onClick={() => setSelectedInterviewForView(iv)}
-                                                        className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
-                                                        title="View Details"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                    </button>
-
-                                                    {/* Scorecard or Reschedule action */}
-                                                    {iv.status === "Completed" && (
-                                                        <button
-                                                            onClick={() => toast.info(`Viewing assessment scorecard for ${iv.name}`)}
-                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
-                                                            title="View Scorecard"
-                                                        >
-                                                            <FileText className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                    {iv.status === "Expired" && (
-                                                        <button
-                                                            onClick={() => handleRegenerateLink(iv.id, iv.name)}
-                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-violet-600 transition cursor-pointer"
-                                                            title="Re-activate Interview Session"
-                                                        >
-                                                            <RotateCw className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                <button
+                                                    onClick={() => handleOpenScheduleForCandidate(cand)}
+                                                    className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-violet-500/20 transition active:scale-95 flex items-center gap-1.5 cursor-pointer ml-auto"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5" />
+                                                    <span>Generate Link</span>
+                                                </button>
                                             </td>
                                         </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Footer Controls */}
-                <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
-                    <div>
-                        {filteredInterviews.length === 0
-                            ? "Showing 0 entries"
-                            : `Showing 1 to ${filteredInterviews.length} of ${filteredInterviews.length} entries`}
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
 
-                    <div className="flex items-center gap-1.5 mx-auto sm:mx-0">
-                        <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
-                            <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button className="w-8 h-8 rounded-xl bg-violet-600 text-white font-bold flex items-center justify-center shadow-xs">
-                            1
-                        </button>
-                        <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
-                            <ChevronRight className="w-4 h-4" />
-                        </button>
-                    </div>
+                    {/* Footer Controls */}
+                    <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+                        <div>
+                            Showing {shortlistedPendingList.length} shortlisted candidates waiting for link generation
+                        </div>
 
-                    <div className="flex items-center gap-2">
-                        <span>Show</span>
-                        <div className="relative">
+                        <div className="flex items-center gap-1.5">
+                            <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <button className="w-8 h-8 rounded-xl bg-violet-600 text-white font-bold flex items-center justify-center shadow-xs">
+                                1
+                            </button>
+                            <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span>Show</span>
                             <select
                                 value={pageSize}
                                 onChange={(e) => setPageSize(Number(e.target.value))}
-                                className="appearance-none bg-white border border-slate-200 rounded-xl px-3 py-1.5 pr-7 font-semibold text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-xs"
+                                className="bg-white border border-slate-200 rounded-xl px-2.5 py-1 text-xs font-semibold text-slate-800"
                             >
                                 <option value={10}>10</option>
                                 <option value={20}>20</option>
                                 <option value={50}>50</option>
                             </select>
-                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <span>candidates</span>
                         </div>
-                        <span>per page</span>
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* Modal: Generate Interview Link */}
+            {/* TAB 2 CONTENT: AI Video Interviews (Scheduled & Active Sessions) */}
+            {activeTab === "interviews" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden animate-in fade-in duration-200">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/60 border-b border-slate-100 text-xs font-bold text-slate-700 tracking-wider">
+                                    <th className="py-4 px-6">Candidate (Resume Verified)</th>
+                                    <th className="py-4 px-6">Job Role</th>
+                                    <th className="py-4 px-6">Date &amp; Time</th>
+                                    <th className="py-4 px-6">Candidate Portal Link</th>
+                                    <th className="py-4 px-6">Status</th>
+                                    <th className="py-4 px-6">Expiry</th>
+                                    <th className="py-4 px-6 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {interviews.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" className="py-16 text-center text-slate-400">
+                                            <div className="max-w-md mx-auto space-y-3">
+                                                <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                                                    <Video className="w-6 h-6" />
+                                                </div>
+                                                <div className="font-bold text-slate-800 text-sm">No active interview sessions yet</div>
+                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                    Go to <strong>Shortlisted Interviewees</strong> tab to generate candidate portal links and schedule interviews.
+                                                </p>
+                                                <div className="pt-2">
+                                                    <button
+                                                        onClick={() => handleTabChange("interviewee")}
+                                                        className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                                                    >
+                                                        <Users className="w-3.5 h-3.5" />
+                                                        <span>Pick Shortlisted Candidate</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    interviews.map((iv) => {
+                                        const isCopied = copiedId === iv.id || copiedId === iv.linkCode;
+
+                                        return (
+                                            <tr
+                                                key={iv.id}
+                                                className="hover:bg-slate-50/60 transition-colors group"
+                                            >
+                                                {/* Column 1: Candidate */}
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <img
+                                                            src={iv.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
+                                                            alt={iv.name}
+                                                            className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                                                        />
+                                                        <div className="space-y-0.5">
+                                                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                                <span>{iv.name}</span>
+                                                            </div>
+                                                            <div className="text-slate-500 text-xs">
+                                                                {iv.email}
+                                                            </div>
+                                                            {iv.phone && (
+                                                                <div className="text-[11px] font-mono text-violet-700 flex items-center gap-1">
+                                                                    <Phone className="w-3 h-3 text-violet-500 shrink-0" />
+                                                                    <span>{iv.phone}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Column 2: Job Role */}
+                                                <td className="py-4 px-6 text-slate-700 font-semibold">
+                                                    {iv.role}
+                                                </td>
+
+                                                {/* Column 3: Date & Time */}
+                                                <td className="py-4 px-6 text-slate-600">
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center gap-1.5 font-semibold text-slate-800">
+                                                            <Calendar className="w-3.5 h-3.5 text-violet-600 shrink-0" />
+                                                            <span>{iv.date}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-slate-500">
+                                                            <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                            <span>{iv.time}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+
+                                                {/* Column 4: Candidate Portal Link */}
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-2">
+                                                        <a
+                                                            href={`/i/${iv.linkCode}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 font-mono text-xs font-bold border border-violet-200/80 transition group/portal shadow-2xs"
+                                                            title="Open Candidate Portal in New Tab"
+                                                        >
+                                                            <ExternalLink className="w-3.5 h-3.5 text-violet-600 group-hover/portal:scale-110 transition-transform" />
+                                                            <span>/i/{iv.linkCode}</span>
+                                                        </a>
+                                                        <button
+                                                            onClick={() => handleCopyLink(iv.linkCode, iv.id)}
+                                                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-violet-700 transition cursor-pointer"
+                                                            title="Copy Candidate Portal Link"
+                                                        >
+                                                            {isCopied ? (
+                                                                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                                            ) : (
+                                                                <Copy className="w-3.5 h-3.5" />
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </td>
+
+                                                {/* Column 5: Status */}
+                                                <td className="py-4 px-6">
+                                                    {getStatusPill(iv.status)}
+                                                </td>
+
+                                                {/* Column 6: Expiry */}
+                                                <td className="py-4 px-6">
+                                                    {iv.status === "Active" && (
+                                                        <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
+                                                            <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                            <div>
+                                                                <span className="font-mono">{iv.expiry.split(" ")[0]}</span>{" "}
+                                                                <span className="text-[11px] block sm:inline">Remaining</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {iv.status === "Scheduled" && (
+                                                        <div className="text-slate-400">
+                                                            - Not started
+                                                        </div>
+                                                    )}
+
+                                                    {iv.status === "Completed" && (
+                                                        <div className="text-slate-400">
+                                                            - Completed
+                                                        </div>
+                                                    )}
+
+                                                    {iv.status === "Expired" && (
+                                                        <div className="space-y-0.5 text-rose-500">
+                                                            <div className="flex items-center gap-1.5 font-bold">
+                                                                <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                                                <span>Expired</span>
+                                                            </div>
+                                                            <div className="text-[11px] text-slate-400">
+                                                                {iv.expiry}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </td>
+
+                                                {/* Column 7: Actions */}
+                                                <td className="py-4 px-6 text-right">
+                                                    <div className="flex items-center justify-end gap-1.5">
+                                                        {/* Open Candidate Portal Button */}
+                                                        <a
+                                                            href={`/i/${iv.linkCode}`}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="w-8 h-8 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700 flex items-center justify-center transition shadow-2xs"
+                                                            title="Open Candidate Portal (Live AI Room)"
+                                                        >
+                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                        </a>
+
+                                                        {/* Email Candidate Link */}
+                                                        <Link
+                                                            to={`/app/email?candidateEmail=${encodeURIComponent(iv.email)}&interviewCode=${iv.linkCode}`}
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 flex items-center justify-center text-slate-500 transition"
+                                                            title="Send Email Invitation to Candidate"
+                                                        >
+                                                            <Mail className="w-3.5 h-3.5" />
+                                                        </Link>
+
+                                                        {/* View Details button */}
+                                                        <button
+                                                            onClick={() => setSelectedInterviewForView(iv)}
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                                                            title="View Details"
+                                                        >
+                                                            <Eye className="w-3.5 h-3.5" />
+                                                        </button>
+
+                                                        {/* Scorecard action if completed */}
+                                                        {iv.status === "Completed" && (
+                                                            <button
+                                                                onClick={() => toast.info(`Viewing assessment scorecard for ${iv.name}`)}
+                                                                className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                                                                title="View Scorecard"
+                                                            >
+                                                                <FileText className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+
+                                                        {/* Reschedule Action Button: Removes candidate from AI Interviews and transfers back to Shortlisted Interviewees */}
+                                                        <button
+                                                            onClick={() => handleRescheduleAndTransferBack(iv)}
+                                                            className="w-8 h-8 rounded-lg border border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 flex items-center justify-center text-slate-500 transition cursor-pointer"
+                                                            title="Reschedule Candidate (Transfer back to Shortlisted Interviewees)"
+                                                        >
+                                                            <RotateCw className="w-3.5 h-3.5" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Footer Controls */}
+                    <div className="p-4 sm:px-6 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
+                        <div>
+                            {interviews.length === 0
+                                ? "Showing 0 entries"
+                                : `Showing 1 to ${interviews.length} of ${interviews.length} entries`}
+                        </div>
+
+                        <div className="flex items-center gap-1.5 mx-auto sm:mx-0">
+                            <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <button className="w-8 h-8 rounded-xl bg-violet-600 text-white font-bold flex items-center justify-center shadow-xs">
+                                1
+                            </button>
+                            <button disabled className="w-8 h-8 rounded-xl border border-slate-200 flex items-center justify-center text-slate-300 disabled:opacity-50">
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span>Show</span>
+                            <div className="relative">
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                    className="appearance-none bg-white border border-slate-200 rounded-xl px-3 py-1.5 pr-7 font-semibold text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-xs"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={20}>20</option>
+                                    <option value={50}>50</option>
+                                </select>
+                            </div>
+                            <span>per page</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Generate Interview Link & Schedule Candidate */}
             {isGenerateModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in">
-                    <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95">
+                    <div className="bg-white w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center">
@@ -608,7 +922,9 @@ const Interviews = () => {
                                         {generatedPortalData ? "Candidate Portal Link Ready!" : "Generate AI Interview Link"}
                                     </h3>
                                     <p className="text-xs text-slate-500">
-                                        {generatedPortalData ? "Access the candidate portal or share the live assessment link." : "Create a personalized link for candidate assessment."}
+                                        {generatedPortalData
+                                            ? "Candidate transferred to AI Video Interviews. Share live link with candidate."
+                                            : "Schedule assessment date & generate personalized candidate portal link."}
                                     </p>
                                 </div>
                             </div>
@@ -627,7 +943,7 @@ const Interviews = () => {
                             <div className="space-y-4 text-xs sm:text-sm animate-in zoom-in-95">
                                 <div className="p-4 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-center gap-3 text-emerald-800 font-medium">
                                     <Check className="w-5 h-5 text-emerald-600 shrink-0" />
-                                    <span>Interview link generated! Candidate Portal is now live and ready.</span>
+                                    <span>Interview scheduled &amp; candidate transferred to AI Video Interviews!</span>
                                 </div>
 
                                 {/* Candidate Portal Link Box */}
@@ -659,32 +975,43 @@ const Interviews = () => {
                                         </button>
                                     </div>
 
-                                    {/* Credentials */}
                                     <div className="grid grid-cols-2 gap-2 pt-2 text-[11px] border-t border-violet-100">
                                         <div>
                                             <span className="text-slate-400 block">Candidate Email:</span>
                                             <span className="font-semibold text-slate-800 truncate block">{generatedPortalData.email}</span>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400 block">Phone Authentication:</span>
-                                            <span className="font-semibold font-mono text-violet-700 block">{generatedPortalData.phone || "Not required"}</span>
+                                            <span className="text-slate-400 block">Schedule:</span>
+                                            <span className="font-semibold text-violet-700 block">{generatedPortalData.date} · {generatedPortalData.time}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Action Buttons */}
                                 <div className="space-y-2 pt-1">
-                                    <a
-                                        href={`/i/${generatedPortalData.linkCode}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-violet-500/25 transition active:scale-[0.98]"
+                                    <button
+                                        onClick={() => {
+                                            setIsGenerateModalOpen(false);
+                                            setGeneratedPortalData(null);
+                                            handleTabChange("interviews");
+                                        }}
+                                        className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md shadow-violet-500/25 transition active:scale-[0.98] cursor-pointer"
                                     >
-                                        <ExternalLink className="w-4 h-4" />
-                                        <span>Open Candidate Portal (Live AI Interview)</span>
-                                    </a>
+                                        <Video className="w-4 h-4" />
+                                        <span>View in AI Video Interviews (Tab 2) &rarr;</span>
+                                    </button>
 
                                     <div className="grid grid-cols-2 gap-2.5">
+                                        <a
+                                            href={`/i/${generatedPortalData.linkCode}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="py-2.5 px-3 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>Test Live Portal</span>
+                                        </a>
+
                                         <Link
                                             to={`/app/email?candidateEmail=${encodeURIComponent(generatedPortalData.email || "")}&interviewCode=${generatedPortalData.linkCode}&role=${encodeURIComponent(generatedPortalData.role || "")}`}
                                             className="py-2.5 px-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center gap-1.5 transition text-center"
@@ -692,21 +1019,6 @@ const Interviews = () => {
                                             <Mail className="w-3.5 h-3.5" />
                                             <span>Email Candidate</span>
                                         </Link>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setGeneratedPortalData(null);
-                                                setNewCandidateName("");
-                                                setNewCandidateEmail("");
-                                                setNewCandidatePhone("");
-                                                setSelectedResumeId("");
-                                            }}
-                                            className="py-2.5 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition text-center cursor-pointer"
-                                        >
-                                            <Plus className="w-3.5 h-3.5" />
-                                            <span>Generate Another</span>
-                                        </button>
                                     </div>
 
                                     <button
@@ -717,124 +1029,17 @@ const Interviews = () => {
                                         }}
                                         className="w-full py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition cursor-pointer"
                                     >
-                                        Done / Close
+                                        Done
                                     </button>
                                 </div>
                             </div>
                         ) : (
                             <form onSubmit={handleCreateInterviewLink} className="space-y-4 text-xs sm:text-sm">
-                                {/* Source selector tabs */}
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block font-bold text-slate-800 text-xs uppercase tracking-wider">
-                                            Select Candidate or Resume
-                                        </label>
-                                        <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-[11px] font-semibold">
-                                            <button
-                                                type="button"
-                                                onClick={() => setCandidateSourceTab("candidates")}
-                                                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${candidateSourceTab === "candidates" ? "bg-white text-violet-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
-                                            >
-                                                Candidates ({candidatesList.length})
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setCandidateSourceTab("resumes")}
-                                                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${candidateSourceTab === "resumes" ? "bg-white text-violet-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
-                                            >
-                                                Resumes ({resumesList.length})
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setCandidateSourceTab("custom")}
-                                                className={`px-2.5 py-1 rounded-md transition cursor-pointer ${candidateSourceTab === "custom" ? "bg-white text-violet-700 shadow-2xs font-bold" : "text-slate-600 hover:text-slate-900"}`}
-                                            >
-                                                Manual
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Candidates Pipeline Picker */}
-                                    {candidateSourceTab === "candidates" && (
-                                        <div className="p-3 bg-violet-50/80 border border-violet-200/80 rounded-2xl space-y-2">
-                                            <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
-                                                <span className="flex items-center gap-1.5 font-bold text-violet-950">
-                                                    <Users className="w-3.5 h-3.5 text-violet-600" />
-                                                    <span>Select from Candidate Pipeline</span>
-                                                </span>
-                                                <span className="text-[10px] text-violet-700 bg-white px-2 py-0.5 rounded-full border border-violet-200 font-semibold">
-                                                    Auto-Fills Candidate &amp; Portal
-                                                </span>
-                                            </div>
-                                            <select
-                                                onChange={(e) => {
-                                                    const found = candidatesList.find(c => c.id === e.target.value || c.email === e.target.value);
-                                                    if (found) {
-                                                        setNewCandidateName(found.name || "");
-                                                        setNewCandidateEmail(found.email || "");
-                                                        setNewCandidatePhone(found.phone || "");
-                                                        if (found.role) setNewRole(found.role);
-                                                        setSelectedResumeId(found.id);
-                                                        setPreviewLinkCode("ava" + Math.floor(100 + Math.random() * 900));
-                                                        toast.info(`Loaded candidate: ${found.name} (${found.email})`);
-                                                    }
-                                                }}
-                                                defaultValue=""
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
-                                            >
-                                                <option value="" disabled>-- Select Verified Candidate ({candidatesList.length}) --</option>
-                                                {candidatesList.map((c) => (
-                                                    <option key={c.id || c.email} value={c.id || c.email}>
-                                                        {c.name} · {c.email} {c.phone ? `(${c.phone})` : ""} · {c.role} {c.score ? `[Score: ${c.score}]` : ""}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-
-                                    {/* Submitted Resumes Picker */}
-                                    {candidateSourceTab === "resumes" && resumesList.length > 0 && (
-                                        <div className="p-3 bg-violet-50/80 border border-violet-200/80 rounded-2xl space-y-2">
-                                            <div className="flex items-center justify-between text-xs font-semibold text-slate-800">
-                                                <span className="flex items-center gap-1.5 font-bold text-violet-950">
-                                                    <FileText className="w-3.5 h-3.5 text-violet-600" />
-                                                    <span>Select from Submitted Resumes ({resumesList.length})</span>
-                                                </span>
-                                                <span className="text-[10px] text-violet-700 bg-white px-2 py-0.5 rounded-full border border-violet-200 font-semibold">
-                                                    Auto-Fills Data
-                                                </span>
-                                            </div>
-                                            <select
-                                                onChange={(e) => {
-                                                    const found = resumesList.find(r => r.id === e.target.value);
-                                                    if (found) {
-                                                        setNewCandidateName(found.name || "");
-                                                        setNewCandidateEmail(found.email || "");
-                                                        setNewCandidatePhone(found.phone || "");
-                                                        if (found.role) setNewRole(found.role);
-                                                        setSelectedResumeId(found.id);
-                                                        setPreviewLinkCode("ava" + Math.floor(100 + Math.random() * 900));
-                                                        toast.info(`Selected ${found.name} (Phone: ${found.phone || "No phone"})`);
-                                                    }
-                                                }}
-                                                defaultValue=""
-                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer shadow-2xs"
-                                            >
-                                                <option value="" disabled>-- Select Candidate from Submitted Resumes --</option>
-                                                {resumesList.map((r) => (
-                                                    <option key={r.id} value={r.id}>
-                                                        {r.name} · {r.email} ({r.phone || "No phone"}) · {r.role}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-
                                 <div>
-                                    <label className="block font-bold text-slate-700 mb-1">Candidate Full Name</label>
+                                    <label className="block font-bold text-slate-700 mb-1">Candidate Full Name *</label>
                                     <input
                                         type="text"
+                                        required
                                         placeholder="e.g. Ananya Rao"
                                         value={newCandidateName}
                                         onChange={(e) => setNewCandidateName(e.target.value)}
@@ -844,18 +1049,18 @@ const Interviews = () => {
 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1">Candidate Email Address</label>
+                                        <label className="block font-bold text-slate-700 mb-1">Candidate Email Address *</label>
                                         <input
                                             type="email"
+                                            required
                                             placeholder="e.g. ananya.rao@example.com"
                                             value={newCandidateEmail}
                                             onChange={(e) => setNewCandidateEmail(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
                                         />
-                                        <p className="text-[10px] text-slate-400 mt-1">Used for Candidate Portal login verification</p>
                                     </div>
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1">Phone Number (as in Resume)</label>
+                                        <label className="block font-bold text-slate-700 mb-1">Phone Number (Resume)</label>
                                         <input
                                             type="tel"
                                             placeholder="e.g. +91-8999646955"
@@ -863,7 +1068,6 @@ const Interviews = () => {
                                             onChange={(e) => setNewCandidatePhone(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 font-mono"
                                         />
-                                        <p className="text-[10px] text-slate-400 mt-1">Enforced at candidate portal login</p>
                                     </div>
                                 </div>
 
@@ -875,45 +1079,46 @@ const Interviews = () => {
                                             onChange={(e) => setNewRole(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 cursor-pointer"
                                         >
+                                            <option>Software Engineer</option>
                                             <option>Frontend Developer</option>
                                             <option>Backend Developer</option>
                                             <option>Full Stack Developer</option>
+                                            <option>Python / AI Engineer</option>
                                             <option>UI/UX Designer</option>
                                             <option>DevOps Engineer</option>
-                                            <option>Python Developer</option>
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1">Link Validity</label>
+                                        <label className="block font-bold text-slate-700 mb-1">Link Duration</label>
                                         <select
                                             value={newValidity}
                                             onChange={(e) => setNewValidity(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800 cursor-pointer"
                                         >
-                                            <option>1 Hour</option>
-                                            <option>45 Mins</option>
-                                            <option>30 Mins</option>
-                                            <option>15 Mins</option>
-                                            <option>10 Mins</option>
-                                            <option>5 Mins</option>
+                                            <option>15 Minutes</option>
+                                            <option>30 Minutes</option>
+                                            <option>45 Minutes</option>
+                                            <option>60 Minutes</option>
                                         </select>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1">Interview Date</label>
+                                        <label className="block font-bold text-slate-700 mb-1">Interview Date *</label>
                                         <input
                                             type="date"
+                                            required
                                             value={newDate}
                                             onChange={(e) => setNewDate(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block font-bold text-slate-700 mb-1">Interview Time</label>
+                                        <label className="block font-bold text-slate-700 mb-1">Interview Time *</label>
                                         <input
                                             type="time"
+                                            required
                                             value={newTime}
                                             onChange={(e) => setNewTime(e.target.value)}
                                             className="w-full px-3.5 py-2.5 bg-slate-50/50 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 text-slate-800"
@@ -921,52 +1126,20 @@ const Interviews = () => {
                                     </div>
                                 </div>
 
-                                {/* Prominent Candidate Portal Live Preview Card */}
-                                <div className="p-4 bg-violet-50/80 border border-violet-200 rounded-2xl space-y-3 shadow-2xs">
+                                {/* Preview Card */}
+                                <div className="p-4 bg-violet-50/80 border border-violet-200 rounded-2xl space-y-2 shadow-2xs">
                                     <div className="flex items-center justify-between text-xs">
                                         <span className="font-bold text-violet-900 flex items-center gap-1.5">
                                             <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
-                                            <span>Candidate Portal Live Access</span>
+                                            <span>Candidate Portal Preview</span>
                                         </span>
                                         <span className="font-mono text-[11px] bg-white text-violet-700 font-bold px-2 py-0.5 rounded-md border border-violet-200">
                                             Code: {previewLinkCode}
                                         </span>
                                     </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="text"
-                                            readOnly
-                                            value={`${window.location.origin}/i/${previewLinkCode}`}
-                                            className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 select-all font-semibold"
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => handleCopyLink(previewLinkCode)}
-                                            className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition shadow-2xs cursor-pointer shrink-0"
-                                            title="Copy Candidate Portal Link"
-                                        >
-                                            <Copy className="w-3.5 h-3.5" />
-                                            <span>Copy Link</span>
-                                        </button>
-                                        <a
-                                            href={`/i/${previewLinkCode}`}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-2xs shrink-0"
-                                            title="Test Candidate Portal in New Tab"
-                                        >
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                            <span>Open Portal</span>
-                                        </a>
-                                    </div>
-
-                                    <div className="text-[11px] text-violet-900/80 space-y-1 pt-1 border-t border-violet-200/60">
-                                        <div className="flex items-center gap-1.5 font-medium">
-                                            <ShieldCheck className="w-3.5 h-3.5 text-violet-600 shrink-0" />
-                                            <span>Candidate Portal Features: Camera/Audio check, AI Avatar Ava interview, real-time proctoring &amp; live transcription.</span>
-                                        </div>
-                                    </div>
+                                    <p className="font-mono text-slate-700 bg-white p-2 rounded-lg border border-slate-200 text-xs truncate">
+                                        {window.location.origin}/i/{previewLinkCode}
+                                    </p>
                                 </div>
 
                                 <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
@@ -982,7 +1155,7 @@ const Interviews = () => {
                                         className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-violet-500/20 transition active:scale-[0.98] cursor-pointer flex items-center gap-1.5"
                                     >
                                         <Sparkles className="w-4 h-4" />
-                                        <span>Generate &amp; View Portal Link</span>
+                                        <span>Generate Link &amp; Schedule</span>
                                     </button>
                                 </div>
                             </form>
@@ -999,100 +1172,63 @@ const Interviews = () => {
                             <h3 className="font-bold text-slate-900 text-base">Interview Session Details</h3>
                             <button
                                 onClick={() => setSelectedInterviewForView(null)}
-                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="flex items-center gap-3.5 p-4 bg-slate-50 rounded-2xl">
-                            <img
-                                src={selectedInterviewForView.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
-                                alt={selectedInterviewForView.name}
-                                className="w-12 h-12 rounded-full object-cover border border-slate-200"
-                            />
-                            <div>
-                                <h4 className="font-bold text-slate-900 text-sm">{selectedInterviewForView.name}</h4>
-                                <p className="text-xs text-slate-500">{selectedInterviewForView.role}</p>
-                                <div className="mt-1">{getStatusPill(selectedInterviewForView.status)}</div>
-                            </div>
-                        </div>
-
-                        {/* Candidate Portal Direct Link Card */}
-                        <div className="p-4 bg-violet-50/70 border border-violet-200/80 rounded-2xl space-y-2.5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-violet-900 flex items-center gap-1.5">
-                                    <ExternalLink className="w-3.5 h-3.5 text-violet-600" />
-                                    <span>Candidate Portal Access</span>
-                                </span>
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white text-violet-700 border border-violet-200 font-bold">
-                                    Code: {selectedInterviewForView.linkCode}
-                                </span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    readOnly
-                                    value={`${window.location.origin}/i/${selectedInterviewForView.linkCode}`}
-                                    className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-mono text-slate-800 select-all font-semibold"
+                        <div className="space-y-4 text-xs sm:text-sm">
+                            <div className="flex items-center gap-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                <img
+                                    src={selectedInterviewForView.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
+                                    alt={selectedInterviewForView.name}
+                                    className="w-12 h-12 rounded-full object-cover border border-slate-200"
                                 />
+                                <div>
+                                    <div className="font-bold text-slate-900 text-sm">{selectedInterviewForView.name}</div>
+                                    <div className="text-slate-500 text-xs">{selectedInterviewForView.email}</div>
+                                    <div className="text-violet-600 font-semibold text-xs mt-0.5">{selectedInterviewForView.role}</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                    <span className="text-slate-400 block text-[11px]">Schedule Date</span>
+                                    <span className="font-bold text-slate-800">{selectedInterviewForView.date}</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                    <span className="text-slate-400 block text-[11px]">Time &amp; Zone</span>
+                                    <span className="font-bold text-slate-800">{selectedInterviewForView.time} (IST)</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                    <span className="text-slate-400 block text-[11px]">Link Code</span>
+                                    <span className="font-mono font-bold text-violet-700">{selectedInterviewForView.linkCode}</span>
+                                </div>
+                                <div className="p-3 bg-slate-50 rounded-xl">
+                                    <span className="text-slate-400 block text-[11px]">Status</span>
+                                    <div className="mt-0.5">{getStatusPill(selectedInterviewForView.status)}</div>
+                                </div>
+                            </div>
+
+                            <div className="pt-2 flex gap-2">
+                                <a
+                                    href={`/i/${selectedInterviewForView.linkCode}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex-1 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>Open Live Portal</span>
+                                </a>
                                 <button
-                                    type="button"
                                     onClick={() => handleCopyLink(selectedInterviewForView.linkCode, selectedInterviewForView.id)}
-                                    className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
+                                    className="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition"
                                 >
                                     <Copy className="w-3.5 h-3.5" />
                                     <span>Copy</span>
                                 </button>
                             </div>
-
-                            <a
-                                href={`/i/${selectedInterviewForView.linkCode}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="w-full py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-xs transition"
-                            >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>Launch Candidate Portal</span>
-                            </a>
-                        </div>
-
-                        <div className="space-y-2.5 text-xs text-slate-600">
-                            <div className="flex justify-between py-1.5 border-b border-slate-100">
-                                <span className="font-medium text-slate-400">Date &amp; Time</span>
-                                <span className="font-bold text-slate-800">{selectedInterviewForView.date} at {selectedInterviewForView.time}</span>
-                            </div>
-                            <div className="flex justify-between py-1.5 border-b border-slate-100">
-                                <span className="font-medium text-slate-400">Validity / Expiry</span>
-                                <span className="font-semibold text-slate-800">{selectedInterviewForView.expiry}</span>
-                            </div>
-                            <div className="flex justify-between py-1.5 border-b border-slate-100">
-                                <span className="font-medium text-slate-400">Candidate Email</span>
-                                <span className="font-semibold text-slate-800">{selectedInterviewForView.email}</span>
-                            </div>
-                            {selectedInterviewForView.phone && (
-                                <div className="flex justify-between py-1.5 border-b border-slate-100">
-                                    <span className="font-medium text-slate-400">Candidate Phone</span>
-                                    <span className="font-semibold font-mono text-violet-700">{selectedInterviewForView.phone}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-2">
-                            <Link
-                                to={`/app/email?candidateEmail=${encodeURIComponent(selectedInterviewForView.email || "")}&interviewCode=${selectedInterviewForView.linkCode}&role=${encodeURIComponent(selectedInterviewForView.role || "")}`}
-                                className="flex-1 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold shadow-xs text-center flex items-center justify-center gap-1.5 transition"
-                            >
-                                <Mail className="w-3.5 h-3.5" />
-                                <span>Email Invitation</span>
-                            </Link>
-                            <button
-                                onClick={() => setSelectedInterviewForView(null)}
-                                className="px-5 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
-                            >
-                                Close
-                            </button>
                         </div>
                     </div>
                 </div>

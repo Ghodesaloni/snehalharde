@@ -113,65 +113,6 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6" data-testid="dashboard-page">
-            {/* Quick Action Hub Bar */}
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <div className="text-xs font-bold text-violet-600 uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5" />
-                            HR Quick Actions
-                        </div>
-                        <h2 className="text-base font-bold text-slate-900 mt-0.5">
-                            Recruitment Pipeline Shortcuts
-                        </h2>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-                        <Link
-                            to="/app/jobs"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <Briefcase className="w-3.5 h-3.5" />
-                            <span>Post Job</span>
-                        </Link>
-                        <Link
-                            to="/app/resumes"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <FileText className="w-3.5 h-3.5" />
-                            <span>Upload Resumes</span>
-                        </Link>
-                        <Link
-                            to="/app/candidates"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <Users className="w-3.5 h-3.5" />
-                            <span>Candidates</span>
-                        </Link>
-                        <Link
-                            to="/app/interviews"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <Video className="w-3.5 h-3.5" />
-                            <span>Interviews</span>
-                        </Link>
-                        <Link
-                            to="/app/email"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <Mail className="w-3.5 h-3.5" />
-                            <span>Email Center</span>
-                        </Link>
-                        <Link
-                            to="/app/calendar"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition shadow-2xs"
-                        >
-                            <CalendarIcon className="w-3.5 h-3.5" />
-                            <span>Calendar</span>
-                        </Link>
-                    </div>
-                </div>
-            </div>
 
             {/* Clickable KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">

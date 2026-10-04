@@ -52,8 +52,8 @@ import {
 } from "lucide-react";
 
 const Settings = () => {
-    // Tabs: "general", "interview", "cloud"
-    const [activeTab, setActiveTab] = useState("interview");
+    // Tabs: "interview", "general"
+    const [activeTab, setActiveTab] = useState("general");
 
     // Current HR user profile info
     const [currentUser, setCurrentUser] = useState(() => {
@@ -529,19 +529,8 @@ const Settings = () => {
                     </div>
                 </div>
 
-                {/* Settings Tab Selector Buttons (3 Tabs) */}
+                {/* Settings Tab Selector Buttons (2 Tabs) */}
                 <div className="inline-flex p-1 bg-white border border-slate-200 rounded-2xl shadow-xs">
-                    <button
-                        onClick={() => setActiveTab("interview")}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
-                            activeTab === "interview"
-                                ? "bg-violet-600 text-white shadow-sm"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                        }`}
-                    >
-                        <Video className="w-4 h-4" />
-                        <span>Interview &amp; AI</span>
-                    </button>
                     <button
                         onClick={() => setActiveTab("general")}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
@@ -551,24 +540,279 @@ const Settings = () => {
                         }`}
                     >
                         <SettingsIcon className="w-4 h-4" />
-                        <span>General &amp; Security</span>
+                        <span>General</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab("cloud")}
+                        onClick={() => setActiveTab("interview")}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition cursor-pointer ${
-                            activeTab === "cloud"
+                            activeTab === "interview"
                                 ? "bg-violet-600 text-white shadow-sm"
                                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                         }`}
                     >
-                        <Cloud className="w-4 h-4" />
-                        <span>AWS Cloud Server</span>
+                        <Video className="w-4 h-4" />
+                        <span>Interview</span>
                     </button>
                 </div>
             </div>
 
             {/* ============================================================== */}
-            {/* TAB 1: INTERVIEW & AI SETTINGS                                 */}
+            {/* TAB 1: GENERAL SETTINGS                                 */}
+            {/* ============================================================== */}
+            {activeTab === "general" && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-200">
+                    {/* LEFT MAIN CARD: Profile & App Preferences (8 cols) */}
+                    <div className="lg:col-span-8 space-y-6">
+                        
+
+                        {/* Application Preferences Card */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                                <div>
+                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">
+                                        Application Preferences
+                                    </h2>
+                                    <p className="text-xs text-slate-400 mt-0.5">
+                                        Customize your viewing mode and workspace appearance.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={saveGeneralSettings}
+                                    data-testid="save-settings-btn"
+                                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98] cursor-pointer"
+                                >
+                                    <Save className="w-4 h-4" />
+                                    <span>Save Preferences</span>
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Dark Mode */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Dark Theme</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Enable dark mode theme across the recruiter portal.
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("darkMode")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.darkMode ? "bg-violet-600" : "bg-slate-200"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.darkMode ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Compact View */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Compact Density View</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Condense tables and cards to view more candidates at once.
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("compactView")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.compactView ? "bg-violet-600" : "bg-slate-200"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.compactView ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Show Candidate Avatars */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Show Candidate Avatars</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Display photo avatars in candidate listings.
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleGeneralToggle("showAvatars")}
+                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
+                                            preferences.showAvatars ? "bg-violet-600" : "bg-slate-200"
+                                        }`}
+                                    >
+                                        <span
+                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
+                                                preferences.showAvatars ? "translate-x-6.5" : "translate-x-1"
+                                            }`}
+                                        />
+                                    </button>
+                                </div>
+
+                                {/* Auto Refresh Interval */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Auto Refresh Interval</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Periodically sync live interview status and evaluations.
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.autoRefresh}
+                                            onChange={(e) => handleGeneralSelect("autoRefresh", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>Every 1 minute</option>
+                                            <option>Every 5 minutes</option>
+                                            <option>Every 15 minutes</option>
+                                            <option>Manual only</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Default Jobs Per Page */}
+                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Default Jobs Per Page</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Number of jobs displayed per table page.
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.jobsPerPage}
+                                            onChange={(e) => handleGeneralSelect("jobsPerPage", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>5</option>
+                                            <option>10</option>
+                                            <option>20</option>
+                                            <option>50</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Default Candidates Per Page */}
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <div className="text-sm font-bold text-slate-800">Default Candidates Per Page</div>
+                                        <div className="text-xs text-slate-400 mt-0.5">
+                                            Number of candidates displayed per table page.
+                                        </div>
+                                    </div>
+                                    <div className="relative min-w-[170px]">
+                                        <select
+                                            value={preferences.candidatesPerPage}
+                                            onChange={(e) => handleGeneralSelect("candidatesPerPage", e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
+                                        >
+                                            <option>10</option>
+                                            <option>25</option>
+                                            <option>50</option>
+                                            <option>100</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: 4 Security Cards (4 cols) */}
+                    <div className="lg:col-span-4 space-y-4">
+                        {/* Card 1: Change Password */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                                    <Lock className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-sm font-bold text-slate-900">Change Password</h4>
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                Update your account security password with live hash verification.
+                            </p>
+                            <button
+                                onClick={() => setShowPasswordModal(true)}
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
+                            >
+                                Change Password
+                            </button>
+                        </div>
+
+                        {/* Card 2: Two-Factor Authentication */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                                    <ShieldCheck className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-sm font-bold text-slate-900">Two-Factor Authentication</h4>
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                Require two-factor authentication on every recruiter sign in.
+                            </p>
+                            <div className={`text-xs font-bold flex items-center gap-1.5 ${twoFactorActive ? "text-emerald-600" : "text-slate-400"}`}>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>{twoFactorActive ? "2FA Protection is Active" : "2FA is Disabled"}</span>
+                            </div>
+                            <button
+                                onClick={() => setShow2FAModal(true)}
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
+                            >
+                                Manage 2FA &amp; Codes
+                            </button>
+                        </div>
+
+                        {/* Card 3: Active Sessions */}
+                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                    <Monitor className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-sm font-bold text-slate-900">Active Sessions</h4>
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                Review logged in devices and revoke unauthorized access.
+                            </p>
+                            <button
+                                onClick={() => setShowSessionsModal(true)}
+                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
+                            >
+                                View Sessions ({sessions.length})
+                            </button>
+                        </div>
+
+                        {/* Card 4: Danger Zone */}
+                        <div className="bg-white rounded-3xl border border-rose-100/80 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
+                                    <AlertTriangle className="w-5 h-5" />
+                                </div>
+                                <h4 className="text-sm font-bold text-slate-900">Danger Zone</h4>
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                Permanently erase your recruiter workspace, pool, and interview history.
+                            </p>
+                            <button
+                                onClick={() => setShowDeleteModal(true)}
+                                className="w-full py-2.5 px-4 bg-white border border-rose-200 hover:border-rose-400 hover:bg-rose-50 text-rose-600 font-semibold text-xs rounded-xl transition text-center block cursor-pointer"
+                            >
+                                Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ============================================================== */}
             {activeTab === "interview" && (
                 <div className="space-y-6 animate-in fade-in duration-200">
@@ -577,7 +821,7 @@ const Settings = () => {
                         <div>
                             <div className="flex items-center gap-2.5">
                                 <h2 className="text-xl sm:text-2xl font-bold text-violet-700 tracking-tight">
-                                    Interview &amp; AI Settings
+                                    Interview Settings
                                 </h2>
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -639,20 +883,7 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Join Window */}
-                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Hourglass className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Candidate Join Window
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Window before scheduled time candidate can join room.
-                                            </div>
-                                        </div>
+                                
                                     </div>
                                     <div className="relative min-w-[130px]">
                                         <select
@@ -668,20 +899,7 @@ const Settings = () => {
                                     </div>
                                 </div>
 
-                                {/* Late Grace Time */}
-                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Clock className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                Late Arrival Grace Time
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Grace period allowed after scheduled interview time.
-                                            </div>
-                                        </div>
+                                
                                     </div>
                                     <div className="relative min-w-[130px]">
                                         <select
@@ -768,20 +986,7 @@ const Settings = () => {
                             </h3>
 
                             <div className="space-y-4">
-                                {/* AI Avatar Selection */}
-                                <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-50">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center shrink-0">
-                                            <Sparkles className="w-4 h-4" />
-                                        </div>
-                                        <div>
-                                            <div className="text-xs sm:text-sm font-bold text-slate-800">
-                                                AI Avatar Interviewer
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 mt-0.5">
-                                                Interactive AI avatar persona speaking to candidates.
-                                            </div>
-                                        </div>
+                                
                                     </div>
                                     <div className="relative min-w-[140px]">
                                         <select
@@ -1300,505 +1505,6 @@ const Settings = () => {
 
             {/* ============================================================== */}
             {/* TAB 2: GENERAL & SECURITY SETTINGS                             */}
-            {/* ============================================================== */}
-            {activeTab === "general" && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start animate-in fade-in duration-200">
-                    {/* LEFT MAIN CARD: Profile & App Preferences (8 cols) */}
-                    <div className="lg:col-span-8 space-y-6">
-                        {/* Profile Edit Card */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
-                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                                <div>
-                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                                        <User className="w-5 h-5 text-violet-600" />
-                                        <span>HR Recruiter Profile</span>
-                                    </h2>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        Personalize your recruiter identification and organization details.
-                                    </p>
-                                </div>
-                                <span className="text-[11px] font-bold px-3 py-1 bg-violet-50 text-violet-700 rounded-full border border-violet-100">
-                                    {currentUser.role || "Lead HR"}
-                                </span>
-                            </div>
-
-                            <form onSubmit={handleSaveProfile} className="space-y-4">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                    <div>
-                                        <label className="font-semibold text-slate-700 block mb-1">Full Name</label>
-                                        <input
-                                            type="text"
-                                            value={profileForm.name}
-                                            onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 block mb-1">Work Email</label>
-                                        <input
-                                            type="email"
-                                            disabled
-                                            value={profileForm.email}
-                                            className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-medium text-slate-500 cursor-not-allowed"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 block mb-1">Company / Organization</label>
-                                        <input
-                                            type="text"
-                                            value={profileForm.company}
-                                            onChange={(e) => setProfileForm({ ...profileForm, company: e.target.value })}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="font-semibold text-slate-700 block mb-1">Phone Number</label>
-                                        <input
-                                            type="text"
-                                            value={profileForm.phone}
-                                            onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                                            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-violet-500 font-medium"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="flex justify-end pt-2">
-                                    <button
-                                        type="submit"
-                                        disabled={savingProfile}
-                                        className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition cursor-pointer"
-                                    >
-                                        <Save className="w-4 h-4" />
-                                        <span>{savingProfile ? "Updating..." : "Update Profile"}</span>
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-
-                        {/* Application Preferences Card */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8 space-y-6">
-                            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-                                <div>
-                                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                                        Application Preferences
-                                    </h2>
-                                    <p className="text-xs text-slate-400 mt-0.5">
-                                        Customize your viewing mode and workspace appearance.
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={saveGeneralSettings}
-                                    data-testid="save-settings-btn"
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition active:scale-[0.98] cursor-pointer"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    <span>Save Preferences</span>
-                                </button>
-                            </div>
-
-                            <div className="space-y-4">
-                                {/* Dark Mode */}
-                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Dark Theme</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Enable dark mode theme across the recruiter portal.
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleGeneralToggle("darkMode")}
-                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                            preferences.darkMode ? "bg-violet-600" : "bg-slate-200"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-                                                preferences.darkMode ? "translate-x-6.5" : "translate-x-1"
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-
-                                {/* Compact View */}
-                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Compact Density View</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Condense tables and cards to view more candidates at once.
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleGeneralToggle("compactView")}
-                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                            preferences.compactView ? "bg-violet-600" : "bg-slate-200"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-                                                preferences.compactView ? "translate-x-6.5" : "translate-x-1"
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-
-                                {/* Show Candidate Avatars */}
-                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Show Candidate Avatars</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Display photo avatars in candidate listings.
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleGeneralToggle("showAvatars")}
-                                        className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none cursor-pointer ${
-                                            preferences.showAvatars ? "bg-violet-600" : "bg-slate-200"
-                                        }`}
-                                    >
-                                        <span
-                                            className={`block w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform ${
-                                                preferences.showAvatars ? "translate-x-6.5" : "translate-x-1"
-                                            }`}
-                                        />
-                                    </button>
-                                </div>
-
-                                {/* Auto Refresh Interval */}
-                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Auto Refresh Interval</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Periodically sync live interview status and evaluations.
-                                        </div>
-                                    </div>
-                                    <div className="relative min-w-[170px]">
-                                        <select
-                                            value={preferences.autoRefresh}
-                                            onChange={(e) => handleGeneralSelect("autoRefresh", e.target.value)}
-                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
-                                        >
-                                            <option>Every 1 minute</option>
-                                            <option>Every 5 minutes</option>
-                                            <option>Every 15 minutes</option>
-                                            <option>Manual only</option>
-                                        </select>
-                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                    </div>
-                                </div>
-
-                                {/* Default Jobs Per Page */}
-                                <div className="flex items-center justify-between gap-4 pb-4 border-b border-slate-50">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Default Jobs Per Page</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Number of jobs displayed per table page.
-                                        </div>
-                                    </div>
-                                    <div className="relative min-w-[170px]">
-                                        <select
-                                            value={preferences.jobsPerPage}
-                                            onChange={(e) => handleGeneralSelect("jobsPerPage", e.target.value)}
-                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
-                                        >
-                                            <option>5</option>
-                                            <option>10</option>
-                                            <option>20</option>
-                                            <option>50</option>
-                                        </select>
-                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                    </div>
-                                </div>
-
-                                {/* Default Candidates Per Page */}
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <div className="text-sm font-bold text-slate-800">Default Candidates Per Page</div>
-                                        <div className="text-xs text-slate-400 mt-0.5">
-                                            Number of candidates displayed per table page.
-                                        </div>
-                                    </div>
-                                    <div className="relative min-w-[170px]">
-                                        <select
-                                            value={preferences.candidatesPerPage}
-                                            onChange={(e) => handleGeneralSelect("candidatesPerPage", e.target.value)}
-                                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-2 pr-9 text-xs sm:text-sm font-medium text-slate-800 focus:outline-none focus:border-violet-500 cursor-pointer"
-                                        >
-                                            <option>10</option>
-                                            <option>25</option>
-                                            <option>50</option>
-                                            <option>100</option>
-                                        </select>
-                                        <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* RIGHT COLUMN: 4 Security Cards (4 cols) */}
-                    <div className="lg:col-span-4 space-y-4">
-                        {/* Card 1: Change Password */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                                    <Lock className="w-5 h-5" />
-                                </div>
-                                <h4 className="text-sm font-bold text-slate-900">Change Password</h4>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                Update your account security password with live hash verification.
-                            </p>
-                            <button
-                                onClick={() => setShowPasswordModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
-                            >
-                                Change Password
-                            </button>
-                        </div>
-
-                        {/* Card 2: Two-Factor Authentication */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
-                                    <ShieldCheck className="w-5 h-5" />
-                                </div>
-                                <h4 className="text-sm font-bold text-slate-900">Two-Factor Authentication</h4>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                Require two-factor authentication on every recruiter sign in.
-                            </p>
-                            <div className={`text-xs font-bold flex items-center gap-1.5 ${twoFactorActive ? "text-emerald-600" : "text-slate-400"}`}>
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>{twoFactorActive ? "2FA Protection is Active" : "2FA is Disabled"}</span>
-                            </div>
-                            <button
-                                onClick={() => setShow2FAModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
-                            >
-                                Manage 2FA &amp; Codes
-                            </button>
-                        </div>
-
-                        {/* Card 3: Active Sessions */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                                    <Monitor className="w-5 h-5" />
-                                </div>
-                                <h4 className="text-sm font-bold text-slate-900">Active Sessions</h4>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                Review logged in devices and revoke unauthorized access.
-                            </p>
-                            <button
-                                onClick={() => setShowSessionsModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-violet-200 hover:border-violet-400 hover:bg-violet-50/50 text-violet-700 font-semibold text-xs rounded-xl transition shadow-xs text-center block cursor-pointer"
-                            >
-                                View Sessions ({sessions.length})
-                            </button>
-                        </div>
-
-                        {/* Card 4: Danger Zone */}
-                        <div className="bg-white rounded-3xl border border-rose-100/80 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 shrink-0">
-                                    <AlertTriangle className="w-5 h-5" />
-                                </div>
-                                <h4 className="text-sm font-bold text-slate-900">Danger Zone</h4>
-                            </div>
-                            <p className="text-xs text-slate-500 leading-relaxed">
-                                Permanently erase your recruiter workspace, pool, and interview history.
-                            </p>
-                            <button
-                                onClick={() => setShowDeleteModal(true)}
-                                className="w-full py-2.5 px-4 bg-white border border-rose-200 hover:border-rose-400 hover:bg-rose-50 text-rose-600 font-semibold text-xs rounded-xl transition text-center block cursor-pointer"
-                            >
-                                Delete Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ============================================================== */}
-            {/* TAB 3: AWS CLOUD SERVER SETTINGS                               */}
-            {/* ============================================================== */}
-            {activeTab === "cloud" && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div>
-                            <div className="flex items-center gap-2.5">
-                                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                                    AWS Cloud Server &amp; Storage Configuration
-                                </h2>
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Active &amp; Connected
-                                </span>
-                            </div>
-                            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                                Enterprise cloud server parameters powering candidate resume S3 storage, RDS PostgreSQL cluster, and SES email dispatch.
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                            <button
-                                onClick={handleTestAws}
-                                disabled={awsTesting}
-                                className="flex items-center gap-2 px-4 py-2.5 bg-white border border-violet-200 hover:bg-violet-50 text-violet-700 rounded-xl text-xs sm:text-sm font-bold shadow-xs transition cursor-pointer"
-                            >
-                                <RefreshCw className={`w-4 h-4 ${awsTesting ? "animate-spin" : ""}`} />
-                                <span>{awsTesting ? "Testing Diagnostics..." : "Run Diagnostics Test"}</span>
-                            </button>
-                            <button
-                                onClick={handleSaveAws}
-                                disabled={savingAws}
-                                className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs sm:text-sm font-semibold shadow-md shadow-violet-500/25 transition cursor-pointer"
-                            >
-                                <Save className="w-4 h-4" />
-                                <span>{savingAws ? "Saving..." : "Save AWS Config"}</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Diagnostics Result Banner if executed */}
-                    {awsTestResults && (
-                        <div className="p-4 sm:p-5 bg-emerald-50/80 border border-emerald-200 rounded-3xl space-y-3 animate-in fade-in">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
-                                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                                    <span className="text-sm font-bold text-emerald-900">
-                                        Live AWS Server Diagnostics Passed
-                                    </span>
-                                </div>
-                                <span className="text-xs font-bold text-emerald-700">
-                                    Latency: {awsTestResults.latencyMs || 42}ms · Status: Healthy
-                                </span>
-                            </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">Compute / EC2</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Online &amp; Serving</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">S3 Storage</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Connected (S3 Bucket)</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">PostgreSQL RDS</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Cluster Active</div>
-                                </div>
-                                <div className="p-3 bg-white/80 rounded-2xl border border-emerald-100">
-                                    <div className="text-slate-400 font-semibold text-[10px] uppercase">SES Mailer</div>
-                                    <div className="font-bold text-slate-800 mt-0.5">Verified &amp; Delivering</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* 3 AWS Detail Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* CARD 1: EC2 & Container */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold">
-                                    <Cpu className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS App Runner / EC2</h3>
-                                    <p className="text-xs text-slate-400">Node.js Production Container</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">AWS Region</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.region}</span>
-                                </div>
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">Instance ID</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.serverInstance?.containerId || "i-09f42c7ae381a4d"}</span>
-                                </div>
-                                <div className="flex items-center justify-between pb-2 border-b border-slate-50">
-                                    <span className="text-slate-400">Environment</span>
-                                    <span className="font-bold text-slate-800">Production (AWS VPC)</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Server Port</span>
-                                    <span className="font-bold text-slate-800">3000 (HTTP/LiveKit)</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARD 2: S3 Resume Storage */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                                    <HardDrive className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS S3 Resume Bucket</h3>
-                                    <p className="text-xs text-slate-400">Candidate CV &amp; Audio Vault</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div>
-                                    <label className="text-slate-400 block mb-1">Bucket Name</label>
-                                    <input
-                                        type="text"
-                                        value={awsConfig.s3Bucket}
-                                        onChange={(e) => setAwsConfig({ ...awsConfig, s3Bucket: e.target.value })}
-                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold"
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between pt-1">
-                                    <span className="text-slate-400">Encryption</span>
-                                    <span className="font-bold text-emerald-600">AES-256 Server-Side</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Storage Class</span>
-                                    <span className="font-bold text-slate-800">S3 Standard</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARD 3: RDS PostgreSQL Cluster */}
-                        <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold">
-                                    <Database className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-slate-900 text-sm">AWS RDS PostgreSQL</h3>
-                                    <p className="text-xs text-slate-400">Relational Database Engine</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 text-xs pt-2">
-                                <div>
-                                    <label className="text-slate-400 block mb-1">Cluster Endpoint</label>
-                                    <input
-                                        type="text"
-                                        value={awsConfig.rdsHost}
-                                        onChange={(e) => setAwsConfig({ ...awsConfig, rdsHost: e.target.value })}
-                                        className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-800 font-semibold truncate"
-                                    />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Database Name</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsDatabase}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-400">Database Port</span>
-                                    <span className="font-mono font-bold text-slate-800">{awsConfig.rdsPort}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* ============================================================== */}
             {/* MODALS                                                         */}

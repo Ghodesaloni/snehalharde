@@ -26,6 +26,7 @@ import Dashboard from "@/pages/dashboard/Dashboard";
 import Jobs from "@/pages/dashboard/job";
 import Resumes from "@/pages/dashboard/Resume";
 import Candidates from "@/pages/dashboard/candidates";
+import Interviewee from "@/pages/dashboard/Interviewee";
 import Interviews from "@/pages/dashboard/interview";
 import EmailCenter from "@/pages/dashboard/emailcenter";
 import CalendarPage from "@/pages/dashboard/calenderpage";
@@ -97,6 +98,8 @@ function App() {
             <Route path="jobs" element={<Jobs />} />
             <Route path="resumes" element={<Resumes />} />
             <Route path="candidates" element={<Candidates />} />
+            <Route path="interviewee" element={<Navigate to="/app/interviews?tab=interviewee" replace />} />
+            <Route path="interviewees" element={<Navigate to="/app/interviews?tab=interviewee" replace />} />
             <Route path="interviews" element={<Interviews />} />
             <Route path="email" element={<EmailCenter />} />
             <Route path="calendar" element={<CalendarPage />} />
