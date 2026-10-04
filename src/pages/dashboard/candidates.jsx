@@ -62,7 +62,21 @@ const Candidates = () => {
     const [statusFilter, setStatusFilter] = useState(statusQueryParam || "All");
     const [jobFilter, setJobFilter] = useState(jobQueryParam);
     const [searchQuery, setSearchQuery] = useState(searchQueryParam);
-    const [pageSize, setPageSize] = useState(5);
+    const [preferences, setPreferences] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+        } catch {
+            return {};
+        }
+    });
+    const [pageSize, setPageSize] = useState(() => {
+        try {
+            const prefs = JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+            return Number(prefs.candidatesPerPage) || 10;
+        } catch {
+            return 10;
+        }
+    });
     const [showFilterModal, setShowFilterModal] = useState(false);
 
     // Expanded candidate accordion / downward drawer state
@@ -179,9 +193,38 @@ const Candidates = () => {
         const handleSync = () => {
             fetchCandidates();
         };
+
+        const handlePrefUpdate = (e) => {
+            const prefs = e.detail || JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+            setPreferences(prefs);
+            if (prefs.candidatesPerPage) {
+                setPageSize(Number(prefs.candidatesPerPage) || 10);
+            }
+        };
+
         window.addEventListener("avahire_candidates_updated", handleSync);
-        return () => window.removeEventListener("avahire_candidates_updated", handleSync);
-    }, []);
+        window.addEventListener("avahire_preferences_updated", handlePrefUpdate);
+
+        // Auto Refresh Interval
+        let refreshTimer = null;
+        const autoRefreshPref = preferences.autoRefresh || "Every 5 minutes";
+        let intervalMs = 0;
+        if (autoRefreshPref === "Every 1 minute") intervalMs = 60000;
+        else if (autoRefreshPref === "Every 5 minutes") intervalMs = 300000;
+        else if (autoRefreshPref === "Every 15 minutes") intervalMs = 900000;
+
+        if (intervalMs > 0) {
+            refreshTimer = setInterval(() => {
+                fetchCandidates();
+            }, intervalMs);
+        }
+
+        return () => {
+            window.removeEventListener("avahire_candidates_updated", handleSync);
+            window.removeEventListener("avahire_preferences_updated", handlePrefUpdate);
+            if (refreshTimer) clearInterval(refreshTimer);
+        };
+    }, [preferences.autoRefresh]);
 
     const getCandidateInterview = (candidate) => {
         if (!candidate) return null;
@@ -554,15 +597,21 @@ const Candidates = () => {
                                 {/* Candidate Header / Summary Row */}
                                 <div
                                     onClick={() => toggleExpandCandidate(candidate.id)}
-                                    className="p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6 cursor-pointer hover:bg-slate-50/40 transition-colors"
+                                    className={`${preferences.compactView ? "p-4 sm:p-4.5" : "p-5 sm:p-6"} flex flex-col lg:flex-row lg:items-center justify-between gap-6 cursor-pointer hover:bg-slate-50/40 transition-colors`}
                                 >
                                     {/* Column 1: Candidate Avatar & Contact Info */}
                                     <div className="flex items-center gap-4 min-w-[240px]">
-                                        <img
-                                            src={candidate.avatar}
-                                            alt={candidate.name}
-                                            className="w-14 h-14 rounded-full object-cover border border-slate-200 shrink-0 shadow-xs"
-                                        />
+                                        {preferences.showAvatars !== false ? (
+                                            <img
+                                                src={candidate.avatar}
+                                                alt={candidate.name}
+                                                className="w-14 h-14 rounded-full object-cover border border-slate-200 shrink-0 shadow-xs"
+                                            />
+                                        ) : (
+                                            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-xs">
+                                                {candidate.name?.slice(0, 2)?.toUpperCase() || "CA"}
+                                            </div>
+                                        )}
                                         <div className="space-y-1">
                                             <div className="flex items-center gap-2">
                                                 <h3 className="text-base font-bold text-slate-900 leading-snug">

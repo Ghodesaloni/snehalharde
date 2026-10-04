@@ -45,6 +45,21 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    // Validate Phone Number: must be a 10-digit integer only (no alphabets, decimals, negative signs, or special characters)
+    const rawPhone = String(phone || "").trim();
+    if (!rawPhone) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number is required and must be a 10-digit integer.",
+      });
+    }
+    if (!/^\d{10}$/.test(rawPhone)) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number must be a 10-digit integer only (no alphabets, decimals, negative numbers, or special characters).",
+      });
+    }
+
     // Enforce password validation rules
     if (!password || typeof password !== "string") {
       return res.status(400).json({
@@ -72,7 +87,7 @@ router.post("/register", async (req, res) => {
       company: company ? company.trim() : "AvaHire",
       website: website ? website.trim() : "",
       designation: designation ? designation.trim() : "HR Administrator",
-      phone: phone ? phone.trim() : "",
+      phone: rawPhone,
       isVerified: true,
     });
 

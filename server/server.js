@@ -101,6 +101,11 @@ process.on("uncaughtException", (err) => {
   console.warn("Uncaught Exception:", err);
 });
 
+const automatedEmailService = require("./services/automatedEmailService");
+
+// Start 1-Hour Interview Reminder Background Scheduler
+automatedEmailService.startReminderScheduler();
+
 if (require.main === module) {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`AvaHire HR Portal server listening on port ${PORT}`);

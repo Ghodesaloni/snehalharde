@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import AvaHireLogo from "@/components/AvaHireLogo";
@@ -41,7 +41,51 @@ const DashboardLayout = () => {
     const [notificationFilter, setNotificationFilter] = useState("all");
 
     const [globalSearch, setGlobalSearch] = useState("");
-    const user = JSON.parse(localStorage.getItem("avahire_user") || "{}");
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("avahire_user") || "{}");
+        } catch {
+            return {};
+        }
+    });
+
+    // Theme & Profile sync
+    useEffect(() => {
+        // Initialize Theme
+        const storedTheme = localStorage.getItem("avahire_theme");
+        const prefs = JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+        if (storedTheme === "dark" || prefs.darkMode) {
+            document.documentElement.classList.add("dark");
+        } else if (storedTheme === "light") {
+            document.documentElement.classList.remove("dark");
+        }
+
+        const handleThemeChanged = (e) => {
+            if (e.detail === "dark") {
+                document.documentElement.classList.add("dark");
+            } else {
+                document.documentElement.classList.remove("dark");
+            }
+        };
+
+        const handleProfileUpdated = (e) => {
+            if (e.detail) {
+                setUser(e.detail);
+            } else {
+                try {
+                    setUser(JSON.parse(localStorage.getItem("avahire_user") || "{}"));
+                } catch { }
+            }
+        };
+
+        window.addEventListener("avahire_theme_changed", handleThemeChanged);
+        window.addEventListener("avahire_user_updated", handleProfileUpdated);
+
+        return () => {
+            window.removeEventListener("avahire_theme_changed", handleThemeChanged);
+            window.removeEventListener("avahire_user_updated", handleProfileUpdated);
+        };
+    }, []);
 
     const handleGlobalSearch = (e) => {
         if (e.key === "Enter" && globalSearch.trim()) {

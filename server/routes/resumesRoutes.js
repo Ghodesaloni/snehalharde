@@ -8,6 +8,7 @@ const awsService = require("../services/awsService");
 const { analyzeResumeAgainstJd } = require("../services/resumeAnalysisService");
 const { parseResume } = require("../services/resumeParserService");
 const { ALL_DOMAINS } = require("../services/domainClassifier");
+const automatedEmailService = require("../services/automatedEmailService");
 
 const ALLOWED_RESUME_EXTENSIONS = [".pdf", ".docx", ".doc", ".txt", ".rtf"];
 const ALLOWED_RESUME_MIMES = [
@@ -217,6 +218,13 @@ router.post("/upload-and-screen", handleUpload, async (req, res) => {
       s3Key: s3Metadata?.key || null,
       s3Bucket: s3Metadata?.bucket || null
     });
+
+    // Automated Email Trigger: Candidate Shortlisted
+    if (candidateRecord && candidateRecord.status === "Shortlisted") {
+      automatedEmailService.sendCandidateShortlistedEmail({ candidate: candidateRecord, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Upload screen shortlist email notice:", err.message);
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -464,20 +472,31 @@ router.post("/", (req, res) => {
 });
 
 // PUT /api/resumes/:id - update resume
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const updated = resumesDb.update(req.params.id, req.body);
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
+
+    if (req.body.status === "Shortlisted") {
+      automatedEmailService.sendCandidateShortlistedEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Shortlist email notice:", err.message);
+      });
+    } else if (req.body.status === "Selected" || req.body.status === "Hired") {
+      automatedEmailService.sendCongratulationsEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Congratulations email notice:", err.message);
+      });
+    }
+
     res.json({ success: true, data: updated, message: "Candidate updated successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PATCH /api/resumes/:id/status - update status (e.g. Shortlisted, Rejected, Hired)
-router.patch("/:id/status", (req, res) => {
+// PATCH /api/resumes/:id/status - update status (e.g. Shortlisted, Rejected, Hired, Selected)
+router.patch("/:id/status", async (req, res) => {
   try {
     const { status } = req.body;
     if (!status) {
@@ -487,6 +506,18 @@ router.patch("/:id/status", (req, res) => {
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate resume not found" });
     }
+
+    // Trigger Automated Email System
+    if (status === "Shortlisted") {
+      automatedEmailService.sendCandidateShortlistedEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Shortlist email notice:", err.message);
+      });
+    } else if (status === "Selected" || status === "Hired") {
+      automatedEmailService.sendCongratulationsEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Congratulations email notice:", err.message);
+      });
+    }
+
     res.json({ success: true, data: updated, message: `Status updated to ${status}` });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

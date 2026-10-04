@@ -110,27 +110,7 @@ const Register = () => {
     }
   };
 
-  // Strict Password Rules Definition
-  const passwordRules = [
-    { id: "length", label: "At least 8 characters", test: (p) => (p || "").length >= 8 },
-    { id: "uppercase", label: "At least 1 uppercase letter (A-Z)", test: (p) => /[A-Z]/.test(p || "") },
-    { id: "lowercase", label: "At least 1 lowercase letter (a-z)", test: (p) => /[a-z]/.test(p || "") },
-    { id: "number", label: "At least 1 number (0-9)", test: (p) => /[0-9]/.test(p || "") },
-    { id: "special", label: "At least 1 special symbol (!@#$%^&*)", test: (p) => /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(p || "") },
-  ];
-
-  const passChecks = passwordRules.map((rule) => ({
-    ...rule,
-    met: rule.test(form.password),
-  }));
-
-  const allRulesMet = passChecks.every((r) => r.met);
   const passwordsMatch = Boolean(form.password) && form.password === form.confirmPassword;
-  const rulesMetCount = passChecks.filter((r) => r.met).length;
-
-  const strengthLabel =
-    rulesMetCount <= 2 ? "Weak" :
-    rulesMetCount <= 4 ? "Fair" : "Strong";
 
   const submit = async (e) => {
     e.preventDefault();
@@ -146,9 +126,8 @@ const Register = () => {
       return;
     }
 
-    if (!allRulesMet) {
-      const firstUnmet = passChecks.find((r) => !r.met);
-      toast.error(`Password requirement not met: ${firstUnmet?.label || "Must satisfy all strict rules"}`);
+    if (form.password.length < 6) {
+      toast.error("Password must be at least 6 characters long");
       return;
     }
 
@@ -412,7 +391,7 @@ const Register = () => {
                 </div>
               </div>
 
-              {/* Strict Password Block */}
+              {/* Password Block */}
               <div className="mt-6 pt-5 border-t border-slate-200" id="reg-password-section">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
@@ -421,25 +400,9 @@ const Register = () => {
                     </div>
                     <div>
                       <h3 className="text-sm font-bold text-slate-900">Account Password</h3>
-                      <p className="text-xs text-slate-500">Strict enterprise rules apply</p>
+                      <p className="text-xs text-slate-500">Create a secure password</p>
                     </div>
                   </div>
-                  {form.password && (
-                    <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border border-slate-200 bg-slate-50">
-                      <span className="text-slate-500">Strength:</span>
-                      <span
-                        className={
-                          rulesMetCount <= 2
-                            ? "text-red-600 font-bold"
-                            : rulesMetCount <= 4
-                            ? "text-amber-600 font-bold"
-                            : "text-emerald-600 font-bold"
-                        }
-                      >
-                        {strengthLabel}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -455,7 +418,7 @@ const Register = () => {
                         type={showPassword ? "text" : "password"}
                         value={form.password}
                         onChange={set("password")}
-                        placeholder="Create a strong password"
+                        placeholder="Enter password (min 6 characters)"
                         className="w-full pl-10 pr-10 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100 text-sm"
                         required
                       />
@@ -470,59 +433,6 @@ const Register = () => {
                       </button>
                     </div>
                   </div>
-
-                  {/* Visual Strength Progress Bar */}
-                  {form.password.length > 0 && (
-                    <div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex gap-1">
-                        <div
-                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                            rulesMetCount >= 1
-                              ? rulesMetCount <= 2
-                                ? "bg-red-500"
-                                : rulesMetCount <= 4
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                              : "bg-slate-200"
-                          }`}
-                        />
-                        <div
-                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                            rulesMetCount >= 2
-                              ? rulesMetCount <= 2
-                                ? "bg-red-500"
-                                : rulesMetCount <= 4
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                              : "bg-slate-200"
-                          }`}
-                        />
-                        <div
-                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                            rulesMetCount >= 3
-                              ? rulesMetCount <= 4
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                              : "bg-slate-200"
-                          }`}
-                        />
-                        <div
-                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                            rulesMetCount >= 4
-                              ? rulesMetCount <= 4
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
-                              : "bg-slate-200"
-                          }`}
-                        />
-                        <div
-                          className={`h-full flex-1 rounded-full transition-all duration-300 ${
-                            rulesMetCount >= 5 ? "bg-emerald-500" : "bg-slate-200"
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {/* Confirm Password */}
                   <div>
@@ -570,37 +480,6 @@ const Register = () => {
                         )}
                       </div>
                     )}
-                  </div>
-
-                  {/* Strict Rules Checklist */}
-                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
-                      <span>Strict Password Rules</span>
-                      <span className={allRulesMet ? "text-emerald-600 font-bold" : "text-slate-500"}>
-                        {rulesMetCount}/5 rules met
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                      {passChecks.map((rule) => (
-                        <div
-                          key={rule.id}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors ${
-                            rule.met
-                              ? "bg-emerald-50 text-emerald-800 font-medium border border-emerald-200/60"
-                              : "text-slate-500 bg-white/60 border border-slate-200/50"
-                          }`}
-                        >
-                          {rule.met ? (
-                            <Check size={13} className="text-emerald-600 shrink-0 font-bold" />
-                          ) : (
-                            <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0 flex items-center justify-center text-[9px] text-slate-400">
-                              •
-                            </div>
-                          )}
-                          <span className="truncate">{rule.label}</span>
-                        </div>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>

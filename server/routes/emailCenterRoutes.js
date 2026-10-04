@@ -86,5 +86,46 @@ router.post("/send", async (req, res) => {
   }
 });
 
+const automatedEmailService = require("../services/automatedEmailService");
+
+// GET /api/emails/automated-logs - delivery history for automated emails
+router.get("/automated-logs", (_req, res) => {
+  try {
+    const logs = automatedEmailService.getAutomatedEmailLogs();
+    res.json({ success: true, count: logs.length, data: logs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/emails/trigger-automated - manually or programmatically invoke an automated email trigger
+router.post("/trigger-automated", async (req, res) => {
+  try {
+    const { triggerType, candidate, interview, hrEmail, hrName, company, jobTitle } = req.body;
+    let result = null;
+
+    switch (triggerType) {
+      case "candidate_shortlisted":
+        result = await automatedEmailService.sendCandidateShortlistedEmail({ candidate, hrEmail, hrName, company, jobTitle, req });
+        break;
+      case "interview_scheduled":
+        result = await automatedEmailService.sendInterviewScheduledEmail({ interview, hrEmail, hrName, company, req });
+        break;
+      case "interview_reminder_1h":
+        result = await automatedEmailService.sendInterviewReminderEmail({ interview, hrEmail, hrName, company, req });
+        break;
+      case "candidate_congratulations":
+        result = await automatedEmailService.sendCongratulationsEmail({ candidate, hrEmail, hrName, company, jobTitle, req });
+        break;
+      default:
+        return res.status(400).json({ success: false, error: `Invalid triggerType: ${triggerType}. Expected one of: candidate_shortlisted, interview_scheduled, interview_reminder_1h, candidate_congratulations` });
+    }
+
+    res.json({ success: true, data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 module.exports = router;
 

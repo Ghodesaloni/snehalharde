@@ -323,12 +323,27 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    // Validate Phone Number: must be a 10-digit integer only (no alphabets, decimals, negative signs, or special characters)
+    const rawPhone = String(phone || "").trim();
+    if (!rawPhone) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number is required and must be a 10-digit integer.",
+      });
+    }
+    if (!/^\d{10}$/.test(rawPhone)) {
+      return res.status(400).json({
+        success: false,
+        error: "Phone number must be a 10-digit integer only (no alphabets, decimals, negative numbers, or special characters).",
+      });
+    }
+
     const uid = "usr_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
     const displayName = (fullName || name || cleanEmail.split("@")[0]).trim();
     const userRole = role || "hr_admin";
     const userCompany = company || "TechCorp Solutions";
     const userDesignation = designation || "HR Manager";
-    const userPhone = phone || "+91 98000 00000";
+    const userPhone = rawPhone;
     const hashedPassword = hashPassword(password);
     const now = new Date().toISOString();
 

@@ -33,12 +33,14 @@ import {
 import { toast } from "sonner";
 import { Room, RoomEvent, Track, ConnectionState } from "livekit-client";
 import { getInterviewByCodeOrId, removeInterview } from "@/utils/interviewStore";
+import { useInterviewSettings } from "@/utils/interviewSettingsStore";
 import { candidatesApi, interviewsApi } from "@/services/api";
 import AvaHireLogo from "@/components/AvaHireLogo";
 
 const CandidateLiveRoom = () => {
     const { code } = useParams();
     const navigate = useNavigate();
+    const { settings } = useInterviewSettings();
 
     const [interviewData, setInterviewData] = useState(() => {
         const found = getInterviewByCodeOrId(code);
@@ -677,14 +679,14 @@ const CandidateLiveRoom = () => {
         };
 
         const handleVisibilityChange = () => {
-            if (document.hidden && connectionStatus === "connected") {
+            if (document.hidden && connectionStatus === "connected" && settings.enableProctoring !== false && settings.tabSwitchDetection !== false) {
                 toast.warning("Tab Switch Detected: Please remain on the active interview screen.");
                 sendViolation("tab_switch", "Candidate switched away from the active interview tab.");
             }
         };
 
         const handleWindowBlur = () => {
-            if (connectionStatus === "connected") {
+            if (connectionStatus === "connected" && settings.enableProctoring !== false && settings.tabSwitchDetection !== false) {
                 sendViolation("window_blur", "Candidate switched active window or application focus.");
             }
         };
@@ -696,7 +698,7 @@ const CandidateLiveRoom = () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("blur", handleWindowBlur);
         };
-    }, [connectionStatus]);
+    }, [connectionStatus, settings.enableProctoring, settings.tabSwitchDetection]);
 
     // -------------------------------------------------------------
     // FULL-SCREEN INTERVIEW MODE (Anti-Distraction & Proctoring)

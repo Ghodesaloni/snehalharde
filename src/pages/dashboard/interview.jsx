@@ -47,8 +47,24 @@ const Interviews = () => {
     const [selectedInterviewForView, setSelectedInterviewForView] = useState(null);
     const [selectedCandidateForSchedule, setSelectedCandidateForSchedule] = useState(null);
 
+    // App Preferences & Interview Settings
+    const [preferences, setPreferences] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+        } catch {
+            return {};
+        }
+    });
+
     // Pagination
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(() => {
+        try {
+            const prefs = JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+            return Number(prefs.candidatesPerPage) || 10;
+        } catch {
+            return 10;
+        }
+    });
     const [currentPage, setCurrentPage] = useState(1);
 
     // Form state for scheduling / generating interview link
@@ -64,7 +80,14 @@ const Interviews = () => {
         return d.toISOString().split("T")[0];
     });
     const [newTime, setNewTime] = useState("11:00");
-    const [newValidity, setNewValidity] = useState("45 Minutes");
+    const [newValidity, setNewValidity] = useState(() => {
+        try {
+            const ivSettings = JSON.parse(localStorage.getItem("avahire_interview_settings") || "{}");
+            return ivSettings.duration || "30 Minutes";
+        } catch {
+            return "30 Minutes";
+        }
+    });
 
     const loadData = async () => {
         setLoading(true);
@@ -102,13 +125,49 @@ const Interviews = () => {
         const handleSync = () => {
             loadData();
         };
+
+        const handlePrefUpdate = (e) => {
+            const prefs = e.detail || JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+            setPreferences(prefs);
+            if (prefs.candidatesPerPage) {
+                setPageSize(Number(prefs.candidatesPerPage) || 10);
+            }
+        };
+
+        const handleIvSettingsUpdate = (e) => {
+            const ivSettings = e.detail || JSON.parse(localStorage.getItem("avahire_interview_settings") || "{}");
+            if (ivSettings.duration) {
+                setNewValidity(ivSettings.duration);
+            }
+        };
+
         window.addEventListener("avahire_interviews_updated", handleSync);
         window.addEventListener("avahire_candidates_updated", handleSync);
+        window.addEventListener("avahire_preferences_updated", handlePrefUpdate);
+        window.addEventListener("avahire_interview_settings_updated", handleIvSettingsUpdate);
+
+        // Auto Refresh
+        let refreshTimer = null;
+        const autoRefreshPref = preferences.autoRefresh || "Every 5 minutes";
+        let intervalMs = 0;
+        if (autoRefreshPref === "Every 1 minute") intervalMs = 60000;
+        else if (autoRefreshPref === "Every 5 minutes") intervalMs = 300000;
+        else if (autoRefreshPref === "Every 15 minutes") intervalMs = 900000;
+
+        if (intervalMs > 0) {
+            refreshTimer = setInterval(() => {
+                loadData();
+            }, intervalMs);
+        }
+
         return () => {
             window.removeEventListener("avahire_interviews_updated", handleSync);
             window.removeEventListener("avahire_candidates_updated", handleSync);
+            window.removeEventListener("avahire_preferences_updated", handlePrefUpdate);
+            window.removeEventListener("avahire_interview_settings_updated", handleIvSettingsUpdate);
+            if (refreshTimer) clearInterval(refreshTimer);
         };
-    }, []);
+    }, [preferences.autoRefresh]);
 
     // Helper to find interview session for a candidate
     const getCandidateInterview = (cand) => {
@@ -528,13 +587,19 @@ const Interviews = () => {
                                             className="hover:bg-slate-50/60 transition-colors group"
                                         >
                                             {/* Column 1: Candidate Info */}
-                                            <td className="py-4 px-6">
+                                            <td className={`${preferences.compactView ? "py-2.5" : "py-4"} px-6`}>
                                                 <div className="flex items-center gap-3.5">
-                                                    <img
-                                                        src={cand.avatar}
-                                                        alt={cand.name}
-                                                        className="w-10 h-10 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-2xs"
-                                                    />
+                                                    {preferences.showAvatars !== false ? (
+                                                        <img
+                                                            src={cand.avatar}
+                                                            alt={cand.name}
+                                                            className="w-10 h-10 rounded-2xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-2xs">
+                                                            {cand.name?.slice(0, 2)?.toUpperCase() || "CA"}
+                                                        </div>
+                                                    )}
                                                     <div className="space-y-0.5">
                                                         <div className="font-bold text-slate-900 text-sm flex items-center gap-2">
                                                             <span>{cand.name}</span>
@@ -696,13 +761,19 @@ const Interviews = () => {
                                                 className="hover:bg-slate-50/60 transition-colors group"
                                             >
                                                 {/* Column 1: Candidate */}
-                                                <td className="py-4 px-6">
+                                                <td className={`${preferences.compactView ? "py-2.5" : "py-4"} px-6`}>
                                                     <div className="flex items-center gap-3">
-                                                        <img
-                                                            src={iv.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
-                                                            alt={iv.name}
-                                                            className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
-                                                        />
+                                                        {preferences.showAvatars !== false ? (
+                                                            <img
+                                                                src={iv.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=150"}
+                                                                alt={iv.name}
+                                                                className="w-10 h-10 rounded-full object-cover border border-slate-200 shrink-0"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                                                {iv.name?.slice(0, 2)?.toUpperCase() || "IV"}
+                                                            </div>
+                                                        )}
                                                         <div className="space-y-0.5">
                                                             <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                                                                 <span>{iv.name}</span>
@@ -721,12 +792,12 @@ const Interviews = () => {
                                                 </td>
 
                                                 {/* Column 2: Job Role */}
-                                                <td className="py-4 px-6 text-slate-700 font-semibold">
+                                                <td className={`${preferences.compactView ? "py-2.5" : "py-4"} px-6 text-slate-700 font-semibold`}>
                                                     {iv.role}
                                                 </td>
 
                                                 {/* Column 3: Date & Time */}
-                                                <td className="py-4 px-6 text-slate-600">
+                                                <td className={`${preferences.compactView ? "py-2.5" : "py-4"} px-6 text-slate-600`}>
                                                     <div className="space-y-1">
                                                         <div className="flex items-center gap-1.5 font-semibold text-slate-800">
                                                             <Calendar className="w-3.5 h-3.5 text-violet-600 shrink-0" />
@@ -740,7 +811,7 @@ const Interviews = () => {
                                                 </td>
 
                                                 {/* Column 4: Candidate Portal Link */}
-                                                <td className="py-4 px-6">
+                                                <td className={`${preferences.compactView ? "py-2.5" : "py-4"} px-6`}>
                                                     <div className="flex items-center gap-2">
                                                         <a
                                                             href={`/i/${iv.linkCode}`}

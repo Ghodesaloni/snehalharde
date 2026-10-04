@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const interviewsDb = require("../db/interviewsDb");
+const automatedEmailService = require("../services/automatedEmailService");
 
 function parseDateTime(dateStr, timeStr) {
   if (!dateStr) return null;
@@ -111,6 +112,12 @@ router.post("/", async (req, res) => {
       createdBy: authorEmail,
       userEmail: authorEmail
     });
+
+    // Automated Email Trigger: Interview Scheduled (Link generated)
+    automatedEmailService.sendInterviewScheduledEmail({ interview: newInterview, req }).catch(err => {
+      console.warn("[AUTOMATED-EMAIL] Interview scheduled email notice:", err.message);
+    });
+
     res.status(201).json({ success: true, data: newInterview, message: "Interview scheduled successfully" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

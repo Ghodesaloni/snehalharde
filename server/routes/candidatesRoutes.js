@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const candidatesDb = require("../db/candidatesDb");
+const automatedEmailService = require("../services/automatedEmailService");
 
 // GET /api/candidates - list candidate evaluations
 router.get("/", async (req, res) => {
@@ -36,6 +37,17 @@ router.post("/", async (req, res) => {
       createdBy: authorEmail,
       userEmail: authorEmail
     });
+
+    if (newCand && newCand.status === "Shortlisted") {
+      automatedEmailService.sendCandidateShortlistedEmail({ candidate: newCand, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Shortlist email notice:", err.message);
+      });
+    } else if (newCand && (newCand.status === "Selected" || newCand.status === "Hired")) {
+      automatedEmailService.sendCongratulationsEmail({ candidate: newCand, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Congratulations email notice:", err.message);
+      });
+    }
+
     res.status(201).json({ success: true, data: newCand, message: "Candidate evaluation created" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -49,6 +61,18 @@ router.put("/:id", async (req, res) => {
     if (!updated) {
       return res.status(404).json({ success: false, error: "Candidate not found" });
     }
+
+    // Trigger Automated Email System
+    if (req.body.status === "Shortlisted" || updated.status === "Shortlisted") {
+      automatedEmailService.sendCandidateShortlistedEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Shortlist email notice:", err.message);
+      });
+    } else if (req.body.status === "Selected" || req.body.status === "Hired" || updated.status === "Selected" || updated.status === "Hired") {
+      automatedEmailService.sendCongratulationsEmail({ candidate: updated, req }).catch(err => {
+        console.warn("[AUTOMATED-EMAIL] Congratulations email notice:", err.message);
+      });
+    }
+
     res.json({ success: true, data: updated, message: "Candidate evaluation updated" });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

@@ -279,36 +279,71 @@ const Settings = () => {
 
     // Handle Toggles & Selects
     const handleGeneralToggle = (key) => {
-        setPreferences((prev) => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+        setPreferences((prev) => {
+            const updated = {
+                ...prev,
+                [key]: !prev[key]
+            };
+            localStorage.setItem("avahire_settings_preferences", JSON.stringify(updated));
+            if (key === "darkMode") {
+                const isDark = updated.darkMode;
+                localStorage.setItem("avahire_theme", isDark ? "dark" : "light");
+                if (isDark) {
+                    document.documentElement.classList.add("dark");
+                } else {
+                    document.documentElement.classList.remove("dark");
+                }
+                window.dispatchEvent(new CustomEvent("avahire_theme_changed", { detail: isDark ? "dark" : "light" }));
+            }
+            window.dispatchEvent(new CustomEvent("avahire_preferences_updated", { detail: updated }));
+            settingsApi.updatePreferences(updated).catch(() => {});
+            return updated;
+        });
     };
 
     const handleGeneralSelect = (key, value) => {
-        setPreferences((prev) => ({
-            ...prev,
-            [key]: value
-        }));
+        setPreferences((prev) => {
+            const updated = {
+                ...prev,
+                [key]: value
+            };
+            localStorage.setItem("avahire_settings_preferences", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("avahire_preferences_updated", { detail: updated }));
+            settingsApi.updatePreferences(updated).catch(() => {});
+            return updated;
+        });
     };
 
     const handleInterviewToggle = (key) => {
-        setInterviewSettings((prev) => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+        setInterviewSettings((prev) => {
+            const updated = {
+                ...prev,
+                [key]: !prev[key]
+            };
+            localStorage.setItem("avahire_interview_settings", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: updated }));
+            settingsApi.updateInterviewSettings(updated).catch(() => {});
+            return updated;
+        });
     };
 
     const handleInterviewSelect = (key, value) => {
-        setInterviewSettings((prev) => ({
-            ...prev,
-            [key]: value
-        }));
+        setInterviewSettings((prev) => {
+            const updated = {
+                ...prev,
+                [key]: value
+            };
+            localStorage.setItem("avahire_interview_settings", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("avahire_interview_settings_updated", { detail: updated }));
+            settingsApi.updateInterviewSettings(updated).catch(() => {});
+            return updated;
+        });
     };
 
     // Save Handlers
     const saveGeneralSettings = async () => {
         localStorage.setItem("avahire_settings_preferences", JSON.stringify(preferences));
+        window.dispatchEvent(new CustomEvent("avahire_preferences_updated", { detail: preferences }));
         toast.success("General settings saved successfully!");
         try {
             await settingsApi.updatePreferences(preferences);
@@ -340,6 +375,7 @@ const Settings = () => {
                 const updated = { ...currentUser, ...profileForm };
                 setCurrentUser(updated);
                 localStorage.setItem("avahire_user", JSON.stringify(updated));
+                window.dispatchEvent(new CustomEvent("avahire_user_updated", { detail: updated }));
                 toast.success("HR profile details updated successfully!");
             } else {
                 toast.error(res.error || "Failed to update profile");

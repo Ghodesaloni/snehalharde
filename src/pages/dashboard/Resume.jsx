@@ -129,7 +129,21 @@ const Resumes = () => {
     const [schedRound, setSchedRound] = useState("Technical Screening Round (45 mins)");
     const [schedDate, setSchedDate] = useState("");
     const [schedTime, setSchedTime] = useState("");
-    const [schedDuration, setSchedDuration] = useState("45 Minutes");
+    const [schedDuration, setSchedDuration] = useState(() => {
+        try {
+            const ivSettings = JSON.parse(localStorage.getItem("avahire_interview_settings") || "{}");
+            return ivSettings.duration || "45 Minutes";
+        } catch {
+            return "45 Minutes";
+        }
+    });
+    const [preferences, setPreferences] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+        } catch {
+            return {};
+        }
+    });
     const [generatedLinkData, setGeneratedLinkData] = useState(null);
     const [copiedInterviewLink, setCopiedInterviewLink] = useState(false);
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -140,6 +154,28 @@ const Resumes = () => {
     const [isFieldDropdownOpen, setIsFieldDropdownOpen] = useState(false);
     const [isJobDropdownOpen, setIsJobDropdownOpen] = useState(false);
     const [interviews, setInterviews] = useState([]);
+
+    // Preferences & Interview Settings sync
+    useEffect(() => {
+        const handlePrefUpdate = (e) => {
+            const prefs = e.detail || JSON.parse(localStorage.getItem("avahire_settings_preferences") || "{}");
+            setPreferences(prefs);
+        };
+        const handleIvSettingsUpdate = (e) => {
+            const ivSettings = e.detail || JSON.parse(localStorage.getItem("avahire_interview_settings") || "{}");
+            if (ivSettings.duration) {
+                setSchedDuration(ivSettings.duration);
+            }
+        };
+
+        window.addEventListener("avahire_preferences_updated", handlePrefUpdate);
+        window.addEventListener("avahire_interview_settings_updated", handleIvSettingsUpdate);
+
+        return () => {
+            window.removeEventListener("avahire_preferences_updated", handlePrefUpdate);
+            window.removeEventListener("avahire_interview_settings_updated", handleIvSettingsUpdate);
+        };
+    }, []);
 
     // JD Screening States
     const [jobs, setJobs] = useState([]);
@@ -934,9 +970,9 @@ const Resumes = () => {
                                             
 
                                             {/* Candidate Profile */}
-                                            <td className="py-3.5 px-4">
+                                            <td className={`${preferences.compactView ? "py-2 px-3" : "py-3.5 px-4"}`}>
                                                 <div className="flex items-center gap-3">
-                                                    {candidate.avatar ? (
+                                                    {preferences.showAvatars !== false && candidate.avatar ? (
                                                         <img
                                                             src={candidate.avatar}
                                                             alt={candidate.name}
