@@ -147,7 +147,14 @@ class CandidateSessionsDatabase {
       elapsedSeconds,
       transcripts,
       evaluationBreakdown,
-      completedAt: status === "Completed" ? new Date().toISOString() : null,
+      warning_count: data.warning_count !== undefined ? data.warning_count : (data.warningCount || 0),
+      warningCount: data.warning_count !== undefined ? data.warning_count : (data.warningCount || 0),
+      termination_reason: data.termination_reason || data.terminationReason || null,
+      terminationReason: data.termination_reason || data.terminationReason || null,
+      violations: data.violations || [],
+      proctoring_status: data.proctoring_status || data.proctoringStatus || (status === "Meeting Terminated" ? "Terminated" : "Clear"),
+      proctoringStatus: data.proctoring_status || data.proctoringStatus || (status === "Meeting Terminated" ? "Terminated" : "Clear"),
+      completedAt: (status === "Completed" || status === "Meeting Terminated") ? (data.completedAt || new Date().toISOString()) : null,
       updatedAt: new Date().toISOString()
     };
 
@@ -173,9 +180,10 @@ class CandidateSessionsDatabase {
           id, link_code, candidate_name, candidate_email, candidate_phone, role, company,
           status, system_check_status, overall_score, tech_depth_score, clarity_score,
           recommendation, elapsed_seconds, transcripts, evaluation_breakdown,
+          warning_count, termination_reason, violations, proctoring_status,
           completed_at, updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, NOW())
         ON CONFLICT (id) DO UPDATE SET
           link_code = EXCLUDED.link_code,
           candidate_name = EXCLUDED.candidate_name,
@@ -192,6 +200,10 @@ class CandidateSessionsDatabase {
           elapsed_seconds = EXCLUDED.elapsed_seconds,
           transcripts = EXCLUDED.transcripts,
           evaluation_breakdown = EXCLUDED.evaluation_breakdown,
+          warning_count = EXCLUDED.warning_count,
+          termination_reason = EXCLUDED.termination_reason,
+          violations = EXCLUDED.violations,
+          proctoring_status = EXCLUDED.proctoring_status,
           completed_at = EXCLUDED.completed_at,
           updated_at = NOW()
         RETURNING *;
@@ -214,7 +226,11 @@ class CandidateSessionsDatabase {
         elapsedSeconds,
         JSON.stringify(transcripts),
         JSON.stringify(evaluationBreakdown),
-        status === "Completed" ? new Date() : null
+        sessionObj.warning_count,
+        sessionObj.termination_reason,
+        JSON.stringify(sessionObj.violations),
+        sessionObj.proctoring_status,
+        (status === "Completed" || status === "Meeting Terminated") ? new Date() : null
       ];
 
       const res = await p.query(query, values);
@@ -247,6 +263,13 @@ class CandidateSessionsDatabase {
       elapsedSeconds: row.elapsed_seconds,
       transcripts: typeof row.transcripts === "string" ? JSON.parse(row.transcripts) : row.transcripts,
       evaluationBreakdown: typeof row.evaluation_breakdown === "string" ? JSON.parse(row.evaluation_breakdown) : row.evaluation_breakdown,
+      warning_count: Number(row.warning_count || 0),
+      warningCount: Number(row.warning_count || 0),
+      termination_reason: row.termination_reason || null,
+      terminationReason: row.termination_reason || null,
+      violations: typeof row.violations === "string" ? JSON.parse(row.violations) : (row.violations || []),
+      proctoring_status: row.proctoring_status || "Clear",
+      proctoringStatus: row.proctoring_status || "Clear",
       startedAt: row.started_at,
       completedAt: row.completed_at,
       createdAt: row.created_at,

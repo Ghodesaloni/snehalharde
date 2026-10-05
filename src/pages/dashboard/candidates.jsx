@@ -479,6 +479,9 @@ const Candidates = () => {
         if (status === "Rejected") {
             return "bg-rose-50 text-rose-600 border border-rose-200/80";
         }
+        if (status === "Meeting Terminated" || status === "Terminated") {
+            return "bg-rose-100 text-rose-800 border border-rose-300 font-bold";
+        }
         return "bg-amber-50 text-amber-700 border border-amber-200/80";
     };
 

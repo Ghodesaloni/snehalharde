@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
     Check,
     Sparkles,
@@ -12,7 +12,9 @@ import {
     Download,
     HelpCircle,
     X,
-    Lock
+    Lock,
+    AlertTriangle,
+    ShieldAlert
 } from "lucide-react";
 import { toast } from "sonner";
 import { getInterviewByCodeOrId } from "@/utils/interviewStore";
@@ -22,6 +24,10 @@ import AvaHireLogo from "@/components/AvaHireLogo";
 const CandidateThankYou = () => {
     const { code } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    
+    const urlStatus = searchParams.get("status") || "";
+    const urlReason = searchParams.get("reason") || "";
 
     const [interviewData, setInterviewData] = useState(() => {
         const found = getInterviewByCodeOrId(code);
@@ -31,7 +37,9 @@ const CandidateThankYou = () => {
             name: "Candidate",
             role: "Candidate Assessment",
             company: "AvaHire Recruiter",
-            linkCode: code || ""
+            linkCode: code || "",
+            status: urlStatus === "terminated" ? "Meeting Terminated" : "Under Review",
+            terminationReason: urlReason || ""
         };
     });
 
@@ -39,10 +47,17 @@ const CandidateThankYou = () => {
     const [referenceCode, setReferenceCode] = useState("");
     const [isSessionClosed, setIsSessionClosed] = useState(false);
 
+    const isTerminated = urlStatus === "terminated" || interviewData.status === "Meeting Terminated" || interviewData.proctoringStatus === "terminated";
+    const terminationReason = urlReason || interviewData.terminationReason || "Candidate switched tabs / integrity threshold reached";
+
     useEffect(() => {
         const found = getInterviewByCodeOrId(code);
         if (found) {
-            setInterviewData(found);
+            setInterviewData((prev) => ({
+                ...found,
+                status: urlStatus === "terminated" ? "Meeting Terminated" : (found.status || prev.status),
+                terminationReason: urlReason || found.terminationReason || prev.terminationReason
+            }));
         }
 
         // Also fetch live PostgreSQL portal session if available
@@ -54,7 +69,10 @@ const CandidateThankYou = () => {
                         name: session.candidateName || prev.name,
                         role: session.role || prev.role,
                         company: session.company || prev.company,
-                        score: session.overallScore || prev.score
+                        score: session.overallScore || prev.score,
+                        status: session.status || prev.status,
+                        proctoringStatus: session.proctoringStatus || prev.proctoringStatus,
+                        terminationReason: session.terminationReason || prev.terminationReason
                     }));
                 }
             }).catch(() => {});
@@ -151,9 +169,13 @@ const CandidateThankYou = () => {
                     <AvaHireLogo size="sm" variant="lightBg" />
                 </div>
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-full font-semibold">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span>Submission Recorded</span>
+                    <div className={`flex items-center gap-1.5 text-xs px-3.5 py-1.5 rounded-full font-semibold border ${
+                        isTerminated
+                            ? "text-rose-700 bg-rose-50 border-rose-200"
+                            : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                    }`}>
+                        <span className={`w-2 h-2 rounded-full ${isTerminated ? "bg-rose-500 animate-pulse" : "bg-emerald-500 animate-pulse"}`} />
+                        <span>{isTerminated ? "Meeting Terminated" : "Submission Recorded"}</span>
                     </div>
                     <button
                         onClick={handleCloseSession}
@@ -174,13 +196,21 @@ const CandidateThankYou = () => {
                     {/* Top Status & Heading */}
                     <div className="flex flex-col items-center text-center space-y-3">
                         
-                        {/* Purple Circular Checkmark Icon with Sparkles */}
+                        {/* Circular Icon */}
                         <div className="relative mb-2">
-                            <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 shadow-inner">
-                                <div className="w-11 h-11 rounded-full border-2 border-violet-600 flex items-center justify-center bg-violet-50">
-                                    <Check className="w-6 h-6 text-violet-700 stroke-[3]" />
+                            {isTerminated ? (
+                                <div className="w-16 h-16 rounded-full bg-rose-100 flex items-center justify-center text-rose-700 shadow-inner">
+                                    <div className="w-11 h-11 rounded-full border-2 border-rose-600 flex items-center justify-center bg-rose-50">
+                                        <ShieldAlert className="w-6 h-6 text-rose-700 stroke-[2.5]" />
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="w-16 h-16 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 shadow-inner">
+                                    <div className="w-11 h-11 rounded-full border-2 border-violet-600 flex items-center justify-center bg-violet-50">
+                                        <Check className="w-6 h-6 text-violet-700 stroke-[3]" />
+                                    </div>
+                                </div>
+                            )}
                             <span className="absolute -top-1 -right-1 text-violet-400">
                                 <Sparkles className="w-4 h-4" />
                             </span>
@@ -190,20 +220,39 @@ const CandidateThankYou = () => {
                         </div>
 
                         {/* Status Badge */}
-                        <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-violet-50 border border-violet-200 text-violet-700 text-xs font-bold tracking-wide">
-                            <Sparkles className="w-3.5 h-3.5 text-violet-600" />
-                            <span>Session Successfully Submitted</span>
+                        <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold tracking-wide border ${
+                            isTerminated
+                                ? "bg-rose-50 border-rose-200 text-rose-700"
+                                : "bg-violet-50 border-violet-200 text-violet-700"
+                        }`}>
+                            {isTerminated ? <ShieldAlert className="w-3.5 h-3.5 text-rose-600" /> : <Sparkles className="w-3.5 h-3.5 text-violet-600" />}
+                            <span>{isTerminated ? "Meeting Terminated" : "Session Successfully Submitted"}</span>
                         </div>
 
                         {/* Main Title */}
                         <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight pt-1">
-                            Thank You for Interviewing!
+                            {isTerminated ? "Interview Session Terminated" : "Thank You for Interviewing!"}
                         </h1>
 
                         <p className="text-sm sm:text-base text-slate-500 max-w-lg font-medium">
-                            Your video responses and transcript have been securely uploaded to the recruitment system.
+                            {isTerminated
+                                ? "This interview session was concluded in accordance with AvaHire Anti-Cheating and Proctoring Integrity rules."
+                                : "Your video responses and transcript have been securely uploaded to the recruitment system."}
                         </p>
                     </div>
+
+                    {/* Termination Reason Alert Box (If Terminated) */}
+                    {isTerminated && (
+                        <div className="bg-rose-50/90 rounded-2xl border border-rose-200 p-5 sm:p-6 space-y-2">
+                            <div className="flex items-center gap-2 text-rose-900 font-black text-sm sm:text-base">
+                                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                                <span>Policy Notice / Reason for Termination</span>
+                            </div>
+                            <p className="text-xs sm:text-sm text-rose-800 leading-relaxed pl-7 font-medium">
+                                {terminationReason}
+                            </p>
+                        </div>
+                    )}
 
                     {/* Confirmation Reference Box */}
                     <div className="bg-[#FAFBFD] rounded-2xl border border-slate-200/80 p-5 sm:p-7 space-y-5">
@@ -266,17 +315,17 @@ const CandidateThankYou = () => {
                                 </div>
                             </div>
 
-                            {/* Completion Timestamp */}
+                            {/* Status */}
                             <div className="flex items-start gap-3.5">
-                                <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isTerminated ? "bg-rose-100 text-rose-600" : "bg-violet-100 text-violet-600"}`}>
                                     <Calendar className="w-5 h-5 stroke-[2.2]" />
                                 </div>
                                 <div className="space-y-0.5">
                                     <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                        COMPLETION TIMESTAMP
+                                        SESSION STATUS
                                     </div>
-                                    <div className="text-sm sm:text-base font-black text-slate-900">
-                                        {timestamp || "Sep 2, 2026, 10:40 AM"}
+                                    <div className={`text-sm sm:text-base font-black ${isTerminated ? "text-rose-700" : "text-slate-900"}`}>
+                                        {isTerminated ? "Meeting Terminated" : "Submitted"}
                                     </div>
                                 </div>
                             </div>
@@ -291,7 +340,7 @@ const CandidateThankYou = () => {
                             <span>Next Steps & HR Review Process</span>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-600 leading-relaxed pl-7">
-                            The hiring team at <strong className="text-slate-900 font-bold">{interviewData.company || "TechNova Systems"}</strong> will review your interview responses. You will receive an update regarding your candidacy and next rounds via email within <strong className="text-violet-700 font-bold">2 to 3 business days</strong>.
+                            The hiring team at <strong className="text-slate-900 font-bold">{interviewData.company || "TechNova Systems"}</strong> will review the session audit log and candidate data. You will receive an update regarding your candidacy and next steps via email.
                         </p>
                     </div>
 

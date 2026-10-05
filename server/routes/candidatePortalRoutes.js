@@ -5,6 +5,7 @@ const candidatesDb = require("../db/candidatesDb");
 const interviewsDb = require("../db/interviewsDb");
 const resumesDb = require("../db/resumesDb");
 const settingsDb = require("../db/settingsDb");
+const proctoringDb = require("../db/proctoringDb");
 
 /**
  * Clean & normalize email for comparison
@@ -1085,6 +1086,243 @@ router.get("/hr-overview", async (req, res) => {
         averageScore: avgScore,
         recentActivity: allSessions.slice(0, 5)
       }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 10. POST /api/candidate-portal/proctoring/violation - Register proctoring violation, warning, or termination
+router.post("/proctoring/violation", async (req, res) => {
+  try {
+    const {
+      linkCode,
+      sessionId,
+      candidateEmail,
+      candidateName,
+      violationType,
+      details,
+      metadata
+    } = req.body;
+
+    const rawCode = (linkCode || "").replace(/^interview_/, "").trim();
+    const type = String(violationType || "").toLowerCase().trim();
+
+    // 1. Face visibility & lighting check (Non-terminating guidance notice)
+    if (type === "face_not_visible" || type === "poor_lighting" || type === "low_lighting") {
+      const recorded = await proctoringDb.recordViolation({
+        linkCode: rawCode,
+        sessionId,
+        candidateEmail,
+        candidateName,
+        violationType: type,
+        severity: "notice",
+        warningNumber: 0,
+        details: details || "Your face is not clearly visible. Please adjust your position or lighting.",
+        metadata
+      });
+
+      return res.json({
+        success: true,
+        action: "notice",
+        terminate: false,
+        warningCount: 0,
+        verbalPrompt: "Your face is not clearly visible. Please adjust your position or lighting.",
+        message: "Your face is not clearly visible. Please adjust your position or lighting.",
+        data: recorded
+      });
+    }
+
+    // 2. Tab switching / Window blur / Screen switch (Zero-tolerance immediate termination)
+    const zeroToleranceTypes = [
+      "tab_switch",
+      "tab_change",
+      "window_blur",
+      "window_change",
+      "window_switch",
+      "multiple_windows",
+      "split_screen",
+      "visibility_hidden",
+      "focus_lost",
+      "fullscreen_exit"
+    ];
+
+    if (zeroToleranceTypes.includes(type)) {
+      const terminationReason = details || (
+        type === "tab_switch" ? "Candidate switched browser tabs during live interview." :
+        type === "window_blur" ? "Candidate switched active window or application focus." :
+        type === "fullscreen_exit" ? "Candidate exited required full-screen mode." :
+        "Candidate changed screen focus or opened unauthorized windows."
+      );
+
+      const result = await proctoringDb.terminateSession({
+        linkCode: rawCode,
+        sessionId,
+        reason: terminationReason,
+        candidateName,
+        candidateEmail,
+        candidateRole: req.body.role || req.body.candidateRole || ""
+      });
+
+      return res.json({
+        success: true,
+        action: "terminate",
+        terminate: true,
+        status: "Meeting Terminated",
+        reason: terminationReason,
+        verbalPrompt: `An integrity policy violation occurred: ${terminationReason}. The interview is being terminated immediately.`,
+        message: `Meeting Terminated: ${terminationReason}`,
+        data: result
+      });
+    }
+
+    // 3. Multiple People / Multiple Voices (Max 3 Warnings -> Terminate on 3rd)
+    if (type === "multiple_people" || type === "multiple_voices") {
+      // Calculate current warning count for this linkCode
+      const prevCount = await proctoringDb.getWarningCount(rawCode);
+      const newWarningCount = prevCount + 1;
+
+      const violationLabel = type === "multiple_people" ? "Multiple people detected in webcam view" : "Multiple voices detected";
+
+      if (newWarningCount >= 3) {
+        // Automatic termination on 3rd warning!
+        const terminationReason = `Maximum warnings exceeded (3/3): ${violationLabel}.`;
+        const result = await proctoringDb.terminateSession({
+          linkCode: rawCode,
+          sessionId,
+          reason: terminationReason,
+          candidateName,
+          candidateEmail,
+          candidateRole: req.body.role || req.body.candidateRole || ""
+        });
+
+        return res.json({
+          success: true,
+          action: "terminate",
+          terminate: true,
+          status: "Meeting Terminated",
+          warningCount: 3,
+          maxWarnings: 3,
+          reason: terminationReason,
+          verbalPrompt: `You have received three integrity warnings for ${violationLabel.toLowerCase()}. The interview is being terminated immediately.`,
+          message: `Meeting Terminated: ${terminationReason}`,
+          data: result
+        });
+      } else {
+        // Warning 1 or 2
+        const recorded = await proctoringDb.recordViolation({
+          linkCode: rawCode,
+          sessionId,
+          candidateEmail,
+          candidateName,
+          violationType: type,
+          severity: "warning",
+          warningNumber: newWarningCount,
+          details: details || `Warning ${newWarningCount} of 3: ${violationLabel}.`,
+          metadata
+        });
+
+        const verbalPrompt = type === "multiple_people"
+          ? `Warning ${newWarningCount} of 3: Multiple people have been detected in your camera view. Only the candidate is permitted during the interview.`
+          : `Warning ${newWarningCount} of 3: Multiple voices have been detected. Please ensure you are in a quiet room alone.`;
+
+        return res.json({
+          success: true,
+          action: "warning",
+          terminate: false,
+          warningCount: newWarningCount,
+          maxWarnings: 3,
+          warningNumber: newWarningCount,
+          verbalPrompt,
+          message: `Warning ${newWarningCount} of 3: ${violationLabel}`,
+          data: recorded
+        });
+      }
+    }
+
+    // Default fallback violation logging
+    const recorded = await proctoringDb.recordViolation({
+      linkCode: rawCode,
+      sessionId,
+      candidateEmail,
+      candidateName,
+      violationType: type,
+      severity: "warning",
+      warningNumber: 1,
+      details: details || `Security violation: ${type}`,
+      metadata
+    });
+
+    res.json({
+      success: true,
+      action: "notice",
+      terminate: false,
+      data: recorded
+    });
+  } catch (err) {
+    console.error("Error in proctoring violation handler:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 11. POST /api/candidate-portal/proctoring/terminate - Direct termination endpoint
+router.post("/proctoring/terminate", async (req, res) => {
+  try {
+    const {
+      linkCode,
+      sessionId,
+      candidateEmail,
+      candidateName,
+      role,
+      reason,
+      transcripts,
+      elapsedSeconds
+    } = req.body;
+
+    const rawCode = (linkCode || "").replace(/^interview_/, "").trim();
+    const terminationReason = reason || "Interview terminated due to integrity policy violation.";
+
+    const result = await proctoringDb.terminateSession({
+      linkCode: rawCode,
+      sessionId,
+      reason: terminationReason,
+      candidateName,
+      candidateEmail,
+      candidateRole: role || "",
+      transcripts: transcripts || [],
+      elapsedSeconds: elapsedSeconds || 0
+    });
+
+    res.json({
+      success: true,
+      status: "Meeting Terminated",
+      reason: terminationReason,
+      data: result
+    });
+  } catch (err) {
+    console.error("Error in proctoring terminate handler:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 12. GET /api/candidate-portal/proctoring/violations/:linkCode - Get all violations and proctoring audit trail
+router.get("/proctoring/violations/:linkCode", async (req, res) => {
+  try {
+    const rawCode = req.params.linkCode || "";
+    const violations = await proctoringDb.getByLinkCode(rawCode);
+    const warningCount = await proctoringDb.getWarningCount(rawCode);
+    const session = await candidateSessionsDb.getByLinkCode(rawCode);
+
+    res.json({
+      success: true,
+      linkCode: rawCode,
+      status: session?.status || "In Progress",
+      warningCount,
+      maxWarnings: 3,
+      isTerminated: session?.status === "Meeting Terminated",
+      terminationReason: session?.termination_reason || null,
+      count: violations.length,
+      violations
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

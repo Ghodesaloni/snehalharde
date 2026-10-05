@@ -607,6 +607,30 @@ async function initTables() {
         );
       `);
 
+      // 13. Proctoring violations and anti-cheating audit log table
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS public.proctoring_violations (
+          id SERIAL PRIMARY KEY,
+          session_id VARCHAR(255),
+          link_code VARCHAR(100),
+          candidate_email VARCHAR(255),
+          candidate_name VARCHAR(255),
+          violation_type VARCHAR(100) NOT NULL,
+          severity VARCHAR(50) DEFAULT 'warning',
+          warning_number INTEGER DEFAULT 0,
+          details TEXT,
+          metadata JSONB DEFAULT '{}'::jsonb,
+          timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        );
+        ALTER TABLE public.candidate_portal_sessions ADD COLUMN IF NOT EXISTS warning_count INTEGER DEFAULT 0;
+        ALTER TABLE public.candidate_portal_sessions ADD COLUMN IF NOT EXISTS termination_reason TEXT;
+        ALTER TABLE public.candidate_portal_sessions ADD COLUMN IF NOT EXISTS violations JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.candidate_portal_sessions ADD COLUMN IF NOT EXISTS proctoring_status VARCHAR(100) DEFAULT 'Clear';
+        ALTER TABLE public.interviews ADD COLUMN IF NOT EXISTS termination_reason TEXT;
+        ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS termination_reason TEXT;
+      `);
+
       // Create indexes for faster token, email, job, candidate, and interview lookups
       await client.query(`
         CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON public.verification_tokens(token);
@@ -624,6 +648,8 @@ async function initTables() {
         CREATE INDEX IF NOT EXISTS idx_resumes_job_id ON public.resumes(target_job_id);
         CREATE INDEX IF NOT EXISTS idx_candidate_sessions_link_code ON public.candidate_portal_sessions(link_code);
         CREATE INDEX IF NOT EXISTS idx_email_sent_user_email ON public.email_sent(user_email);
+        CREATE INDEX IF NOT EXISTS idx_proctoring_link_code ON public.proctoring_violations(link_code);
+        CREATE INDEX IF NOT EXISTS idx_proctoring_candidate_email ON public.proctoring_violations(candidate_email);
       `);
 
       // Sync any registered mirror users to PostgreSQL public.users

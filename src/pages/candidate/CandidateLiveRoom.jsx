@@ -86,6 +86,18 @@ const CandidateLiveRoom = () => {
     const [interviewEnded, setInterviewEnded] = useState(false);
     const [terminationReason, setTerminationReason] = useState("");
 
+    // Anti-Cheating & Proctoring State
+    const [proctoringWarnings, setProctoringWarnings] = useState(0);
+    const [proctoringNotice, setProctoringNotice] = useState(null);
+    const proctoringCanvasRef = useRef(null);
+    const proctoringCooldownRef = useRef({
+        lastFaceWarn: 0,
+        lastLightingWarn: 0,
+        lastMultiPeopleWarn: 0,
+        lastMultiVoiceWarn: 0,
+        missingFaceCycles: 0,
+    });
+
     // Transcript UI State
     const [transcriptSearch, setTranscriptSearch] = useState("");
     const [autoScroll, setAutoScroll] = useState(true);
@@ -229,6 +241,70 @@ const CandidateLiveRoom = () => {
     }, [transcripts, liveUtterance, autoScroll, showTranscript]);
 
     // -------------------------------------------------------------
+    // ANTI-CHEATING VIOLATION DISPATCHER (LiveKit Data Channel + PostgreSQL)
+    // -------------------------------------------------------------
+    const sendViolation = async (type, reason, metadata = {}) => {
+        if (interviewEnded) return;
+        const roomCode = interviewData?.linkCode || code || "";
+
+        // 1. Broadcast over LiveKit room data channel to AI Agent
+        const currentRoom = roomRef.current;
+        if (currentRoom && currentRoom.state === ConnectionState.Connected) {
+            try {
+                const payload = JSON.stringify({
+                    type,
+                    event: type,
+                    reason,
+                    details: reason,
+                    linkCode: roomCode,
+                    candidateName: interviewData?.name || "Candidate",
+                    candidateEmail: interviewData?.email || "",
+                    timestamp: Date.now(),
+                    ...metadata
+                });
+                await currentRoom.localParticipant.publishData(new TextEncoder().encode(payload), {
+                    reliable: true,
+                    topic: type
+                });
+                console.warn(`[AntiCheating] Broadcasted '${type}': ${reason}`);
+            } catch (e) {
+                console.debug("Data channel publish notice:", e?.message || e);
+            }
+        }
+
+        // 2. Direct backend sync to PostgreSQL database
+        try {
+            const res = await fetch("/api/candidate-portal/proctoring/violation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    linkCode: roomCode,
+                    candidateName: interviewData?.name || "Candidate",
+                    candidateEmail: interviewData?.email || "",
+                    violationType: type,
+                    details: reason,
+                    metadata
+                })
+            });
+            if (res.ok) {
+                const resData = await res.json();
+                if (resData.terminate) {
+                    handleEndAndSaveInterview(resData.reason || reason);
+                } else if (resData.action === "warning") {
+                    setProctoringWarnings(resData.warningCount || 1);
+                    setProctoringNotice(`Warning ${resData.warningCount || 1}/3: ${reason}`);
+                    toast.warning(resData.message || `Warning ${resData.warningCount || 1} of 3: ${reason}`);
+                } else if (resData.action === "notice") {
+                    setProctoringNotice(resData.message || reason);
+                    toast.info(resData.message || reason);
+                }
+            }
+        } catch (err) {
+            console.debug("Backend proctoring sync note:", err?.message || err);
+        }
+    };
+
+    // -------------------------------------------------------------
     // VOICE DETECTOR MICROPHONE (VAD) & REAL-TIME STT ENGINE
     // Connected with Live Transcript: Detects candidate voice and converts it to text
     // -------------------------------------------------------------
@@ -280,6 +356,25 @@ const CandidateLiveRoom = () => {
 
                 const voiceActive = level > 12;
                 setIsCandidateSpeaking(voiceActive);
+
+                // Anti-Cheating: Spectral Multi-Voice / Multiple Speakers Detection
+                if (voiceActive) {
+                    const now = Date.now();
+                    const cooldowns = proctoringCooldownRef.current;
+                    if (now - cooldowns.lastMultiVoiceWarn > 12000) {
+                        let lowBandEnergy = 0;
+                        let highBandEnergy = 0;
+                        for (let i = 2; i < 8; i++) lowBandEnergy += dataArray[i];
+                        for (let i = 12; i < 24; i++) highBandEnergy += dataArray[i];
+
+                        // Simultaneous high discordant harmonic presence indicating overlapping/secondary speech
+                        if (lowBandEnergy > 420 && highBandEnergy > 460 && avg > 50) {
+                            cooldowns.lastMultiVoiceWarn = now;
+                            console.warn("[Proctoring] Multiple voices detected in mic feed");
+                            sendViolation("multiple_voices", "Multiple voices detected during interview.");
+                        }
+                    }
+                }
 
                 vadAnimFrameRef.current = requestAnimationFrame(checkCandidateVoice);
             };
@@ -538,17 +633,28 @@ const CandidateLiveRoom = () => {
                     }
                 });
 
-                // Data Packet Handling (e.g. agent notifications / termination / conclusion)
+                // Data Packet Handling (e.g. agent notifications / proctoring warnings / termination / conclusion)
                 room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
                     try {
                         const str = new TextDecoder().decode(payload);
                         console.log("Data packet received:", topic, str);
                         const parsed = JSON.parse(str);
-                        if (parsed.type === "termination" || topic === "interview_terminated") {
+                        if (parsed.type === "termination" || topic === "interview_terminated" || parsed.type === "interview_terminated") {
                             const reasonText = parsed.reason || "Integrity policy violation";
                             setTerminationReason(reasonText);
-                            handleEndAndSaveInterview(reasonText);
                             toast.error(`Interview ended: ${reasonText}`);
+                            handleEndAndSaveInterview(reasonText);
+                        } else if (parsed.type === "proctoring_warning" || topic === "proctoring_warning") {
+                            const count = parsed.warningCount || parsed.warningNumber || 1;
+                            const maxW = parsed.maxWarnings || 3;
+                            const wReason = parsed.reason || "Integrity warning";
+                            setProctoringWarnings(count);
+                            setProctoringNotice(`Warning ${count}/${maxW}: ${wReason}`);
+                            toast.warning(`Warning ${count} of ${maxW}: ${wReason}`);
+                        } else if (parsed.type === "proctoring_notice" || topic === "proctoring_notice") {
+                            const noticeMsg = parsed.message || parsed.details || "Your face is not clearly visible. Please adjust your position or lighting.";
+                            setProctoringNotice(noticeMsg);
+                            toast.info(noticeMsg);
                         } else if (parsed.type === "interview_completed" || topic === "interview_completed") {
                             toast.success("Interview completed! Transitioning to Thank You page...");
                             handleEndAndSaveInterview();
@@ -659,46 +765,175 @@ const CandidateLiveRoom = () => {
         }
     }, [isCameraOn, connectionStatus]);
 
-    // Anti-Cheating & Integrity Event Broadcasts (Tab switch, window blur, visibility change)
+    // -------------------------------------------------------------
+    // REAL-TIME WEBCAM PROCTORING ANALYZER (Face Visibility, Lighting & Multiple People)
+    // -------------------------------------------------------------
     useEffect(() => {
-        const sendViolation = async (type, reason) => {
-            const currentRoom = roomRef.current;
-            if (!currentRoom || currentRoom.state !== ConnectionState.Connected) return;
-            try {
-                const payload = JSON.stringify({ type, reason, timestamp: Date.now() });
-                const encoder = new TextEncoder();
-                await currentRoom.localParticipant.publishData(encoder.encode(payload), {
-                    reliable: true,
-                    topic: type,
-                });
-                console.warn(`[Anti-Cheating] Broadcasted ${type}: ${reason}`);
-            } catch (e) {
-                // Silently ignore if connection is closing/closed
-                console.debug("Anti-cheating broadcast skipped:", e?.message || e);
-            }
-        };
+        if (connectionStatus !== "connected" || !isCameraOn || interviewEnded) return;
 
+        let isRunning = true;
+        let canvas = proctoringCanvasRef.current;
+        if (!canvas) {
+            canvas = document.createElement("canvas");
+            canvas.width = 160;
+            canvas.height = 120;
+            proctoringCanvasRef.current = canvas;
+        }
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+        // Try initializing Native FaceDetector API if available in Chromium
+        let nativeFaceDetector = null;
+        if (typeof window !== "undefined" && "FaceDetector" in window) {
+            try {
+                nativeFaceDetector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+            } catch (e) {
+                nativeFaceDetector = null;
+            }
+        }
+
+        const interval = setInterval(async () => {
+            if (!isRunning || interviewEnded || !candidateVideoRef.current) return;
+            const video = candidateVideoRef.current;
+            if (video.readyState < 2 || video.videoWidth === 0) return;
+
+            const now = Date.now();
+            const cooldowns = proctoringCooldownRef.current;
+
+            try {
+                ctx.drawImage(video, 0, 0, 160, 120);
+                const imgData = ctx.getImageData(0, 0, 160, 120);
+                const data = imgData.data;
+
+                // 1. Lighting / Luminance Analysis
+                let totalLuma = 0;
+                const pixelCount = data.length / 4;
+                for (let i = 0; i < data.length; i += 4) {
+                    totalLuma += (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                }
+                const avgLuminance = totalLuma / pixelCount;
+
+                if (avgLuminance < 30) {
+                    if (now - cooldowns.lastLightingWarn > 15000) {
+                        cooldowns.lastLightingWarn = now;
+                        console.warn("[Proctoring] Low lighting detected (luminance: " + Math.round(avgLuminance) + ")");
+                        sendViolation("poor_lighting", "Your face is not clearly visible. Please adjust your position or lighting.");
+                    }
+                }
+
+                // 2. Face Detection & Multi-Person Analysis
+                let faceCount = 1;
+                if (nativeFaceDetector) {
+                    try {
+                        const detectedFaces = await nativeFaceDetector.detect(video);
+                        faceCount = detectedFaces.length;
+                    } catch (e) {
+                        faceCount = 1;
+                    }
+                } else {
+                    // Fallback: Multi-region skin-tone & facial centroid clustering
+                    let skinPixelsLeft = 0;
+                    let skinPixelsRight = 0;
+                    let skinPixelsCenter = 0;
+
+                    for (let y = 15; y < 105; y += 3) {
+                        for (let x = 10; x < 150; x += 3) {
+                            const idx = (y * 160 + x) * 4;
+                            const r = data[idx];
+                            const g = data[idx + 1];
+                            const b = data[idx + 2];
+
+                            const isSkin = (r > 80 && g > 40 && b > 25 && (r - g) > 10 && (r - b) > 10 && (Math.max(r, g, b) - Math.min(r, g, b)) > 15);
+                            if (isSkin) {
+                                if (x < 55) skinPixelsLeft++;
+                                else if (x > 105) skinPixelsRight++;
+                                else skinPixelsCenter++;
+                            }
+                        }
+                    }
+
+                    const totalSkin = skinPixelsLeft + skinPixelsRight + skinPixelsCenter;
+                    if (totalSkin < 35) {
+                        faceCount = 0;
+                    } else if (skinPixelsLeft > 85 && skinPixelsRight > 85 && skinPixelsCenter < 40) {
+                        // Distinct dual separated clusters on left and right edges
+                        faceCount = 2;
+                    } else {
+                        faceCount = 1;
+                    }
+                }
+
+                // Check Face Visibility
+                if (faceCount === 0) {
+                    cooldowns.missingFaceCycles++;
+                    if (cooldowns.missingFaceCycles >= 2 && now - cooldowns.lastFaceWarn > 15000) {
+                        cooldowns.lastFaceWarn = now;
+                        console.warn("[Proctoring] Face not visible in camera feed");
+                        sendViolation("face_not_visible", "Your face is not clearly visible. Please adjust your position or lighting.");
+                    }
+                } else {
+                    cooldowns.missingFaceCycles = 0;
+                }
+
+                // Check Multiple People
+                if (faceCount > 1) {
+                    if (now - cooldowns.lastMultiPeopleWarn > 10000) {
+                        cooldowns.lastMultiPeopleWarn = now;
+                        console.warn("[Proctoring] Multiple people detected in camera feed (" + faceCount + " faces)");
+                        sendViolation("multiple_people", "Multiple people detected in webcam view.");
+                    }
+                }
+            } catch (err) {
+                // Ignore frame sampling errors
+            }
+        }, 2500);
+
+        return () => {
+            isRunning = false;
+            clearInterval(interval);
+        };
+    }, [connectionStatus, isCameraOn, interviewEnded]);
+
+    // Anti-Cheating & Integrity Event Listeners (Tab switch, window blur -> Immediate Termination)
+    useEffect(() => {
         const handleVisibilityChange = () => {
-            if (document.hidden && connectionStatus === "connected" && settings.enableProctoring !== false && settings.tabSwitchDetection !== false) {
-                toast.warning("Tab Switch Detected: Please remain on the active interview screen.");
-                sendViolation("tab_switch", "Candidate switched away from the active interview tab.");
+            if (document.hidden && connectionStatus === "connected" && !interviewEnded) {
+                const reason = "Candidate switched away from the active interview tab.";
+                toast.error("Tab Switch Detected: Interview Terminated");
+                sendViolation("tab_switch", reason);
+                handleEndAndSaveInterview(reason);
             }
         };
 
         const handleWindowBlur = () => {
-            if (connectionStatus === "connected" && settings.enableProctoring !== false && settings.tabSwitchDetection !== false) {
-                sendViolation("window_blur", "Candidate switched active window or application focus.");
+            if (connectionStatus === "connected" && !interviewEnded && settings.enableProctoring !== false) {
+                const reason = "Candidate switched active window or application focus.";
+                sendViolation("window_blur", reason);
+                handleEndAndSaveInterview(reason);
+            }
+        };
+
+        const handleBeforeUnload = () => {
+            const roomCode = interviewData?.linkCode || code || "";
+            if (roomCode && connectionStatus === "connected" && !interviewEnded) {
+                try {
+                    navigator.sendBeacon("/api/candidate-portal/proctoring/terminate", JSON.stringify({
+                        linkCode: roomCode,
+                        reason: "Candidate closed browser tab or disconnected unexpectedly."
+                    }));
+                } catch (e) {}
             }
         };
 
         document.addEventListener("visibilitychange", handleVisibilityChange);
         window.addEventListener("blur", handleWindowBlur);
+        window.addEventListener("beforeunload", handleBeforeUnload);
 
         return () => {
             document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("blur", handleWindowBlur);
+            window.removeEventListener("beforeunload", handleBeforeUnload);
         };
-    }, [connectionStatus, settings.enableProctoring, settings.tabSwitchDetection]);
+    }, [connectionStatus, interviewEnded, settings.enableProctoring, interviewData?.linkCode, code]);
 
     // -------------------------------------------------------------
     // FULL-SCREEN INTERVIEW MODE (Anti-Distraction & Proctoring)
@@ -981,9 +1216,13 @@ const CandidateLiveRoom = () => {
                 timestamp: String(Date.now()),
                 duration: durationStr,
                 mode: "AI Live Interview",
-                score: overallScore,
-                status: "Under Review",
-                notes: `Live interview completed. Automated scorecard and transcript generated.`,
+                score: isTerminated ? 0 : overallScore,
+                status: isTerminated ? "Meeting Terminated" : "Under Review",
+                proctoringStatus: isTerminated ? "terminated" : "completed",
+                terminationReason: reason || "",
+                notes: isTerminated
+                    ? `Interview terminated due to integrity policy notice: ${reason}`
+                    : `Live interview completed. Automated scorecard and transcript generated.`,
                 summaryPoints,
                 recommendation,
                 transcript: finalTranscript,
@@ -991,31 +1230,55 @@ const CandidateLiveRoom = () => {
                 audioUrl: recordedAudioUrl
             };
 
-            // 1. Save candidate in PostgreSQL database and state
+            // 1. Sync proctoring termination state to backend if terminated
+            const currentLinkCode = interviewData?.linkCode || code || "";
+            if (isTerminated && currentLinkCode) {
+                try {
+                    await fetch("/api/candidate-portal/proctoring/terminate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            linkCode: currentLinkCode,
+                            reason: reason,
+                            status: "Meeting Terminated"
+                        })
+                    });
+                } catch (tErr) {
+                    console.warn("Backend proctoring termination sync note:", tErr);
+                }
+            }
+
+            // 2. Save candidate in PostgreSQL database and state
             await candidatesApi.create(newCandPayload);
 
-            // 2. Remove the candidate/interview from the interview page
+            // 3. Remove the candidate/interview from the active interview queue
             if (interviewData?.id) {
                 await interviewsApi.delete(interviewData.id).catch(() => {});
             }
-            removeInterview(interviewData?.id || interviewData?.linkCode || code);
+            removeInterview(interviewData?.id || currentLinkCode);
 
-            // 3. Dispatch real-time updates for open pages
+            // 4. Dispatch real-time updates for open pages
             if (typeof window !== "undefined") {
                 window.dispatchEvent(new Event("avahire_interviews_updated"));
                 window.dispatchEvent(new Event("avahire_candidates_updated"));
             }
 
-            toast.success("Interview completed! Transitioning to Thank You page...");
+            if (isTerminated) {
+                toast.error(`Interview Terminated: ${reason}`);
+            } else {
+                toast.success("Interview completed! Transitioning to Thank You page...");
+            }
             
-            // Directly navigate to the Thank You page without intermediate card modal
-            const thankYouLinkCode = interviewData?.linkCode || code || "";
-            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you` : "/thank-you";
+            // Directly navigate to the Thank You page with query parameters if terminated
+            const thankYouLinkCode = currentLinkCode;
+            const queryParamStr = isTerminated ? `?status=terminated&reason=${encodeURIComponent(reason)}` : "";
+            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you${queryParamStr}` : `/thank-you${queryParamStr}`;
             navigate(thankYouPath, { replace: true });
         } catch (err) {
             console.error("Error saving candidate from live interview:", err);
             const thankYouLinkCode = interviewData?.linkCode || code || "";
-            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you` : "/thank-you";
+            const queryParamStr = isTerminated ? `?status=terminated&reason=${encodeURIComponent(reason)}` : "";
+            const thankYouPath = thankYouLinkCode ? `/i/${thankYouLinkCode}/thank-you${queryParamStr}` : `/thank-you${queryParamStr}`;
             navigate(thankYouPath, { replace: true });
         }
     };
@@ -1218,6 +1481,13 @@ const CandidateLiveRoom = () => {
                         <span>Anti-Cheat Active</span>
                     </div>
 
+                    {proctoringWarnings > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300 bg-amber-950/80 border border-amber-500/50 px-3 py-1.5 rounded-xl shadow-md animate-pulse">
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Warnings: {proctoringWarnings}/3</span>
+                        </div>
+                    )}
+
                     <span className="hidden sm:inline text-white/20">|</span>
 
                     <button
@@ -1239,6 +1509,22 @@ const CandidateLiveRoom = () => {
                     </button>
                 </div>
             </header>
+
+            {/* Proctoring Notice / Warning Floating Banner */}
+            {proctoringNotice && (
+                <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 max-w-lg w-[90%] sm:w-auto flex items-center justify-between gap-3 bg-amber-950/90 border border-amber-500/60 text-amber-200 px-5 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md text-xs font-semibold animate-in fade-in slide-in-from-top-3">
+                    <div className="flex items-center gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>{proctoringNotice}</span>
+                    </div>
+                    <button
+                        onClick={() => setProctoringNotice("")}
+                        className="text-amber-400 hover:text-white p-0.5 rounded cursor-pointer"
+                    >
+                        <X className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+            )}
 
             {/* 3. Floating AI Status Badges */}
             <div className={`absolute top-20 left-6 sm:left-10 z-20 flex items-center gap-2 bg-black/45 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/15 text-xs font-bold text-white shadow-xl pointer-events-none transition-all ${showTranscript ? "opacity-30 sm:opacity-0" : "opacity-100"}`}>
