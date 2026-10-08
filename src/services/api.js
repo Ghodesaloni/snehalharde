@@ -282,6 +282,23 @@ export const candidatesApi = {
   delete: async (id) => {
     const res = await api.delete(`/candidates/${id}`);
     return res.data;
+  },
+  uploadRecording: async (candidateId, formDataOrPayload) => {
+    if (formDataOrPayload instanceof FormData) {
+      const res = await api.post(`/candidates/${candidateId}/recording`, formDataOrPayload, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      return res.data;
+    }
+    const res = await api.post(`/candidates/${candidateId}/recording`, formDataOrPayload);
+    return res.data;
+  },
+  getRecordingInfo: async (candidateId) => {
+    const res = await api.get(`/candidates/${candidateId}/recording`);
+    return res.data;
+  },
+  getAudioUrl: (candidateId) => {
+    return `/api/candidates/${encodeURIComponent(candidateId)}/audio`;
   }
 };
 

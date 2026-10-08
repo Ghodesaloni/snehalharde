@@ -116,20 +116,23 @@ const CandidateLiveRoom = () => {
 
     const initAudioRecorder = () => {
         try {
-            if (mediaRecorderRef.current) return;
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") return;
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
-            const ctx = new AudioCtx();
+            const ctx = audioContextRef.current || new AudioCtx();
+            if (ctx.state === "suspended") {
+                ctx.resume().catch(() => {});
+            }
             audioContextRef.current = ctx;
-            const dest = ctx.createMediaStreamDestination();
+            const dest = audioDestinationRef.current || ctx.createMediaStreamDestination();
             audioDestinationRef.current = dest;
 
             audioChunksRef.current = [];
             const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
                 ? "audio/webm;codecs=opus"
-                : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4");
+                : (MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : (MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : ""));
 
-            const recorder = new MediaRecorder(dest.stream, { mimeType });
+            const recorder = new MediaRecorder(dest.stream, mimeType ? { mimeType } : undefined);
             recorder.ondataavailable = (e) => {
                 if (e.data && e.data.size > 0) {
                     audioChunksRef.current.push(e.data);
@@ -137,7 +140,7 @@ const CandidateLiveRoom = () => {
             };
             recorder.start(1000);
             mediaRecorderRef.current = recorder;
-            console.log("[AudioRecorder] Live interview audio recording started.");
+            console.log("[AudioRecorder] Live interview audio recording started with mime:", recorder.mimeType);
         } catch (err) {
             console.warn("[AudioRecorder] Could not start audio recording:", err);
         }
@@ -158,41 +161,89 @@ const CandidateLiveRoom = () => {
             const stream = new MediaStream([mediaStreamTrack]);
             const source = ctx.createMediaStreamSource(stream);
             source.connect(dest);
-            console.log("[AudioRecorder] Audio track mixed to recorder:", mediaStreamTrack.id);
+            console.log("[AudioRecorder] Mixed track to recorder stream:", mediaStreamTrack.id, mediaStreamTrack.kind);
         } catch (err) {
             console.warn("[AudioRecorder] Error mixing track to recorder:", err);
         }
     };
 
-    const stopAndGetAudioUrl = async () => {
+    const stopAndUploadAudioRecording = async (candidateId, linkCode) => {
         return new Promise((resolve) => {
             try {
+                const finalizeUpload = async (blob) => {
+                    if (!blob || blob.size < 100) {
+                        console.warn("[AudioRecorder] Blob is empty or too small:", blob?.size);
+                        resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
+                        return;
+                    }
+
+                    try {
+                        const formData = new FormData();
+                        const ext = blob.type.includes("mp4") ? "mp4" : "webm";
+                        formData.append("audio", blob, `recording_${candidateId}.${ext}`);
+                        formData.append("candidateId", candidateId);
+                        formData.append("linkCode", linkCode || "");
+                        formData.append("mimeType", blob.type || "audio/webm");
+
+                        const res = await fetch(`/api/candidates/${encodeURIComponent(candidateId)}/recording`, {
+                            method: "POST",
+                            body: formData
+                        });
+
+                        if (res.ok) {
+                            const resData = await res.json();
+                            const finalUrl = resData?.data?.audioUrl || `/api/candidates/${encodeURIComponent(candidateId)}/audio`;
+                            console.log("[AudioRecorder] Audio recording saved successfully on backend:", finalUrl);
+                            resolve(finalUrl);
+                            return;
+                        }
+                    } catch (uploadErr) {
+                        console.warn("[AudioRecorder] Binary upload notice, attempting base64 fallback:", uploadErr);
+                    }
+
+                    // Fallback to base64 upload if FormData is interrupted
+                    try {
+                        const reader = new FileReader();
+                        reader.onloadend = async () => {
+                            const b64 = reader.result;
+                            if (b64) {
+                                await fetch(`/api/candidates/${encodeURIComponent(candidateId)}/recording`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        candidateId,
+                                        linkCode,
+                                        audioBase64: b64,
+                                        mimeType: blob.type || "audio/webm"
+                                    })
+                                }).catch(() => {});
+                            }
+                            resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
+                        };
+                        reader.onerror = () => resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
+                        reader.readAsDataURL(blob);
+                    } catch (fallbackErr) {
+                        resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
+                    }
+                };
+
                 const recorder = mediaRecorderRef.current;
                 if (recorder && recorder.state !== "inactive") {
                     recorder.onstop = () => {
-                        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" });
-                        if (blob && blob.size > 200) {
-                            const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result || "");
-                            reader.onerror = () => resolve("");
-                            reader.readAsDataURL(blob);
-                        } else {
-                            resolve("");
-                        }
+                        const mime = recorder.mimeType || "audio/webm";
+                        const blob = new Blob(audioChunksRef.current, { type: mime });
+                        finalizeUpload(blob);
                     };
                     recorder.stop();
                 } else if (audioChunksRef.current.length > 0) {
                     const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result || "");
-                    reader.onerror = () => resolve("");
-                    reader.readAsDataURL(blob);
+                    finalizeUpload(blob);
                 } else {
-                    resolve("");
+                    resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
                 }
             } catch (err) {
-                console.warn("[AudioRecorder] Error stopping recorder:", err);
-                resolve("");
+                console.warn("[AudioRecorder] Error in stopAndUploadAudioRecording:", err);
+                resolve(`/api/candidates/${encodeURIComponent(candidateId)}/audio`);
             }
         });
     };
@@ -1191,16 +1242,19 @@ const CandidateLiveRoom = () => {
                 ? `Integrity policy flag noted during assessment. Requires secondary HR review.`
                 : `Strong hire recommendation. Scored ${overallScore}% cumulative match for ${candidateRole}.`;
 
-            // Stop audio recording and obtain recorded audio URL
-            let recordedAudioUrl = "";
+            const candidateId = `cand-${Date.now()}`;
+            const currentLinkCode = interviewData?.linkCode || code || "";
+
+            // Stop audio recording and persist directly to backend
+            let recordedAudioUrl = `/api/candidates/${encodeURIComponent(candidateId)}/audio`;
             try {
-                recordedAudioUrl = await stopAndGetAudioUrl();
+                recordedAudioUrl = await stopAndUploadAudioRecording(candidateId, currentLinkCode);
             } catch (audioErr) {
                 console.warn("Audio processing note:", audioErr);
             }
 
             const newCandPayload = {
-                id: `cand-${Date.now()}`,
+                id: candidateId,
                 name: candidateName,
                 email: candidateEmail,
                 phone: candidatePhone,
@@ -1216,6 +1270,7 @@ const CandidateLiveRoom = () => {
                 timestamp: String(Date.now()),
                 duration: durationStr,
                 mode: "AI Live Interview",
+                linkCode: currentLinkCode,
                 score: isTerminated ? 0 : overallScore,
                 status: isTerminated ? "Meeting Terminated" : "Under Review",
                 proctoringStatus: isTerminated ? "terminated" : "completed",
@@ -1231,7 +1286,6 @@ const CandidateLiveRoom = () => {
             };
 
             // 1. Sync proctoring termination state to backend if terminated
-            const currentLinkCode = interviewData?.linkCode || code || "";
             if (isTerminated && currentLinkCode) {
                 try {
                     await fetch("/api/candidate-portal/proctoring/terminate", {

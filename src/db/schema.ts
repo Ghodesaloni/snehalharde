@@ -55,6 +55,8 @@ export const candidates = pgTable('candidates', {
   recommendation: text('recommendation'),
   transcript: jsonb('transcript').$type<Array<{ speaker: string; time: string; isAI: boolean; text: string }>>(),
   evaluationBreakdown: jsonb('evaluation_breakdown').$type<Array<{ category: string; score: number; weight: string }>>(),
+  audioUrl: text('audio_url'),
+  audioPath: text('audio_path'),
   createdBy: text('created_by'),
   userEmail: text('user_email'),
   createdAt: timestamp('created_at').defaultNow(),

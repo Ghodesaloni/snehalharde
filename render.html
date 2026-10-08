@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AvaHire Complete Technical Documentation</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Marked.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@9.1.6/marked.min.js"></script>
+  
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  
+  <!-- Mermaid.js -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+  
+  <!-- Highlight.js -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 18mm 14mm 18mm 14mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 10pt;
+      line-height: 1.6;
+      color: #1e293b;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+      color: #0f172a;
+      font-weight: 700;
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+
+    h1 {
+      font-size: 20pt;
+      border-bottom: 2.5px solid #3b82f6;
+      padding-bottom: 6px;
+      margin-top: 1.8em;
+      color: #1e3a8a;
+    }
+
+    h1:first-of-type {
+      margin-top: 0;
+      font-size: 24pt;
+      text-align: center;
+      border-bottom: none;
+      color: #0f172a;
+    }
+
+    h1:first-of-type + h2 {
+      text-align: center;
+      font-size: 13pt;
+      font-weight: 500;
+      color: #475569;
+      margin-top: -0.2em;
+      margin-bottom: 2em;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 15px;
+    }
+
+    h2 {
+      font-size: 14pt;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+      color: #1e40af;
+      margin-top: 1.4em;
+    }
+
+    h3 {
+      font-size: 11.5pt;
+      color: #1e293b;
+      margin-top: 1.2em;
+    }
+
+    h4 {
+      font-size: 10.5pt;
+      color: #334155;
+    }
+
+    p {
+      margin-top: 0.4em;
+      margin-bottom: 0.8em;
+      text-align: justify;
+      hyphens: auto;
+    }
+
+    strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #cbd5e1;
+      margin: 1.8em 0;
+      page-break-after: avoid;
+    }
+
+    /* Code blocks */
+    pre {
+      background-color: #0f172a !important;
+      color: #f8fafc !important;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5pt;
+      line-height: 1.45;
+      overflow-x: auto;
+      border: 1px solid #1e293b;
+      margin: 1em 0;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.8pt;
+      background-color: #f1f5f9;
+      color: #0369a1;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+    }
+
+    pre code {
+      background-color: transparent !important;
+      color: inherit !important;
+      padding: 0;
+      border: none;
+      font-size: 8.5pt;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.2em 0;
+      font-size: 8pt;
+      line-height: 1.35;
+      page-break-inside: auto;
+    }
+
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+
+    th, td {
+      border: 1px solid #cbd5e1;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      background-color: #1e293b !important;
+      color: #ffffff !important;
+      font-weight: 600;
+      font-size: 8pt;
+      letter-spacing: 0.3px;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #f8fafc !important;
+    }
+
+    tbody tr:hover {
+      background-color: #f1f5f9;
+    }
+
+    /* Lists */
+    ul, ol {
+      margin-top: 0.4em;
+      margin-bottom: 0.8em;
+      padding-left: 22px;
+    }
+
+    li {
+      margin-bottom: 0.35em;
+    }
+
+    li > p {
+      margin: 0;
+    }
+
+    /* Diagrams & Mermaid */
+    .mermaid-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 1.5em 0;
+      padding: 12px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;
+    }
+
+    .mermaid {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .mermaid svg {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    /* KaTeX / Math */
+    .katex-display {
+      margin: 1em 0 !important;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+      border-left: 3px solid #3b82f6;
+      overflow-x: auto;
+      page-break-inside: avoid;
+    }
+
+    .katex {
+      font-size: 1.05em !important;
+    }
+
+    /* Links */
+    a {
+      color: #2563eb;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    /* Callout & blockquotes */
+    blockquote {
+      margin: 1em 0;
+      padding: 8px 16px;
+      border-left: 4px solid #3b82f6;
+      background-color: #eff6ff;
+      color: #1e40af;
+      border-radius: 0 6px 6px 0;
+    }
+
+    /* Section Page Breaks for Clean Document Flow */
+    .section-break {
+      page-break-before: always;
+      break-before: page;
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="content"></div>
+
+  <script id="raw-markdown" type="text/template"># AvaHire AI Recruitment and Interview System
+## Comprehensive Technical Specification, System Architecture & Algorithmic Documentation
+
+---
+
+# Executive Summary
+
+**AvaHire** is an enterprise-grade, autonomous, multimodal Artificial Intelligence recruitment platform and Applicant Tracking System (ATS). It streamlines the talent acquisition lifecycle by combining deterministic parsing and scoring algorithms with conversational generative AI and real-time WebRTC media streaming.
+
+The system replaces manual recruitment workflows by automating:
+1. **Multi-format Resume Parsing & Entity Extraction** from unstructured PDF, DOCX, and RTF documents.
+2. **Deterministic 8-Factor ATS Resume-to-Job Matching** to eliminate screening bias and hallucination.
+3. **Automated Candidate Lifecycle & Email Orchestration** across shortlisting, scheduling, 1-hour pre-interview reminders, and offer generation.
+4. **Autonomous Multimodal Live AI Interviews** featuring a photorealistic 2D avatar ("Ava"), sub-second voice-to-voice interaction via WebRTC and Google Gemini Realtime, and real-time audio/visual anti-cheating proctoring.
+5. **Structured 5-Parameter Evaluation & Scoring** generating instant hiring intelligence, transcripts, and scorecards for HR teams.
+
+---
+
+# 1. Project Overview
+
+## 1.1 What AvaHire Is
+AvaHire is a full-stack AI recruitment platform architected with a React 19 single-page application (SPA), an Express.js backend runtime, a dual-layer PostgreSQL/JSON persistence engine, LiveKit WebRTC media routing, and Python agent workers powering real-time conversational avatars.
+
+## 1.2 Main Objective of the System
+The primary objective of AvaHire is to accelerate hiring velocity from weeks to hours while enforcing standardized, bias-free technical evaluations. It guarantees that every applicant is evaluated against identical rubric criteria tailored directly to the specific job requisition.
+
+## 1.3 Problems Solved by the System
+* **Recruiter Screening Fatigue:** Automates the initial evaluation of thousands of resumes using deterministic algorithms.
+* **Scheduling Inefficiencies:** Eliminates manual email coordination via automated, tokenized calendar link generation and proactive background reminders.
+* **Subjective & Unstructured Interviews:** Standardizes technical interviews using dynamic, project-specific question pipelines.
+* **Remote Interview Fraud:** Mitigates unauthorized assistance, surrogate test-takers, and parallel browser tab cheating using real-time audio and computer vision proctoring algorithms.
+* **Recruitment Feedback Latency:** Automatically generates scored interview transcripts and hiring recommendations upon interview completion.
+
+## 1.4 End-to-End System Workflow
+
+```mermaid
+flowchart TD
+    subgraph S1 [1. Sourcing & Screening]
+        A[HR Creates Job Posting & JD] --> B[Bulk Resume Upload]
+        B --> C[Text Extraction: pdf-parse & mammoth]
+        C --> D[Entity Extraction: Skills, Experience, Education]
+        D --> E[8-Factor Deterministic ATS Scoring Engine]
+        E --> F{ATS Score >= 75 & Skill Ratio >= 0.60?}
+    end
+
+    subgraph S2 [2. Scheduling & Verification]
+        F -- Yes --> G[Status: Shortlisted & Shortlist Email Sent]
+        F -- No --> H[Status: Under Review / Rejected]
+        G --> I[HR Selects Interview Slot]
+        I --> J[Generate Cryptographic Portal Link & Send Invite]
+        J --> K[Background Daemon: 1-Hour Reminder Email]
+        K --> L[Candidate Enters Portal & Validates Phone/Email]
+        L --> M{Schedule Window Active? -15m to +5m}
+        M -- No --> N[Access Denied / Link Expired]
+    end
+
+    subgraph S3 [3. Live Multimodal Interview & Proctoring]
+        M -- Yes --> O[LiveKit WebRTC Connection Established]
+        O --> P[Python Agent Joins with Beyond Avatar & Gemini Realtime]
+        P --> Q[Multimodal Voice Interview & Lip-Synced Video Stream]
+        Q --> R{Proctoring: Tab Switch / Multiple Faces / Voices?}
+        R -- Violation Exceeded --> S[Session Terminated Immediately]
+        R -- Clear --> T[Complete 5 Interview Conversation Phases]
+    end
+
+    subgraph S4 [4. Evaluation & Hiring Decision]
+        T --> U[Post-Interview Gemini Flash Evaluation Engine]
+        U --> V[5-Parameter Rubric Composite Scoring]
+        V --> W[HR Dashboard Updated with Transcript & Scores]
+        W --> X{HR Decision}
+        X -- Select --> Y[Automated Selection & Offer Email]
+        X -- Reject --> Z[Status Updated to Rejected]
+    end
+```
+
+---
+
+# 2. Complete Technology Stack
+
+| Category | Technology / Tool | Version | Implementation Location | Operational Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **Frontend Framework** | React | `^19.0.0` | [`package.json`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/package.json), `src/` | Client-side reactive Single Page Application (SPA) |
+| **Build Tooling** | CRACO | `^7.1.0` | [`craco.config.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/craco.config.js) | Webpack configuration override and Node polyfills |
+| **Client Routing** | React Router DOM | `^7.1.5` | [`src/App.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/App.jsx) | Declarative route protection, HR dashboard, and candidate portal routing |
+| **UI Styling** | Tailwind CSS | `^3.4.17` | [`tailwind.config.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/tailwind.config.js) | Design system tokens, responsive layouts, dark theme |
+| **Component Primitives**| Radix UI (`@radix-ui/*`) | `^1.1.x` - `^2.1.x` | `src/components/ui/` | Accessible UI components (Dialog, Tabs, Dropdowns) |
+| **Iconography** | Lucide React | `^0.475.0` | `src/` | Vector SVG icons across dashboards and candidate views |
+| **Toasts / Alerts** | Sonner | `^1.7.4` | [`src/App.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/App.jsx) | Real-time toast notifications and proctoring warnings |
+| **Backend Runtime** | Node.js | `>=18.0.0` | `server/` | Server execution runtime |
+| **Backend Framework** | Express.js | `^4.21.2` | [`server/server.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/server.js) | REST API routing, static file hosting, middleware pipeline |
+| **Relational Database** | PostgreSQL | `v13+` | [`server/db/postgres.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/postgres.js) | ACID relational data persistence |
+| **Database Driver** | `pg` (node-postgres) | `^8.13.1` | [`server/db/postgres.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/postgres.js) | PostgreSQL connection pooling and SQL query execution |
+| **Fallback DB Engine** | Dual-Layer JSON Engine | Custom | [`server/db/dbEngine.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/dbEngine.js) | Zero-downtime offline JSON storage with Postgres sync |
+| **Real-Time Voice AI** | Google Gemini Realtime | API v1alpha | `my-agent/src/agent.py` | Low-latency voice-to-voice model (Voice: `"Aoede"`) |
+| **AI Avatar Engine** | Beyond Avatar (`livekit.plugins.bey`)| Plugin | `my-agent/src/agent.py` | Photorealistic 2D avatar video stream synchronized with TTS |
+| **AI Evaluation LLM** | Google Gen AI SDK (`@google/genai`)| `^0.1.1` | [`server/services/interviewEvaluatorService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/interviewEvaluatorService.js) | LLM evaluation (`gemini-2.5-flash`, `gemini-1.5-flash`) |
+| **WebRTC SFU & Server**| LiveKit Server SDK | `^2.10.0` | [`server/routes/livekitRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/livekitRoutes.js) | WebRTC room minting, token dispatch, SFU routing |
+| **LiveKit Python Agent**| `livekit-agents` | `~=1.8` | `my-agent/src/agent.py` | Python worker managing agent lifecycle and tracks |
+| **PDF Text Extractor** | `pdf-parse` | `^1.1.1` | [`server/services/textExtractor.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/textExtractor.js) | Text extraction and density analysis from PDF resumes |
+| **DOCX Text Extractor**| `mammoth` | `^1.9.0` | [`server/services/textExtractor.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/textExtractor.js) | Text extraction from Microsoft Word `.docx` documents |
+| **File Uploads** | `multer` | `^1.4.5-lts.1` | [`server/routes/resumeRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/resumeRoutes.js) | Multipart/form-data upload handling with MIME validation |
+| **Authentication** | `jsonwebtoken` & `bcryptjs` | `^9.0.2` / `^2.4.3` | [`server/routes/authRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/authRoutes.js) | Password hashing (Blowfish 10 rounds) and JWT signing |
+| **Email Transport** | `nodemailer` | `^6.9.16` | [`server/services/emailService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/emailService.js) | SMTP client for transactional email dispatch |
+| **Cloud Storage** | AWS S3 (`@aws-sdk/client-s3`) | `^3.750.0` | [`server/services/awsService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/awsService.js) | Cloud resume file storage with local mirror fallback |
+| **Cloud Email** | AWS SES (`@aws-sdk/client-ses`)| `^3.750.0` | [`server/services/emailService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/emailService.js) | High-volume AWS SES transactional email fallback |
+
+---
+
+# 3. Frontend Architecture
+
+The frontend is constructed with React 19, structured around a modular component architecture:
+
+```
+src/
+├── App.jsx                     # Route definitions & global context providers
+├── index.css                   # Tailwind CSS imports & global styles
+├── components/
+│   ├── DashboardLayout.jsx     # Authenticated HR navigation wrapper
+│   └── ui/                     # Radix UI design primitives
+├── context/
+│   └── AuthContext.jsx         # Authentication & user state management
+├── pages/
+│   ├── auth/                   # Login, Register, Forgot Password
+│   ├── dashboard/              # HR Views: Jobs, Candidates, Resumes, Interviews, Calendar, Settings
+│   └── candidate/
+│       ├── CandidatePortalPage.jsx   # Candidate verification & pre-interview join gate
+│       ├── CandidateLiveRoom.jsx     # Live WebRTC room, Avatar feed, and Proctoring engine
+│       ├── CandidateThankYou.jsx     # Post-interview conclusion & termination screen
+│       └── liveavatar/my-agent/      # LiveKit Python agent worker subsystem
+└── utils/
+    └── api.js                  # Centralized HTTP client with JWT interceptor
+```
+
+### Key Frontend Subsystems
+1. **Full-Screen Enforcement:** [`CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx) requests full-screen mode via `document.documentElement.requestFullscreen()` and attaches listeners to `fullscreenchange` and `visibilitychange`.
+2. **Audio Signal Processing:** Configures a browser `AudioContext` with an `AnalyserNode` (`fftSize = 2048`) to sample microphone frequency domain data in real time.
+3. **Web Speech Transcription:** Continuously captures candidate speech using `window.webkitSpeechRecognition` to provide live captioning and transcript backup.
+4. **Computer Vision Canvas Loop:** Uses an off-screen HTML5 `<canvas>` to sample video frames at 1 Hz for luminance validation and face clustering.
+
+---
+
+# 4. Backend Architecture
+
+The backend operates on Node.js using Express.js:
+
+```
+server/
+├── server.js                   # Application initialization, middleware, static hosting
+├── data/                       # Local JSON document database mirror
+├── db/
+│   ├── dbEngine.js             # Dual-layer JSON/PostgreSQL abstraction layer
+│   ├── postgres.js             # PostgreSQL connection pool & schema migration
+│   └── schema.sql              # SQL table definitions
+├── routes/
+│   ├── authRoutes.js           # HR authentication & JWT management
+│   ├── candidatePortalRoutes.js# Candidate verification & meeting termination
+│   ├── candidateRoutes.js      # Candidate CRUD & status transitions
+│   ├── dashboardRoutes.js      # HR analytics metrics & activity timeline
+│   ├── emailRoutes.js          # Email preview & manual dispatch
+│   ├── interviewRoutes.js      # Scheduling, questions, post-interview scoring
+│   ├── jobRoutes.js            # Job posting creation & JD parsing
+│   ├── livekitRoutes.js        # LiveKit WebRTC room token minting
+│   ├── resumeRoutes.js         # File uploads & ATS scoring invocation
+│   └── settingsRoutes.js       # System configurations & API keys
+└── services/
+    ├── atsScoringEngine.js     # 8-factor deterministic ATS scoring formula
+    ├── automatedEmailService.js# 4 automated email workflows & background scheduler
+    ├── awsService.js           # AWS S3 cloud storage client with disk fallback
+    ├── domainClassifier.js     # 29-domain logarithmic classifier
+    ├── emailService.js         # Nodemailer SMTP and AWS SES dispatchers
+    ├── interviewEvaluatorService.js # 5-parameter rubric & Gemini Flash evaluator
+    ├── jdParserService.js      # Job description skill & requirement extractor
+    ├── resumeAnalysisService.js# Resume summary & insight generator
+    ├── resumeParserService.js  # Resume text cleaner, section parser, & tenure calculator
+    ├── resumeQuestionService.js# Project-tailored question generator
+    ├── sectionDetector.js      # Line-by-line regex section header classifier
+    ├── skillTaxonomy.js        # Canonical skill dictionary & regex matcher
+    └── textExtractor.js        # Multi-format document text extraction
+```
+
+---
+
+# 5. Database Architecture
+
+## 5.1 Dual-Layer Persistence Engine
+AvaHire implements a resilient dual-layer database architecture in [`server/db/dbEngine.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/dbEngine.js):
+* **PostgreSQL Layer:** Manages relational integrity across 13 core tables.
+* **JSON Document Layer:** Maintains serialized JSON files under `server/data/` as a live mirror. If PostgreSQL connectivity is interrupted, the system fails over to the local JSON store with zero downtime.
+
+## 5.2 Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    USERS ||--o{ JOBS : "creates"
+    USERS ||--o{ APP_SETTINGS : "configures"
+    JOBS ||--o{ RESUMES : "receives"
+    JOBS ||--o{ CANDIDATES : "tracks"
+    CANDIDATES ||--o{ INTERVIEWS : "schedules"
+    INTERVIEWS ||--o{ PROCTORING_VIOLATIONS : "records"
+    CANDIDATES ||--o{ EMAIL_SENT : "receives"
+    USERS ||--o{ VERIFICATION_TOKENS : "owns"
+
+    USERS {
+        serial id PK
+        varchar email UK
+        varchar password_hash
+        varchar full_name
+        varchar role
+        boolean is_verified
+        timestamp created_at
+    }
+
+    JOBS {
+        serial id PK
+        varchar job_id UK
+        varchar title
+        varchar department
+        varchar experience_level
+        text description
+        jsonb required_skills
+        jsonb preferred_skills
+        integer min_experience_years
+        varchar status
+        timestamp created_at
+    }
+
+    CANDIDATES {
+        serial id PK
+        varchar candidate_id UK
+        varchar job_id FK
+        varchar name
+        varchar email
+        varchar phone
+        numeric ats_score
+        varchar ats_recommendation
+        varchar status
+        varchar interview_token
+        timestamp interview_scheduled_at
+        timestamp created_at
+    }
+
+    RESUMES {
+        serial id PK
+        varchar resume_id UK
+        varchar candidate_id FK
+        varchar job_id FK
+        text raw_text
+        jsonb parsed_data
+        jsonb ats_analysis
+        numeric ats_score
+        varchar s3_url
+        timestamp uploaded_at
+    }
+
+    INTERVIEWS {
+        serial id PK
+        varchar interview_id UK
+        varchar candidate_id FK
+        varchar job_id FK
+        varchar status
+        varchar livekit_room_name
+        timestamp scheduled_time
+        timestamp started_at
+        timestamp completed_at
+        numeric final_score
+        varchar recommendation
+        jsonb transcript
+        jsonb per_question_scores
+        jsonb feedback
+    }
+
+    PROCTORING_VIOLATIONS {
+        serial id PK
+        varchar interview_id FK
+        varchar violation_type
+        text details
+        integer warning_count
+        timestamp created_at
+    }
+
+    EMAIL_SENT {
+        serial id PK
+        varchar recipient_email
+        varchar template_type
+        varchar status
+        varchar idempotency_key UK
+        timestamp sent_at
+    }
+```
+
+---
+
+# 6. AI Subsystems
+
+```mermaid
+flowchart LR
+    subgraph Candidate Device
+        MIC[Candidate Audio]
+        CAM[Candidate Video]
+    end
+
+    subgraph LiveKit WebRTC SFU
+        MEDIA_ROUTER[Audio/Video Media Router]
+    end
+
+    subgraph Python AI Agent Subsystem
+        AGENT[agent.py Worker]
+        REALTIME[Google Gemini Realtime Voice API]
+        AVATAR[Beyond Avatar Lip-Sync Engine]
+    end
+
+    subgraph Backend Evaluation
+        FLASH[Google Gemini Flash LLM]
+        RUBRIC[5-Parameter Scoring Rubric]
+    end
+
+    MIC --> MEDIA_ROUTER
+    CAM --> MEDIA_ROUTER
+    MEDIA_ROUTER --> AGENT
+    AGENT <--> REALTIME
+    REALTIME --> AVATAR
+    AVATAR --> MEDIA_ROUTER
+    MEDIA_ROUTER --> DISP[Candidate Screen: Ava Avatar & Voice]
+    
+    AGENT --> TRANSCRIPT[Complete Transcript]
+    TRANSCRIPT --> FLASH
+    FLASH --> RUBRIC
+```
+
+### Multimodal Components
+1. **Google Gemini Realtime Voice API:** Bidirectional WebSocket audio streaming (`google.realtime.RealtimeModel`) using voice model `"Aoede"` for responsive, natural turn-taking.
+2. **Beyond Avatar Stream:** Renders photorealistic 2D avatar video synchronized with Gemini TTS tokens via WebRTC video tracks (`bey.AvatarSession`).
+3. **Google Gemini Flash LLM:** Evaluates transcripts and scores candidate responses using structured prompts and fallback rules (`gemini-2.5-flash`, `gemini-1.5-flash`).
+
+---
+
+# 7. Algorithmic Inventory
+
+### 1. 8-Factor Deterministic ATS Scoring Engine
+* **Purpose:** Evaluates resume alignment against job requisitions objectively.
+* **Input:** Parsed resume entities and Job Description requirements.
+* **Output:** Numerical score ($0 - 100$) and recommendation status (`Shortlisted`, `Review`, `Rejected`).
+* **Implementation:** [`server/services/atsScoringEngine.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/atsScoringEngine.js).
+
+### 2. Word-Boundary Regex Skill Extraction
+* **Purpose:** Matches technical skills against a canonical taxonomy (50+ technologies) without false substrings.
+* **Input:** Raw resume text.
+* **Output:** Unique canonical skill identifiers.
+* **Implementation:** [`server/services/skillTaxonomy.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/skillTaxonomy.js).
+
+### 3. Non-Overlapping Date Interval Experience Aggregator
+* **Purpose:** Calculates total professional tenure while merging concurrent employment dates.
+* **Input:** Extracted employment date strings.
+* **Output:** Total years of experience (e.g., `4.5` years).
+* **Implementation:** [`server/services/resumeParserService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/resumeParserService.js).
+
+### 4. Multi-Signal Logarithmic Domain Classifier
+* **Purpose:** Categorizes candidates into one of 29 engineering domains.
+* **Input:** Extracted titles, skills, certifications, and text phrases.
+* **Output:** Primary and Secondary domain classifications with confidence metrics.
+* **Implementation:** [`server/services/domainClassifier.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/domainClassifier.js).
+
+### 5. 5-Parameter Weighted Interview Evaluation Rubric
+* **Purpose:** Computes weighted scores across technical correctness, completeness, relevance, problem solving, and clarity.
+* **Input:** Candidate answer transcripts and expected criteria.
+* **Output:** Composite Question Score ($0 - 100$).
+* **Implementation:** [`server/services/interviewEvaluatorService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/interviewEvaluatorService.js).
+
+### 6. Web Audio Real-Time Voice Activity & Harmonic Analysis
+* **Purpose:** Detects secondary background speakers using spectral energy and harmonic peaks.
+* **Input:** Microphone `MediaStream`.
+* **Output:** `MULTIPLE_VOICES_DETECTED` warning flag.
+* **Implementation:** [`src/pages/candidate/CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx).
+
+### 7. Perceived Luminance Frame Validator
+* **Purpose:** Evaluates webcam lighting conditions ($Y = 0.299R + 0.587G + 0.114B$).
+* **Input:** Off-screen canvas pixel buffers.
+* **Output:** `POOR_LIGHTING` UI alerts.
+* **Implementation:** [`src/pages/candidate/CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx).
+
+### 8. Skin-Pixel Centroid Clustering & Face Detection
+* **Purpose:** Tracks presence of zero, one, or multiple individuals on camera.
+* **Input:** Video frame buffer.
+* **Output:** `MULTIPLE_FACES` or `NO_FACE_DETECTED` flags.
+* **Implementation:** [`src/pages/candidate/CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx).
+
+### 9. Zero-Tolerance Focus & Full-Screen State Machine
+* **Purpose:** Detects window blurs, tab switches, and full-screen exits.
+* **Input:** DOM `visibilitychange`, `blur`, and `fullscreenchange` events.
+* **Output:** Immediate interview termination and database record update.
+* **Implementation:** [`src/pages/candidate/CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx), [`server/routes/candidatePortalRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidatePortalRoutes.js).
+
+### 10. 5-Minute Time-Window Expiration Gate
+* **Purpose:** Validates interview join punctuality within $[-15\text{m}, +5\text{m}]$.
+* **Input:** Server timestamp and scheduled appointment time.
+* **Output:** Access Grant (HTTP 200) or Expiration Error (HTTP 403).
+* **Implementation:** [`server/routes/candidatePortalRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidatePortalRoutes.js).
+
+### 11. Background Scheduled Email Daemon with Idempotency Keying
+* **Purpose:** Sends 1-hour pre-interview reminders without duplicates.
+* **Input:** Background interval clock and scheduled candidate records.
+* **Output:** Deduplicated email dispatches logged to database.
+* **Implementation:** [`server/services/automatedEmailService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/automatedEmailService.js).
+
+### 12. Rule-Based Fallback Interview Scoring Engine
+* **Purpose:** Scores answers deterministically if external LLM APIs are unreachable.
+* **Input:** Expected keywords and transcript string.
+* **Output:** Numerical score and fallback feedback.
+* **Implementation:** [`server/services/interviewEvaluatorService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/interviewEvaluatorService.js).
+
+---
+
+# 8. ATS Algorithm Formulation
+
+```
+Total ATS Score = S_req + S_pref + S_exp + S_edu + S_kw + S_dom + S_qual + S_cert
+```
+
+### Mathematical Definitions
+
+$$\text{Total ATS Score} = S_{\text{req}} + S_{\text{pref}} + S_{\text{exp}} + S_{\text{edu}} + S_{\text{kw}} + S_{\text{dom}} + S_{\text{qual}} + S_{\text{cert}}$$
+
+#### 1. Required Skills Match ($S_{\text{req}}$, Max 30 Points)
+$$S_{\text{req}} = \left( \frac{N_{\text{matched\_required}}}{N_{\text{total\_required}}} \right) \times 30.0$$
+
+#### 2. Preferred Skills Match ($S_{\text{pref}}$, Max 10 Points)
+$$S_{\text{pref}} = \left( \frac{N_{\text{matched\_preferred}}}{N_{\text{total\_preferred}}} \right) \times 10.0$$
+*(Defaults to 8.0 points if no preferred skills are listed in the JD)*
+
+#### 3. Professional Experience ($S_{\text{exp}}$, Max 20 Points)
+Let $R_{\text{exp}} = \frac{\text{Years}_{\text{candidate}}}{\text{Years}_{\text{required}}}$.
+$$S_{\text{exp}} = \begin{cases}
+20.0 & \text{if } R_{\text{exp}} \ge 1.0 \\
+\max(6.0, R_{\text{exp}} \times 20.0) & \text{if } R_{\text{exp}} < 1.0 \text{ and } \text{Years}_{\text{required}} > 0 \\
+16.0 & \text{if } \text{Years}_{\text{required}} = 0 \text{ (Entry Level)}
+\end{cases}$$
+
+#### 4. Education Qualification ($S_{\text{edu}}$, Max 10 Points)
+$$S_{\text{edu}} = \begin{cases}
+10.0 & \text{PhD / Doctorate} \\
+9.5 & \text{Master's / M.Tech / MBA / MS} \\
+9.0 & \text{Bachelor's / B.Tech / B.E. / BS} \\
+7.5 & \text{Diploma / Associate Degree} \\
+5.0 & \text{No Degree Detected}
+\end{cases}$$
+
+#### 5. Industry Keywords & Methodologies ($S_{\text{kw}}$, Max 10 Points)
+$$S_{\text{kw}} = \min\left(1.0, \max\left(0.4, \frac{N_{\text{matched\_keywords}}}{4}\right)\right) \times 10.0$$
+
+#### 6. Domain Alignment ($S_{\text{dom}}$, Max 10 Points)
+$$S_{\text{dom}} = \begin{cases}
+10.0 & \text{if Primary Domain matches Job Domain} \\
+8.5 & \text{if Secondary Domain matches Job Domain} \\
+\max\left(5.0, 5.0 + 4.0 \times \frac{N_{\text{matched\_required}}}{N_{\text{total\_required}}}\right) & \text{if Cross-domain alignment}
+\end{cases}$$
+
+#### 7. Resume Quality & Document Health ($S_{\text{qual}}$, Max 5 Points)
+Base score is $5.0$ with heuristic deductions:
+* Missing Email: $-1.0$
+* Missing Phone: $-0.5$
+* Low Skill Density ($< 3$ skills): $-1.0$
+* Missing Experience Section: $-1.0$
+* Scanned PDF / Low Text Density ($< 50$ alphanumeric characters): $-2.0$
+* Result is bounded: $S_{\text{qual}} \in [1.0, 5.0]$
+
+#### 8. Technical Certifications ($S_{\text{cert}}$, Max 5 Points)
+$$S_{\text{cert}} = \begin{cases}
+5.0 & \text{if } N_{\text{certifications}} \ge 2 \\
+4.0 & \text{if } N_{\text{certifications}} = 1 \\
+2.0 & \text{if } N_{\text{certifications}} = 0
+\end{cases}$$
+
+### Decision Threshold Rules
+* **Shortlisted:** $\text{Total ATS Score} \ge 75.0 \quad \text{AND} \quad \frac{N_{\text{matched\_required}}}{N_{\text{total\_required}}} \ge 0.60$
+* **Rejected:** $\text{Total ATS Score} < 50.0 \quad \text{OR} \quad \frac{N_{\text{matched\_required}}}{N_{\text{total\_required}}} < 0.35$
+* **Under Review:** Intermediate scores ($50.0 \le \text{Score} < 75.0$).
+
+---
+
+# 9. AI Interview Decision Flow
+
+```mermaid
+stateDiagram-v2
+    [*] --> Phase1_Welcome
+    Phase1_Welcome --> Phase2_Intro : Avatar introduces self & explains interview format
+    Phase2_Intro --> Phase3_TechnicalQ : Candidate introduces background & projects
+    
+    state Phase3_TechnicalQ {
+        [*] --> DeliverQ
+        DeliverQ --> ListenA : Real-time STT & Speech synthesis
+        ListenA --> AnalyzeDepth : Candidate finishes answer
+        AnalyzeDepth --> DeliverFollowUp : Answer lacks architectural depth
+        DeliverFollowUp --> ListenA : Candidate elaborates
+        AnalyzeDepth --> NextQ : Answer is comprehensive
+        NextQ --> DeliverQ : More questions in queue
+        NextQ --> [*] : Queue exhausted
+    }
+    
+    Phase3_TechnicalQ --> Phase4_CandidateQA : Invite candidate to ask questions
+    Phase4_CandidateQA --> Phase5_Closing : Candidate finishes QA
+    Phase5_Closing --> TriggerPostEval : Agent invokes conclude_interview tool
+    TriggerPostEval --> [*] : Room closed & transcript submitted
+```
+
+---
+
+# 10. Interview Scoring Rubric
+
+Candidate responses are scored per question ($S_i$) across 5 weighted dimensions:
+
+$$\text{Question Score } (S_i) = (S_{\text{tech}} \times 0.40) + (S_{\text{comp}} \times 0.25) + (S_{\text{rel}} \times 0.15) + (S_{\text{ps}} \times 0.15) + (S_{\text{clarity}} \times 0.05)$$
+
+| Rubric Dimension | Weight | Description |
+| :--- | :--- | :--- |
+| **Technical Correctness** ($S_{\text{tech}}$) | **40%** | Accurate technical principles, architectural patterns, and syntax logic. |
+| **Completeness** ($S_{\text{comp}}$) | **25%** | Addressing all sub-parts of the question thoroughly. |
+| **Relevance** ($S_{\text{rel}}$) | **15%** | Direct adherence to the question without digression. |
+| **Problem Solving** ($S_{\text{ps}}$) | **15%** | Structured analytical reasoning, edge-case awareness, and trade-off analysis. |
+| **Communication Clarity** ($S_{\text{clarity}}$) | **5%** | Concise, articulate delivery of complex engineering concepts. |
+
+### Final Interview Score & Recommendation
+$$\text{Overall Score} = \frac{1}{N} \sum_{i=1}^{N} S_i$$
+
+* **Selected:** $\text{Overall Score} \ge 80.0$
+* **Under Review:** $65.0 \le \text{Overall Score} < 80.0$
+* **Rejected:** $\text{Overall Score} < 65.0$
+
+---
+
+# 11. Real-Time LiveKit WebRTC Architecture
+
+```
+                               ┌────────────────────────────────┐
+                               │       LiveKit WebRTC SFU       │
+                               │                                │
+Candidate Browser (React 19) ─►│  • Video Track (Webcam 720p)   │◄── Beyond Avatar Video Stream
+  ├─ User Video (Webcam)       │  • Audio Track (Opus 48kHz)    │◄── Gemini Realtime Audio Out
+  ├─ User Audio (Microphone) ─►│  • Data Channel (Proctoring)   │──► STT & Transcript Buffer
+  └─ Screen Share Track        └────────────────┬───────────────┘
+                                                │
+                                                ▼
+                                   LiveKit Python Agent Process
+                                      (my-agent/src/agent.py)
+                                                │
+                          ┌─────────────────────┴─────────────────────┐
+                          ▼                                           ▼
+             Google Gemini Realtime API                      Beyond Avatar Plugin
+             (Bidirectional WebSocket)                      (Live Facial Lip-Sync)
+```
+
+---
+
+# 12. Anti-Cheating & Proctoring Mechanisms
+
+| Anti-Cheating Vector | Detection Method | Trigger Condition | Warning Action | Final Action | Data Logged |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Tab Switch / Window Blur** | DOM `visibilitychange` & `window.onblur` | Candidate switches tab or minimizes window | Zero-tolerance: Instant trigger | Immediate interview termination | Violation type, exit timestamp, disqualified status |
+| **Full-Screen Exit** | DOM `fullscreenchange` | Exiting full-screen mode | Instant trigger | Immediate interview termination | Exit timestamp, violation record |
+| **Multiple Faces in View** | Chromium `FaceDetector` & Skin Centroid Clustering | $\ge 2$ distinct faces detected in frame | Visual & verbal warning incremented | On 3rd warning ($W \ge 3$), meeting terminated | Warning count, timestamp, video snapshot flag |
+| **Face Not Detected** | Skin-pixel centroid variance | Face missing for $> 5$ consecutive seconds | Visual prompt: "Please face the camera" | Non-terminating warning | Warning log |
+| **Poor Lighting / Glare** | Perceived Luminance ($Y < 35 \lor Y > 230$) | Frame underexposed or overexposed | Visual alert: "Adjust room lighting" | Non-terminating warning | Status record |
+| **Multiple Background Voices** | Web Audio API FFT Harmonic Peak Detection | Secondary distinct vocal formant detected $> 2.5\text{s}$ | Verbal warning from avatar | On 3rd warning ($W \ge 3$), meeting terminated | Audio anomaly log, warning count |
+
+---
+
+# 13. Automated Email Workflows
+
+```mermaid
+sequenceDiagram
+    participant App as AvaHire Backend
+    participant DB as PostgreSQL / Email Log
+    participant SMTP as SMTP Relay / AWS SES
+    participant Cand as Candidate
+
+    Note over App,Cand: Workflow 1: Application Shortlisted
+    App->>App: ATS Score >= 75
+    App->>SMTP: Send "Application Shortlisted" Notification
+    SMTP-->>Cand: Delivered (Confirms ATS qualification)
+    App->>DB: Record Idempotency Key (shortlist_candId)
+
+    Note over App,Cand: Workflow 2: Interview Scheduled
+    App->>App: HR sets appointment slot
+    App->>App: Mint secure tokenized URL
+    App->>SMTP: Send "Interview Invitation" with link & time
+    SMTP-->>Cand: Delivered (Includes 5-min punctuality rules)
+    App->>DB: Record Idempotency Key (invite_candId_time)
+
+    Note over App,Cand: Workflow 3: 1-Hour Reminder
+    App->>App: Background Cron detects interview <= 60 mins
+    App->>SMTP: Send "Starting in 1 Hour" Alert
+    SMTP-->>Cand: Delivered
+    App->>DB: Record Idempotency Key (reminder_candId_time)
+
+    Note over App,Cand: Workflow 4: Congratulations & Selection
+    App->>App: HR marks Candidate "Selected" (Score >= 80)
+    App->>SMTP: Send "Selection & Offer" Email
+    SMTP-->>Cand: Delivered (Formal offer & next steps)
+    App->>DB: Record Idempotency Key (congrats_candId)
+```
+
+---
+
+# 14. API Architecture
+
+| Method | Endpoint | Description | Request Body | Response Body | Source Location |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Register new HR recruiter | `{ email, password, fullName, company }` | `{ success: true, token, user }` | [`authRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/authRoutes.js) |
+| `POST` | `/api/auth/login` | Recruiter authentication | `{ email, password }` | `{ success: true, token, user }` | [`authRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/authRoutes.js) |
+| `GET` | `/api/jobs` | Retrieve all job postings | None (Bearer Token) | `{ success: true, jobs: [...] }` | [`jobRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/jobRoutes.js) |
+| `POST` | `/api/jobs` | Create job posting & parse JD | `{ title, department, description, ... }` | `{ success: true, job: {...} }` | [`jobRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/jobRoutes.js) |
+| `POST` | `/api/resumes/upload` | Upload and parse resumes | `multipart/form-data` (`resumes`, `jobId`) | `{ success: true, results: [...] }` | [`resumeRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/resumeRoutes.js) |
+| `POST` | `/api/resumes/match` | Match resume against JD | `{ resumeId, jobId }` | `{ success: true, atsScore, breakdown }`| [`resumeRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/resumeRoutes.js) |
+| `GET` | `/api/candidates` | List candidates with filters | Query: `jobId`, `status` | `{ success: true, candidates: [...] }` | [`candidateRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidateRoutes.js) |
+| `PATCH`| `/api/candidates/:id/status`| Update candidate status | `{ status: "selected" \| "rejected" }` | `{ success: true, candidate: {...} }` | [`candidateRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidateRoutes.js) |
+| `POST` | `/api/interviews/schedule`| Schedule interview slot | `{ candidateId, scheduledAt }` | `{ success: true, interviewLink, ... }` | [`interviewRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/interviewRoutes.js) |
+| `POST` | `/api/candidate-portal/verify`| Candidate portal verification | `{ token, phone, email }` | `{ valid: true, candidate, job }` | [`candidatePortalRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidatePortalRoutes.js) |
+| `POST` | `/api/candidate-portal/terminate-meeting`| Report violation & abort | `{ token, reason, violations }` | `{ success: true, status: "terminated" }`| [`candidatePortalRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidatePortalRoutes.js) |
+| `POST` | `/api/livekit/token` | Mint WebRTC LiveKit JWT | `{ roomName, participantName, token }` | `{ token: "<JWT>", wsUrl }` | [`livekitRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/livekitRoutes.js) |
+| `POST` | `/api/interviews/submit`| Submit transcript & score | `{ interviewId, transcript }` | `{ success: true, evaluation: {...} }` | [`interviewRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/interviewRoutes.js) |
+| `GET` | `/api/dashboard/stats` | Aggregate dashboard KPIs | None (Bearer Token) | `{ totalJobs, totalCandidates, ... }` | [`dashboardRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/dashboardRoutes.js) |
+
+---
+
+# 15. Technology-to-Feature Mapping
+
+| Feature Module | Frontend Subsystem | Backend Subsystem | AI Subsystem | Database Store | Core Algorithm |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Authentication** | AuthContext, React Forms | Express, `bcryptjs`, JWT | None | PostgreSQL `users` | Blowfish Hash, HMAC-SHA256 |
+| **Resume Extraction** | File Dropzone UI | `multer`, `pdf-parse`, `mammoth` | None | PostgreSQL `resumes` | Word-Boundary Regex, Interval Merging |
+| **ATS Scoring** | Score breakdown modal | Express (`atsScoringEngine.js`) | None | PostgreSQL `candidates` | 8-Factor Weighted Scoring Formula |
+| **Scheduling** | Calendar & time picker | Express (`interviewRoutes.js`) | None | PostgreSQL `interviews` | Tokenized URL Generator |
+| **Email Daemon** | Toast alerts | `automatedEmailService.js` | None | PostgreSQL `email_sent` | Idempotent Cron Polling |
+| **Candidate Gate** | Verification Portal UI | Express (`candidatePortalRoutes.js`)| None | PostgreSQL `candidates` | 5-Minute Time-Window Comparison |
+| **AI Interviewer** | WebRTC Video/Audio UI | LiveKit Server SDK | Google Gemini Realtime | PostgreSQL `interviews` | Conversational Voice Turn-Taking |
+| **Avatar Lip-Sync** | WebRTC Remote Video | Python Worker (`agent.py`) | Beyond Avatar Engine | None | Real-time Blendshape Mapping |
+| **Proctoring** | HTML5 Canvas, Web Audio | Violation reporting endpoint | None | `proctoring_violations` | FFT Formant Analysis, Frame Luminance |
+| **Answer Scoring** | Scorecard & analytics | Express (`interviewEvaluatorService.js`)| Google Gemini Flash | PostgreSQL `interviews` | 5-Parameter Weighted Rubric Scoring |
+
+---
+
+# 16. Evidence & Source Code References
+
+| System Component | Source File Path | Key Functions / Classes | Purpose & Logic |
+| :--- | :--- | :--- | :--- |
+| **ATS Scoring Formula** | [`server/services/atsScoringEngine.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/atsScoringEngine.js) | `calculateAtsScore()`, `calculateScoreBreakdown()` | 8-factor mathematical scoring equation |
+| **Resume Parser** | [`server/services/resumeParserService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/resumeParserService.js) | `parseResume()`, `extractExperience()`, `extractSkills()` | Non-overlapping date merging and entity extraction |
+| **Skill Taxonomy** | [`server/services/skillTaxonomy.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/skillTaxonomy.js) | `canonicalSkills`, `extractSkillsWithBoundaries()` | Word-boundary regex preventing substring false positives |
+| **Domain Classifier** | [`server/services/domainClassifier.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/domainClassifier.js) | `classifyDomain()`, `computeDomainScores()` | Logarithmic phrase frequency and domain scoring |
+| **Interview Evaluation**| [`server/services/interviewEvaluatorService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/interviewEvaluatorService.js) | `evaluateInterview()`, `evaluateWithRules()` | 5-parameter weighted rubric and rule-based fallback |
+| **Python AI Agent** | `my-agent/src/agent.py` | `entrypoint()`, `conclude_interview()`, `AvatarSession` | LiveKit agent, Gemini Realtime voice, Beyond Avatar stream |
+| **LiveKit Token Service**| [`server/routes/livekitRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/livekitRoutes.js) | `router.post('/token')`, `AccessToken` | WebRTC room token minting and grant assignment |
+| **Live Proctoring UI** | [`src/pages/candidate/CandidateLiveRoom.jsx`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/src/pages/candidate/CandidateLiveRoom.jsx) | `runProctoringChecks()`, `initAudioContext()`, `SpeechRec` | Full-screen, Web Audio VAD, luminance, and tab-switch detection |
+| **Candidate Join Gate**| [`server/routes/candidatePortalRoutes.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/routes/candidatePortalRoutes.js) | `router.post('/verify')`, `router.post('/terminate-meeting')`| 5-minute join gate and meeting termination handler |
+| **Email Orchestration**| [`server/services/automatedEmailService.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/services/automatedEmailService.js) | `sendShortlistEmail()`, `startReminderScheduler()` | 4 automated email workflows and cron scheduler |
+| **Persistence Engine** | [`server/db/dbEngine.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/dbEngine.js) & [`server/db/postgres.js`](file:///c:/Users/Asus/OneDrive/Desktop/MAJOR%20PROJECT/New%20folder/snehalharde/server/db/postgres.js) | `query()`, `initPostgresSchema()` | PostgreSQL connection pool and JSON file sync |
+</script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const rawMd = document.getElementById('raw-markdown').textContent;
+      
+      // Configure marked
+      marked.setOptions({
+        gfm: true,
+        breaks: false,
+        headerIds: true,
+        mangle: false,
+        highlight: function(code, lang) {
+          if (lang && hljs.getLanguage(lang)) {
+            try {
+              return hljs.highlight(code, { language: lang }).value;
+            } catch (__) {}
+          }
+          return hljs.highlightAuto(code).value;
+        }
+      });
+
+      // Render markdown to HTML
+      const rawHtml = marked.parse(rawMd);
+      const contentEl = document.getElementById('content');
+      contentEl.innerHTML = rawHtml;
+
+      // Transform mermaid code blocks to mermaid containers
+      const codeBlocks = document.querySelectorAll('pre code.language-mermaid, pre code.lang-mermaid');
+      codeBlocks.forEach((codeEl, index) => {
+        const preEl = codeEl.closest('pre');
+        const mermaidCode = codeEl.textContent;
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        const mermaidDiv = document.createElement('div');
+        mermaidDiv.className = 'mermaid';
+        mermaidDiv.textContent = mermaidCode;
+        container.appendChild(mermaidDiv);
+        preEl.parentNode.replaceChild(container, preEl);
+      });
+
+      // Initialize mermaid
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'neutral',
+        fontFamily: 'Inter, sans-serif',
+        themeVariables: {
+          primaryColor: '#e0f2fe',
+          primaryTextColor: '#0369a1',
+          primaryBorderColor: '#0284c7',
+          lineColor: '#475569',
+          secondaryColor: '#f1f5f9',
+          tertiaryColor: '#ffffff'
+        },
+        flowchart: {
+          curve: 'basis',
+          htmlLabels: true
+        },
+        er: {
+          useMaxWidth: true
+        },
+        sequence: {
+          useMaxWidth: true,
+          showSequenceNumbers: true
+        }
+      });
+
+      try {
+        await mermaid.run({
+          nodes: document.querySelectorAll('.mermaid')
+        });
+      } catch (err) {
+        console.error('Mermaid render error:', err);
+      }
+
+      // Render KaTeX math
+      renderMathInElement(contentEl, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+
+      // Add section breaks for major chapters for clean printing
+      const majorHeadings = document.querySelectorAll('h1');
+      majorHeadings.forEach((h, idx) => {
+        if (idx > 1) { // Skip title and executive summary
+          h.classList.add('section-break');
+        }
+      });
+
+      // Mark ready for puppeteer / CDP
+      window.__RENDER_COMPLETE = true;
+      console.log('Rendering completed successfully!');
+    });
+  </script>
+</body>
+</html>

@@ -1,11 +1,18 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 const candidateSessionsDb = require("../db/candidateSessionsDb");
 const candidatesDb = require("../db/candidatesDb");
 const interviewsDb = require("../db/interviewsDb");
 const resumesDb = require("../db/resumesDb");
 const settingsDb = require("../db/settingsDb");
 const proctoringDb = require("../db/proctoringDb");
+const recordingStorageService = require("../services/recordingStorageService");
+
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 }
+});
 
 /**
  * Clean & normalize email for comparison
@@ -1325,6 +1332,100 @@ router.get("/proctoring/violations/:linkCode", async (req, res) => {
       violations
     });
   } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 13. POST /api/candidate-portal/recording - Save complete real-time interview recording
+router.post("/recording", audioUpload.single("audio"), async (req, res) => {
+  try {
+    const { linkCode, candidateId, mimeType } = req.body;
+    const rawCode = (linkCode || candidateId || "").replace(/^interview_/, "").trim();
+    if (!rawCode) {
+      return res.status(400).json({ success: false, error: "linkCode or candidateId is required" });
+    }
+
+    let audioBuffer = req.file ? req.file.buffer : null;
+    let audioBase64 = req.body.audioBase64 || req.body.audioData || req.body.audioUrl;
+    let effectiveMime = (req.file ? req.file.mimetype : mimeType) || "audio/webm";
+
+    if (!audioBuffer && !audioBase64) {
+      return res.status(400).json({ success: false, error: "No audio data provided" });
+    }
+
+    const saved = await recordingStorageService.saveRecording({
+      candidateId: candidateId || rawCode,
+      linkCode: rawCode,
+      audioBuffer,
+      audioBase64,
+      mimeType: effectiveMime
+    });
+
+    // Link recording to session and candidate records
+    const session = await candidateSessionsDb.getByLinkCode(rawCode);
+    if (session) {
+      await candidateSessionsDb.createOrUpdate({
+        ...session,
+        audioUrl: saved.audioUrl
+      }).catch(() => {});
+    }
+
+    if (candidateId) {
+      await candidatesDb.update(candidateId, {
+        audioUrl: saved.audioUrl,
+        audioPath: saved.filePath
+      }).catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Candidate interview audio recording stored successfully",
+      data: {
+        linkCode: rawCode,
+        candidateId: candidateId || rawCode,
+        audioUrl: saved.audioUrl,
+        fileSize: saved.fileSize,
+        mimeType: saved.mimeType
+      }
+    });
+  } catch (err) {
+    console.error("Error saving portal audio recording:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 14. GET /api/candidate-portal/recording/:linkCode - Retrieve/stream recording
+router.get(["/recording/:linkCode", "/recording/:linkCode/stream"], async (req, res) => {
+  try {
+    const rawCode = (req.params.linkCode || "").replace(/^interview_/, "").trim();
+    const fileInfo = recordingStorageService.findRecordingFile(rawCode);
+
+    if (fileInfo) {
+      return recordingStorageService.streamAudioFile(req, res, fileInfo);
+    }
+
+    // Try finding by candidate database record
+    const session = await candidateSessionsDb.getByLinkCode(rawCode);
+    const candidate = await candidatesDb.getById(rawCode);
+
+    const targetAudioUrl = candidate?.audioUrl || session?.audioUrl;
+    if (targetAudioUrl && targetAudioUrl.startsWith("data:audio/")) {
+      const saved = await recordingStorageService.saveRecording({
+        candidateId: rawCode,
+        audioBase64: targetAudioUrl
+      });
+      const newFileInfo = recordingStorageService.findRecordingFile(rawCode);
+      if (newFileInfo) {
+        return recordingStorageService.streamAudioFile(req, res, newFileInfo);
+      }
+    }
+
+    res.status(404).json({
+      success: false,
+      error: `Recording not found for session ${rawCode}`
+    });
+  } catch (err) {
+    console.error("Error retrieving portal recording:", err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

@@ -213,10 +213,10 @@ async function syncAllCollectionsToPostgres(client) {
           INSERT INTO public.candidates (
             id, name, email, phone, role, avatar, interview_date, timestamp,
             duration, mode, score, status, notes, summary_points, recommendation,
-            transcript, evaluation_breakdown, question_evaluations, created_by, user_email, created_at
+            transcript, evaluation_breakdown, question_evaluations, audio_url, audio_path, created_by, user_email, created_at
           ) VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-            $15, $16, $17, $18, $19, $20, NOW()
+            $15, $16, $17, $18, $19, $20, $21, $22, NOW()
           ) ON CONFLICT (id) DO UPDATE SET
             name = EXCLUDED.name,
             email = EXCLUDED.email,
@@ -227,6 +227,8 @@ async function syncAllCollectionsToPostgres(client) {
             transcript = EXCLUDED.transcript,
             evaluation_breakdown = EXCLUDED.evaluation_breakdown,
             question_evaluations = EXCLUDED.question_evaluations,
+            audio_url = COALESCE(EXCLUDED.audio_url, public.candidates.audio_url),
+            audio_path = COALESCE(EXCLUDED.audio_path, public.candidates.audio_path),
             created_by = EXCLUDED.created_by,
             user_email = EXCLUDED.user_email,
             updated_at = NOW();
@@ -237,6 +239,7 @@ async function syncAllCollectionsToPostgres(client) {
           JSON.stringify(c.summaryPoints || []), c.recommendation || "",
           JSON.stringify(c.transcript || []), JSON.stringify(c.evaluationBreakdown || []),
           JSON.stringify(c.question_evaluations || c.qaEvaluations || []),
+          c.audioUrl || c.audio_url || "", c.audioPath || c.audio_path || "",
           c.createdBy || "", c.userEmail || c.createdBy || ""
         ]);
       }
@@ -453,12 +456,17 @@ async function initTables() {
           transcript JSONB DEFAULT '[]'::jsonb,
           evaluation_breakdown JSONB DEFAULT '[]'::jsonb,
           question_evaluations JSONB DEFAULT '[]'::jsonb,
+          audio_url TEXT,
+          audio_path TEXT,
           created_by VARCHAR(255),
           user_email VARCHAR(255),
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
         );
         ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS question_evaluations JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS audio_url TEXT;
+        ALTER TABLE public.candidates ADD COLUMN IF NOT EXISTS audio_path TEXT;
+        ALTER TABLE public.candidate_portal_sessions ADD COLUMN IF NOT EXISTS audio_url TEXT;
       `);
 
       // 6. Interviews table

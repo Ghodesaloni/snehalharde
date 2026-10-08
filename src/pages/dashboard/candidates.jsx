@@ -102,29 +102,33 @@ const Candidates = () => {
 
     const handleTogglePlayAudio = (candidate) => {
         const audio = audioRef.current;
-        if (!audio) return;
+        if (!audio || !candidate) return;
 
         if (playingAudioCandidateId === candidate.id) {
             if (isAudioPlaying) {
                 audio.pause();
                 setIsAudioPlaying(false);
             } else {
-                audio.play().catch(() => { });
-                setIsAudioPlaying(true);
+                audio.play().then(() => {
+                    setIsAudioPlaying(true);
+                }).catch((e) => {
+                    console.warn("Resume playback note:", e);
+                });
             }
         } else {
             audio.pause();
-            const src = candidate.audioUrl || "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+            const src = candidate.audioUrl || `/api/candidates/${encodeURIComponent(candidate.id)}/audio`;
             audio.src = src;
             audio.playbackRate = playbackSpeed === "2x" ? 2.0 : (playbackSpeed === "1.5x" ? 1.5 : 1.0);
             audio.muted = isMuted;
             setPlayingAudioCandidateId(candidate.id);
             setAudioCurrentTime(0);
+            setAudioDuration(0);
             audio.play().then(() => {
                 setIsAudioPlaying(true);
             }).catch((err) => {
-                console.warn("Audio playback note:", err);
-                setIsAudioPlaying(true);
+                console.warn("Audio playback notice:", err);
+                setIsAudioPlaying(false);
             });
         }
     };
@@ -491,11 +495,17 @@ const Candidates = () => {
             <audio
                 ref={audioRef}
                 className="hidden"
+                preload="metadata"
                 onTimeUpdate={() => setAudioCurrentTime(audioRef.current?.currentTime || 0)}
                 onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+                onCanPlay={() => setAudioDuration(audioRef.current?.duration || 0)}
                 onEnded={() => {
                     setIsAudioPlaying(false);
                     setAudioCurrentTime(0);
+                }}
+                onError={(e) => {
+                    console.warn("Audio element error:", e);
+                    setIsAudioPlaying(false);
                 }}
             />
 

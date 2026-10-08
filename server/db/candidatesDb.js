@@ -196,6 +196,7 @@ class CandidatesDatabase {
       qaEvaluations: evaluatedQAs,
       question_evaluations: evaluatedQAs,
       audioUrl: data.audioUrl || data.audio_url || "",
+      audioPath: data.audioPath || data.audio_path || "",
       createdBy: data.createdBy || data.userEmail || "",
       userEmail: data.userEmail || data.createdBy || "",
       createdAt: new Date().toISOString()
@@ -217,9 +218,9 @@ class CandidatesDatabase {
         INSERT INTO public.candidates (
           id, name, email, phone, role, avatar, interview_date, timestamp,
           duration, mode, score, status, notes, summary_points, recommendation,
-          transcript, evaluation_breakdown, question_evaluations, created_by, user_email, created_at
+          transcript, evaluation_breakdown, question_evaluations, audio_url, audio_path, created_by, user_email, created_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, NOW())
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           email = EXCLUDED.email,
@@ -236,6 +237,8 @@ class CandidatesDatabase {
           transcript = EXCLUDED.transcript,
           evaluation_breakdown = EXCLUDED.evaluation_breakdown,
           question_evaluations = EXCLUDED.question_evaluations,
+          audio_url = COALESCE(EXCLUDED.audio_url, public.candidates.audio_url),
+          audio_path = COALESCE(EXCLUDED.audio_path, public.candidates.audio_path),
           created_by = EXCLUDED.created_by,
           user_email = EXCLUDED.user_email
         RETURNING *;
@@ -260,6 +263,8 @@ class CandidatesDatabase {
         JSON.stringify(newCand.transcript),
         JSON.stringify(newCand.evaluationBreakdown),
         JSON.stringify(newCand.question_evaluations),
+        newCand.audioUrl,
+        newCand.audioPath,
         newCand.createdBy,
         newCand.userEmail
       ];
@@ -312,6 +317,14 @@ class CandidatesDatabase {
       if (updates.evaluationBreakdown !== undefined) {
         params.push(JSON.stringify(updates.evaluationBreakdown));
         setClauses.push(`evaluation_breakdown = $${params.length}`);
+      }
+      if (updates.audioUrl !== undefined || updates.audio_url !== undefined) {
+        params.push(updates.audioUrl || updates.audio_url);
+        setClauses.push(`audio_url = $${params.length}`);
+      }
+      if (updates.audioPath !== undefined || updates.audio_path !== undefined) {
+        params.push(updates.audioPath || updates.audio_path);
+        setClauses.push(`audio_path = $${params.length}`);
       }
 
       if (setClauses.length > 0) {
