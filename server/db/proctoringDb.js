@@ -139,9 +139,21 @@ class ProctoringDatabase {
 
   async getWarningCount(linkCode) {
     const violations = await this.getByLinkCode(linkCode);
-    const warningViolations = violations.filter(v => 
-      v.violationType === "multiple_people" || v.violationType === "multiple_voices"
-    );
+    const nonWarningTypes = new Set([
+      "face_not_visible",
+      "face_missing",
+      "poor_lighting",
+      "low_lighting",
+      "background_noise",
+      "excessive_noise",
+      "high_noise",
+      "interview_terminated"
+    ]);
+    const warningViolations = violations.filter(v => {
+      const type = String(v.violationType || "").toLowerCase();
+      if (nonWarningTypes.has(type)) return false;
+      return v.severity === "warning" || (v.warningNumber && v.warningNumber > 0);
+    });
     return warningViolations.length;
   }
 

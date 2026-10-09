@@ -95,7 +95,12 @@ const CandidateLiveRoom = () => {
         lastLightingWarn: 0,
         lastMultiPeopleWarn: 0,
         lastMultiVoiceWarn: 0,
+        lastNoiseNotice: 0,
+        lastDeviceWarn: 0,
         missingFaceCycles: 0,
+        multiVoiceConsecutiveCycles: 0,
+        noiseConsecutiveCycles: 0,
+        deviceConsecutiveCycles: 0,
     });
 
     // Transcript UI State
@@ -408,23 +413,54 @@ const CandidateLiveRoom = () => {
                 const voiceActive = level > 12;
                 setIsCandidateSpeaking(voiceActive);
 
-                // Anti-Cheating: Spectral Multi-Voice / Multiple Speakers Detection
-                if (voiceActive) {
-                    const now = Date.now();
-                    const cooldowns = proctoringCooldownRef.current;
-                    if (now - cooldowns.lastMultiVoiceWarn > 12000) {
-                        let lowBandEnergy = 0;
-                        let highBandEnergy = 0;
-                        for (let i = 2; i < 8; i++) lowBandEnergy += dataArray[i];
-                        for (let i = 12; i < 24; i++) highBandEnergy += dataArray[i];
+                const now = Date.now();
+                const cooldowns = proctoringCooldownRef.current;
 
-                        // Simultaneous high discordant harmonic presence indicating overlapping/secondary speech
-                        if (lowBandEnergy > 420 && highBandEnergy > 460 && avg > 50) {
-                            cooldowns.lastMultiVoiceWarn = now;
-                            console.warn("[Proctoring] Multiple voices detected in mic feed");
-                            sendViolation("multiple_voices", "Multiple voices detected during interview.");
-                        }
+                // Frequency Bands (FFT 256 @ 48kHz => ~187.5Hz per bin):
+                // Fundamental voice pitch (F0): bins 1-3 (~180-560Hz)
+                // Formants F1/F2 (Human vocal range): bins 4-16 (~750-3000Hz)
+                // High frequency ambient/fan/typing clicks: bins 20-60 (~3750-11250Hz)
+                let vocalFundamental = 0;
+                let vocalFormants = 0;
+                let highBandNoise = 0;
+
+                for (let i = 1; i <= 3; i++) vocalFundamental += dataArray[i];
+                for (let i = 4; i <= 16; i++) vocalFormants += dataArray[i];
+                for (let i = 20; i <= 60; i++) highBandNoise += dataArray[i];
+
+                const avgHighNoise = highBandNoise / 41;
+                const avgVocalEnergy = (vocalFundamental + vocalFormants) / 16;
+
+                // 1. Excessive Background Noise Detection (Continuous noise floor without secondary human voice)
+                // NO WARNING issued: polite request to move to a quieter location
+                if (avgHighNoise > 42 || (avg > 40 && avgVocalEnergy < 48)) {
+                    cooldowns.noiseConsecutiveCycles = (cooldowns.noiseConsecutiveCycles || 0) + 1;
+                    if (cooldowns.noiseConsecutiveCycles >= 180 && now - (cooldowns.lastNoiseNotice || 0) > 25000) {
+                        cooldowns.lastNoiseNotice = now;
+                        cooldowns.noiseConsecutiveCycles = 0;
+                        console.warn("[Proctoring] High continuous background noise detected (guidance notice)");
+                        sendViolation("background_noise", "There is too much background noise. Please move to a quieter place so that I can clearly hear your responses.");
                     }
+                } else {
+                    cooldowns.noiseConsecutiveCycles = Math.max(0, (cooldowns.noiseConsecutiveCycles || 0) - 2);
+                }
+
+                // 2. Multiple Voices Detection (Second human voice speaking near candidate)
+                // Human speech has distinct harmonic formants (F1, F2) and pitch resonance.
+                // Dual voice presence exhibits overlapping harmonic energy across both fundamental and mid formants.
+                const isDualVoice = vocalFundamental > 480 && vocalFormants > 780 && avgVocalEnergy > 54 && avg > 50;
+
+                if (isDualVoice) {
+                    cooldowns.multiVoiceConsecutiveCycles = (cooldowns.multiVoiceConsecutiveCycles || 0) + 1;
+                    // Require sustained dual vocal resonance (~600ms / 35 frames) to avoid false positives on keyboard or clicks
+                    if (cooldowns.multiVoiceConsecutiveCycles >= 35 && now - (cooldowns.lastMultiVoiceWarn || 0) > 15000) {
+                        cooldowns.lastMultiVoiceWarn = now;
+                        cooldowns.multiVoiceConsecutiveCycles = 0;
+                        console.warn("[Proctoring] Second human voice detected speaking near candidate");
+                        sendViolation("multiple_voices", "Another voice detected speaking during interview.");
+                    }
+                } else {
+                    cooldowns.multiVoiceConsecutiveCycles = Math.max(0, (cooldowns.multiVoiceConsecutiveCycles || 0) - 1);
                 }
 
                 vadAnimFrameRef.current = requestAnimationFrame(checkCandidateVoice);
@@ -927,11 +963,49 @@ const CandidateLiveRoom = () => {
 
                 // Check Multiple People
                 if (faceCount > 1) {
-                    if (now - cooldowns.lastMultiPeopleWarn > 10000) {
+                    if (now - (cooldowns.lastMultiPeopleWarn || 0) > 12000) {
                         cooldowns.lastMultiPeopleWarn = now;
                         console.warn("[Proctoring] Multiple people detected in camera feed (" + faceCount + " faces)");
                         sendViolation("multiple_people", "Multiple people detected in webcam view.");
                     }
+                }
+
+                // 3. Phone / Tablet / Electronic Device in Hand Detection
+                // Scan lower quadrants and hand region for high-contrast rectangular device in hand
+                let deviceCandidatePixels = 0;
+                let handSkinPixels = 0;
+
+                for (let y = 60; y < 118; y += 3) {
+                    for (let x = 10; x < 150; x += 3) {
+                        const idx = (y * 160 + x) * 4;
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+
+                        const isSkin = (r > 80 && g > 40 && b > 25 && (r - g) > 10 && (r - b) > 10);
+                        const luma = (0.299 * r + 0.587 * g + 0.114 * b);
+                        
+                        if (isSkin) {
+                            handSkinPixels++;
+                        } else if (luma < 22 || (luma > 215 && Math.abs(r - g) < 15 && Math.abs(g - b) < 15)) {
+                            // Dark bezel or emissive bright smartphone screen rectangle
+                            deviceCandidatePixels++;
+                        }
+                    }
+                }
+
+                // High concentration of adjacent hand skin pixels and device contrast pixels in lower frame
+                if (handSkinPixels > 25 && deviceCandidatePixels > 45) {
+                    cooldowns.deviceConsecutiveCycles = (cooldowns.deviceConsecutiveCycles || 0) + 1;
+                    // Require 2 consecutive cycles (5 seconds) to prevent false positives from hand movements
+                    if (cooldowns.deviceConsecutiveCycles >= 2 && now - (cooldowns.lastDeviceWarn || 0) > 18000) {
+                        cooldowns.lastDeviceWarn = now;
+                        cooldowns.deviceConsecutiveCycles = 0;
+                        console.warn("[Proctoring] Unauthorized mobile device / tablet detected in hand");
+                        sendViolation("phone_detected", "Unauthorized electronic device or phone detected in use.");
+                    }
+                } else {
+                    cooldowns.deviceConsecutiveCycles = 0;
                 }
             } catch (err) {
                 // Ignore frame sampling errors
@@ -944,22 +1018,29 @@ const CandidateLiveRoom = () => {
         };
     }, [connectionStatus, isCameraOn, interviewEnded]);
 
-    // Anti-Cheating & Integrity Event Listeners (Tab switch, window blur -> Immediate Termination)
+    // Anti-Cheating & Integrity Event Listeners (Tab switch, window blur -> Centralized 3-Warning Counter)
     useEffect(() => {
+        let lastTabViolation = 0;
+
         const handleVisibilityChange = () => {
+            const now = Date.now();
             if (document.hidden && connectionStatus === "connected" && !interviewEnded) {
-                const reason = "Candidate switched away from the active interview tab.";
-                toast.error("Tab Switch Detected: Interview Terminated");
-                sendViolation("tab_switch", reason);
-                handleEndAndSaveInterview(reason);
+                if (now - lastTabViolation > 5000) {
+                    lastTabViolation = now;
+                    const reason = "Candidate switched away from the active interview tab.";
+                    sendViolation("tab_switch", reason);
+                }
             }
         };
 
         const handleWindowBlur = () => {
+            const now = Date.now();
             if (connectionStatus === "connected" && !interviewEnded && settings.enableProctoring !== false) {
-                const reason = "Candidate switched active window or application focus.";
-                sendViolation("window_blur", reason);
-                handleEndAndSaveInterview(reason);
+                if (now - lastTabViolation > 5000) {
+                    lastTabViolation = now;
+                    const reason = "Candidate switched active window or application focus.";
+                    sendViolation("window_blur", reason);
+                }
             }
         };
 

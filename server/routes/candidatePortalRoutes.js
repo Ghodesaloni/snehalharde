@@ -1115,8 +1115,10 @@ router.post("/proctoring/violation", async (req, res) => {
     const rawCode = (linkCode || "").replace(/^interview_/, "").trim();
     const type = String(violationType || "").toLowerCase().trim();
 
-    // 1. Face visibility & lighting check (Non-terminating guidance notice)
-    if (type === "face_not_visible" || type === "poor_lighting" || type === "low_lighting") {
+    // 1. Guidance Notices (Zero warnings, non-terminating guidance)
+    // A. Face visibility & lighting check
+    if (type === "face_not_visible" || type === "poor_lighting" || type === "low_lighting" || type === "face_missing") {
+      const noticePrompt = "Your face is not clearly visible. Please adjust your position or lighting.";
       const recorded = await proctoringDb.recordViolation({
         linkCode: rawCode,
         sessionId,
@@ -1125,43 +1127,95 @@ router.post("/proctoring/violation", async (req, res) => {
         violationType: type,
         severity: "notice",
         warningNumber: 0,
-        details: details || "Your face is not clearly visible. Please adjust your position or lighting.",
+        details: details || noticePrompt,
         metadata
       });
 
+      const currentCount = await proctoringDb.getWarningCount(rawCode);
       return res.json({
         success: true,
         action: "notice",
         terminate: false,
-        warningCount: 0,
-        verbalPrompt: "Your face is not clearly visible. Please adjust your position or lighting.",
-        message: "Your face is not clearly visible. Please adjust your position or lighting.",
+        warningCount: currentCount,
+        verbalPrompt: noticePrompt,
+        message: details || noticePrompt,
         data: recorded
       });
     }
 
-    // 2. Tab switching / Window blur / Screen switch (Zero-tolerance immediate termination)
-    const zeroToleranceTypes = [
-      "tab_switch",
-      "tab_change",
-      "window_blur",
-      "window_change",
-      "window_switch",
-      "multiple_windows",
-      "split_screen",
-      "visibility_hidden",
-      "focus_lost",
-      "fullscreen_exit"
-    ];
+    // B. Excessive Background Noise (AI asks candidate to move to a quieter location; NO WARNING)
+    if (type === "background_noise" || type === "excessive_noise" || type === "high_noise") {
+      const noisePrompt = "There is too much background noise. Please move to a quieter place so that I can clearly hear your responses.";
+      const recorded = await proctoringDb.recordViolation({
+        linkCode: rawCode,
+        sessionId,
+        candidateEmail,
+        candidateName,
+        violationType: "background_noise",
+        severity: "notice",
+        warningNumber: 0,
+        details: details || noisePrompt,
+        metadata
+      });
 
-    if (zeroToleranceTypes.includes(type)) {
-      const terminationReason = details || (
-        type === "tab_switch" ? "Candidate switched browser tabs during live interview." :
-        type === "window_blur" ? "Candidate switched active window or application focus." :
-        type === "fullscreen_exit" ? "Candidate exited required full-screen mode." :
-        "Candidate changed screen focus or opened unauthorized windows."
-      );
+      const currentCount = await proctoringDb.getWarningCount(rawCode);
+      return res.json({
+        success: true,
+        action: "notice",
+        terminate: false,
+        warningCount: currentCount,
+        verbalPrompt: noisePrompt,
+        message: details || noisePrompt,
+        data: recorded
+      });
+    }
 
+    // 2. Valid Anti-Cheating Violations (Centralized 3-Warning Counter -> Terminate on 4th Violation)
+    let violationLabel = "Integrity policy violation";
+    let getVerbalPrompt = (count) => `Warning ${count} of 3: An integrity violation was detected. Please ensure full assessment compliance.`;
+
+    if (type === "multiple_voices" || type === "secondary_speaker" || type === "extra_voice") {
+      violationLabel = "Second voice detected speaking during interview";
+      getVerbalPrompt = (count) => `Warning ${count} of 3: Another voice has been detected speaking near you. Please ensure you are alone in a quiet room.`;
+    } else if (
+      type === "phone_detected" ||
+      type === "mobile_phone" ||
+      type === "tablet_detected" ||
+      type === "unauthorized_device" ||
+      type === "device_in_hand" ||
+      type === "electronic_device"
+    ) {
+      violationLabel = "Unauthorized electronic device or phone detected in use";
+      getVerbalPrompt = (count) => `Warning ${count} of 3: An unauthorized electronic device or mobile phone was detected in use. Mobile devices and tablets are strictly prohibited during the interview.`;
+    } else if (type === "multiple_people" || type === "multiple_faces" || type === "extra_person") {
+      violationLabel = "Multiple people detected in webcam view";
+      getVerbalPrompt = (count) => `Warning ${count} of 3: Multiple people have been detected in your camera view. Only you are permitted during this interview.`;
+    } else if (
+      type === "tab_switch" ||
+      type === "tab_change" ||
+      type === "window_blur" ||
+      type === "window_change" ||
+      type === "window_switch" ||
+      type === "multiple_windows" ||
+      type === "split_screen" ||
+      type === "visibility_hidden" ||
+      type === "focus_lost" ||
+      type === "fullscreen_exit" ||
+      type === "screen_switch"
+    ) {
+      violationLabel = "Tab switch or application focus change";
+      getVerbalPrompt = (count) => `Warning ${count} of 3: You switched away from the active interview window or changed tabs. Please stay on the interview screen.`;
+    } else {
+      violationLabel = details || `Integrity violation: ${type}`;
+      getVerbalPrompt = (count) => `Warning ${count} of 3: ${violationLabel}.`;
+    }
+
+    // Centralized Warning Counter across all violation types
+    const prevCount = await proctoringDb.getWarningCount(rawCode);
+
+    // If candidate has already received 3 warnings, the 4th violation causes immediate termination
+    if (prevCount >= 3) {
+      const terminationReason = details || `Maximum integrity warnings exceeded (3/3): ${violationLabel}.`;
       const result = await proctoringDb.terminateSession({
         linkCode: rawCode,
         sessionId,
@@ -1176,78 +1230,17 @@ router.post("/proctoring/violation", async (req, res) => {
         action: "terminate",
         terminate: true,
         status: "Meeting Terminated",
+        warningCount: 3,
+        maxWarnings: 3,
         reason: terminationReason,
-        verbalPrompt: `An integrity policy violation occurred: ${terminationReason}. The interview is being terminated immediately.`,
+        verbalPrompt: `You have exceeded the maximum of three integrity warnings due to ${violationLabel.toLowerCase()}. The interview is being terminated immediately.`,
         message: `Meeting Terminated: ${terminationReason}`,
         data: result
       });
     }
 
-    // 3. Multiple People / Multiple Voices (Max 3 Warnings -> Terminate on 3rd)
-    if (type === "multiple_people" || type === "multiple_voices") {
-      // Calculate current warning count for this linkCode
-      const prevCount = await proctoringDb.getWarningCount(rawCode);
-      const newWarningCount = prevCount + 1;
-
-      const violationLabel = type === "multiple_people" ? "Multiple people detected in webcam view" : "Multiple voices detected";
-
-      if (newWarningCount >= 3) {
-        // Automatic termination on 3rd warning!
-        const terminationReason = `Maximum warnings exceeded (3/3): ${violationLabel}.`;
-        const result = await proctoringDb.terminateSession({
-          linkCode: rawCode,
-          sessionId,
-          reason: terminationReason,
-          candidateName,
-          candidateEmail,
-          candidateRole: req.body.role || req.body.candidateRole || ""
-        });
-
-        return res.json({
-          success: true,
-          action: "terminate",
-          terminate: true,
-          status: "Meeting Terminated",
-          warningCount: 3,
-          maxWarnings: 3,
-          reason: terminationReason,
-          verbalPrompt: `You have received three integrity warnings for ${violationLabel.toLowerCase()}. The interview is being terminated immediately.`,
-          message: `Meeting Terminated: ${terminationReason}`,
-          data: result
-        });
-      } else {
-        // Warning 1 or 2
-        const recorded = await proctoringDb.recordViolation({
-          linkCode: rawCode,
-          sessionId,
-          candidateEmail,
-          candidateName,
-          violationType: type,
-          severity: "warning",
-          warningNumber: newWarningCount,
-          details: details || `Warning ${newWarningCount} of 3: ${violationLabel}.`,
-          metadata
-        });
-
-        const verbalPrompt = type === "multiple_people"
-          ? `Warning ${newWarningCount} of 3: Multiple people have been detected in your camera view. Only the candidate is permitted during the interview.`
-          : `Warning ${newWarningCount} of 3: Multiple voices have been detected. Please ensure you are in a quiet room alone.`;
-
-        return res.json({
-          success: true,
-          action: "warning",
-          terminate: false,
-          warningCount: newWarningCount,
-          maxWarnings: 3,
-          warningNumber: newWarningCount,
-          verbalPrompt,
-          message: `Warning ${newWarningCount} of 3: ${violationLabel}`,
-          data: recorded
-        });
-      }
-    }
-
-    // Default fallback violation logging
+    // Warning 1, 2, or 3
+    const newWarningCount = prevCount + 1;
     const recorded = await proctoringDb.recordViolation({
       linkCode: rawCode,
       sessionId,
@@ -1255,15 +1248,22 @@ router.post("/proctoring/violation", async (req, res) => {
       candidateName,
       violationType: type,
       severity: "warning",
-      warningNumber: 1,
-      details: details || `Security violation: ${type}`,
+      warningNumber: newWarningCount,
+      details: details || `Warning ${newWarningCount} of 3: ${violationLabel}.`,
       metadata
     });
 
-    res.json({
+    const verbalPrompt = getVerbalPrompt(newWarningCount);
+
+    return res.json({
       success: true,
-      action: "notice",
+      action: "warning",
       terminate: false,
+      warningCount: newWarningCount,
+      maxWarnings: 3,
+      warningNumber: newWarningCount,
+      verbalPrompt,
+      message: `Warning ${newWarningCount} of 3: ${violationLabel}`,
       data: recorded
     });
   } catch (err) {

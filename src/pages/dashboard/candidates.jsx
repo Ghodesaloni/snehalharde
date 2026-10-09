@@ -94,7 +94,7 @@ const Candidates = () => {
     const [currentCandidateNotes, setCurrentCandidateNotes] = useState({});
 
     const formatAudioTime = (secs) => {
-        if (isNaN(secs) || secs < 0) return "00:00";
+        if (!Number.isFinite(secs) || isNaN(secs) || secs < 0) return "00:00";
         const m = Math.floor(secs / 60);
         const s = Math.floor(secs % 60);
         return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
@@ -133,16 +133,33 @@ const Candidates = () => {
         }
     };
 
-    const handleSeekAudio = (e) => {
+    const handleSeekAudio = (e, candidate) => {
         const audio = audioRef.current;
         if (!audio) return;
-        const dur = audioDuration || audio.duration || 60;
+        if (candidate && playingAudioCandidateId !== candidate.id) return;
+
+        const dur = (Number.isFinite(audioDuration) && audioDuration > 0)
+            ? audioDuration
+            : (Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0);
+
+        if (!dur || !Number.isFinite(dur) || dur <= 0) return;
+
         const rect = e.currentTarget.getBoundingClientRect();
+        if (!rect || !rect.width || rect.width <= 0) return;
+
         const clickX = e.clientX - rect.left;
         const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+        if (!Number.isFinite(ratio)) return;
+
         const newTime = ratio * dur;
-        audio.currentTime = newTime;
-        setAudioCurrentTime(newTime);
+        if (Number.isFinite(newTime) && newTime >= 0) {
+            try {
+                audio.currentTime = newTime;
+                setAudioCurrentTime(newTime);
+            } catch (err) {
+                console.warn("Failed to seek audio:", err);
+            }
+        }
     };
 
     const handleSpeedChange = () => {
@@ -496,9 +513,24 @@ const Candidates = () => {
                 ref={audioRef}
                 className="hidden"
                 preload="metadata"
-                onTimeUpdate={() => setAudioCurrentTime(audioRef.current?.currentTime || 0)}
-                onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
-                onCanPlay={() => setAudioDuration(audioRef.current?.duration || 0)}
+                onTimeUpdate={() => {
+                    const ct = audioRef.current?.currentTime;
+                    if (Number.isFinite(ct)) {
+                        setAudioCurrentTime(ct);
+                    }
+                }}
+                onLoadedMetadata={() => {
+                    const d = audioRef.current?.duration;
+                    if (Number.isFinite(d)) {
+                        setAudioDuration(d);
+                    }
+                }}
+                onCanPlay={() => {
+                    const d = audioRef.current?.duration;
+                    if (Number.isFinite(d)) {
+                        setAudioDuration(d);
+                    }
+                }}
                 onEnded={() => {
                     setIsAudioPlaying(false);
                     setAudioCurrentTime(0);
@@ -838,22 +870,22 @@ const Candidates = () => {
 
                                                         {/* Progress Scrubber */}
                                                         <div
-                                                            onClick={handleSeekAudio}
-                                                            className="flex-1 relative flex items-center cursor-pointer py-1 group"
-                                                            title="Click to seek audio"
+                                                            onClick={(e) => handleSeekAudio(e, candidate)}
+                                                            className={`flex-1 relative flex items-center py-1 group ${playingAudioCandidateId === candidate.id ? "cursor-pointer" : "cursor-default opacity-60"}`}
+                                                            title={playingAudioCandidateId === candidate.id ? "Click to seek audio" : "Play audio to seek"}
                                                         >
                                                             <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                                                 <div
                                                                     className="h-full bg-violet-600 rounded-full transition-all"
                                                                     style={{
-                                                                        width: `${playingAudioCandidateId === candidate.id && (audioDuration || audioRef.current?.duration) ? Math.min(100, (audioCurrentTime / (audioDuration || audioRef.current?.duration || 1)) * 100) : 0}%`
+                                                                        width: `${playingAudioCandidateId === candidate.id && audioDuration > 0 ? Math.min(100, Math.max(0, (audioCurrentTime / audioDuration) * 100)) : 0}%`
                                                                     }}
                                                                 />
                                                             </div>
                                                             <div
                                                                 className="w-3 h-3 bg-violet-600 rounded-full absolute -top-0.5 shadow-xs transition-all opacity-0 group-hover:opacity-100"
                                                                 style={{
-                                                                    left: `${playingAudioCandidateId === candidate.id && (audioDuration || audioRef.current?.duration) ? Math.min(100, (audioCurrentTime / (audioDuration || audioRef.current?.duration || 1)) * 100) : 0}%`
+                                                                    left: `${playingAudioCandidateId === candidate.id && audioDuration > 0 ? Math.min(100, Math.max(0, (audioCurrentTime / audioDuration) * 100)) : 0}%`
                                                                 }}
                                                             />
                                                         </div>
